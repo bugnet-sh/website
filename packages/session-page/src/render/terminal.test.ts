@@ -108,7 +108,7 @@ describe("terminal block", () => {
         const out = block.root.querySelector(".term-out")!;
         expect(out.getAttribute("role")).toBe("log");
         expect(out.getAttribute("tabindex")).toBe("0");
-        expect(out.getAttribute("aria-label")).toBe("Output of command 3");
+        expect(out.getAttribute("aria-label")).toBe(copy.outputLabel(3));
     });
 
     it("shows notices and footer from the caller", () => {
@@ -126,5 +126,26 @@ describe("terminal block", () => {
         scheduler.flush();
         expect(block.root.querySelector(".term-notes")!.textContent).toBe(copy.cut(2048));
         expect(block.root.querySelector(".term-foot")!.textContent).toBe("exit 0");
+    });
+
+    it("keeps the notice nodes while the notices stay the same", () => {
+        const buffer = new OutputBuffer();
+        const scheduler = manual();
+        const block = createTerminalBlock({
+            doc: document,
+            buffer,
+            seq: 1,
+            command: "x",
+            notices: () => [copy.cut(2048)],
+            footer: () => null,
+            scheduler,
+        });
+        scheduler.flush();
+        const note = block.root.querySelector(".term-notes p");
+        buffer.apply({ s: "o", t: "more\n", cr: false });
+        block.update();
+        scheduler.flush();
+        expect(block.root.querySelector(".term-notes p")).toBe(note);
+        expect(note!.textContent).toBe(copy.cut(2048));
     });
 });

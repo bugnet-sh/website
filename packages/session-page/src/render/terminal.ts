@@ -32,13 +32,14 @@ export function createTerminalBlock(opts: {
     const notes = el(doc, "div", { class: "term-notes" });
     const out = el(doc, "div", {
         class: "term-out",
-        attrs: { tabindex: "0", role: "log", "aria-label": `Output of command ${opts.seq}` },
+        attrs: { tabindex: "0", role: "log", "aria-label": copy.outputLabel(opts.seq) },
     });
     const foot = el(doc, "p", { class: "term-foot" });
     const root = el(doc, "div", { class: "term" }, [cmd, notes, out, foot]);
 
     const nodes: HTMLElement[] = [];
     let droppedSeen = 0;
+    let shownNotices: string | null = null;
     let pending = false;
     let destroyed = false;
 
@@ -52,7 +53,7 @@ export function createTerminalBlock(opts: {
         droppedSeen = buffer.droppedLines;
 
         const lines = buffer.lines;
-        // Only the last rendered line can still change: earlier ones are closed.
+        // OutputBuffer only ever changes its tail line, so every node before the last is current
         const resume = Math.max(nodes.length - 1, 0);
         for (let i = resume; i < lines.length; i++) {
             const line = lines[i]!;
@@ -71,8 +72,12 @@ export function createTerminalBlock(opts: {
         const notices = [...opts.notices()];
         if (buffer.droppedLines > 0) notices.push(copy.dropped(buffer.droppedLines));
         if (buffer.skippedBytes > 0) notices.push(copy.skipped(buffer.skippedBytes));
-        notes.replaceChildren(...notices.map((text) => el(doc, "p", { text })));
-        notes.hidden = notices.length === 0;
+        const joined = notices.join("\n");
+        if (joined !== shownNotices) {
+            shownNotices = joined;
+            notes.replaceChildren(...notices.map((text) => el(doc, "p", { text })));
+            notes.hidden = notices.length === 0;
+        }
 
         const footer = opts.footer();
         foot.textContent = footer ?? "";

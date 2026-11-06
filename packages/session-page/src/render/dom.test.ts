@@ -20,7 +20,7 @@ describe("el", () => {
             svgEl(document, "circle", { r: "1" }),
         ]);
         expect(svg.namespaceURI).toBe("http://www.w3.org/2000/svg");
-        const div = el(document, "div", { class: "a" }, [svg as unknown as Node]);
+        const div = el(document, "div", { class: "a" }, [svg]);
         expect(div.className).toBe("a");
         expect(div.querySelector("circle")).not.toBeNull();
     });

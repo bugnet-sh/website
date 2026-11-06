@@ -100,6 +100,7 @@ export const copy = {
     cut: (bytes: number) => `Earlier output not kept (${formatBytes(bytes)})`,
     dropped: (n: number) => `Earlier lines dropped from this view: ${n}`,
     skipped: (bytes: number) => `${formatBytes(bytes)} earlier not shown`,
+    outputLabel: (seq: number) => `Output of command ${seq}`,
     // Null while the job runs, since it has no last line yet
     exitLine: (job: ExitInfo, durationMs: number): string | null => {
         const took = formatDuration(durationMs);
