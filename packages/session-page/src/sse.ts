@@ -3,6 +3,8 @@ import type { Frame } from "./payload.ts";
 export interface SseEvent {
     event: string;
     data: string;
+    // Only an id line in this event's own block. The router sends one only when it holds nothing
+    // back, so WHATWG's carried-over last id would resume past text not yet sent.
     id: string | null;
 }
 
@@ -19,6 +21,7 @@ export function createSseParser(onEvent: (e: SseEvent) => void): { push(text: st
             event = "";
             data = [];
             hasData = false;
+            id = null;
             return;
         }
         if (l.startsWith(":")) return;

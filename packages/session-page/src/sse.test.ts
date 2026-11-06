@@ -14,8 +14,8 @@ const SAMPLE =
 const EXPECTED: LiveFrame[] = [
     { type: "out", frame: { s: "o", t: "héllo", cr: false }, cursor: "c1" },
     { type: "out", frame: { s: "e", t: "oops", cr: true }, cursor: "c2" },
-    // The id field persists across events, as the event-stream rules say
-    { type: "out", frame: { s: "o", t: "no id", cr: false }, cursor: "c2" },
+    // A block without its own id has no cursor: the router sends one only when nothing is held
+    { type: "out", frame: { s: "o", t: "no id", cr: false }, cursor: null },
     { type: "skip", outBytes: 10, errBytes: 2, cursor: "c3" },
     { type: "exit", exitCode: 0, oom: false, peakMib: 12 },
     { type: "end", reason: "exited" },
@@ -61,6 +61,12 @@ describe("createSseParser", () => {
         const p = createSseParser((e) => events.push(e));
         p.push("data:  x\ndata:y\ndata\n\n");
         expect(events[0]!.data).toBe(" x\ny\n");
+    });
+
+    it("gives an id-less frame after an id-bearing one no cursor", () => {
+        const out = (t: string) => `data: {"s":"o","t":"${t}","cr":false}\n\n`;
+        const got = frames([`event: out\nid: c1\n${out("a")}event: out\n${out("b")}`]);
+        expect(got.map((f) => (f.type === "out" ? f.cursor : "?"))).toEqual(["c1", null]);
     });
 
     it("treats a lone CR as a line end", () => {
