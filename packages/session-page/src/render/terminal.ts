@@ -37,7 +37,7 @@ export function createTerminalBlock(opts: {
     const foot = el(doc, "p", { class: "term-foot" });
     const root = el(doc, "div", { class: "term" }, [cmd, notes, out, foot]);
 
-    let nodes: HTMLElement[] = [];
+    const nodes: HTMLElement[] = [];
     let droppedSeen = 0;
     let pending = false;
     let destroyed = false;
