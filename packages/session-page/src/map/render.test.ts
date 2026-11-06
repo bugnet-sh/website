@@ -72,6 +72,19 @@ describe("renderMapSvg", () => {
         expect(svg.querySelectorAll("a")).toHaveLength(0);
     });
 
+    it("draws every bubble label as two lines, the whole metric kept in its name", () => {
+        const { svg } = svgOf(modelOf("ended-full"));
+        for (const g of bubbles(svg).filter((b) => b.dataset.nodeId !== "sandbox")) {
+            expect(g.querySelectorAll(".map-label tspan"), g.dataset.nodeId).toHaveLength(2);
+        }
+        const payments = bubble(svg, "payments");
+        const lines = [...payments.querySelectorAll(".map-label tspan")].map((t) => t.textContent);
+        expect(lines).toEqual(["Payments", "0.125 USDC paid"]);
+        expect(payments.getAttribute("aria-label")).toBe(
+            "Payments, 0.125 USDC paid · 0.02 USDC refunded",
+        );
+    });
+
     it("calls onSelect on Enter, Space or a click", () => {
         const { svg, onSelect } = svgOf(modelOf("ended-full"));
         const g = bubble(svg, "payments");

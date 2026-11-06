@@ -13,11 +13,25 @@ function recordOf(name: ScenarioName): SessionRecord {
     return body.record;
 }
 
+const at = new Date("2026-11-06T10:00:00Z");
+
+function mapOf(events: SessionEvent[]): MapModel {
+    return buildMap({
+        startedAt: at,
+        endedAt: at,
+        endedBecause: "stopped",
+        deletesAt: at,
+        output: "complete",
+        events,
+        eventsDropped: 0,
+        jobs: [],
+    });
+}
+
 // Every place at once, with the longest labels and a part-refused host in the middle row
 function busiest(): MapModel {
-    const at = new Date("2026-11-06T10:00:00Z");
     const long = (i: number) => `${String.fromCharCode(97 + i)}-very-long-registered-host.example`;
-    const events: SessionEvent[] = [
+    return mapOf([
         { at, kind: "placement", phase: "placed", vcpu: 16, memoryMib: 65_536, minutes: 1_440 },
         ...Array.from({ length: 400 }, (): SessionEvent => ({
             at,
@@ -71,17 +85,7 @@ function busiest(): MapModel {
         })),
         { at, kind: "ssh", phase: "start" },
         { at, kind: "transfer", direction: "in", name: "a", bytes: 1 },
-    ];
-    return buildMap({
-        startedAt: at,
-        endedAt: at,
-        endedBecause: "stopped",
-        deletesAt: at,
-        output: "complete",
-        events,
-        eventsDropped: 0,
-        jobs: [],
-    });
+    ]);
 }
 
 const models: [string, () => MapModel][] = [
@@ -215,6 +219,13 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
                 for (const b of boxes.slice(i + 1)) {
                     expect(boxesMeet(a, b), `${a.what} and ${b.what}`).toBe(false);
                 }
+            }
+        });
+
+        it("gives each label two lines, its name and a metric of 24 characters at most", () => {
+            for (const p of layout.placed) {
+                expect(lineBoxes(p), p.node.id).toHaveLength(2);
+                expect(chars(p.metricLines[0]!), p.node.id).toBeLessThanOrEqual(24);
             }
         });
 
@@ -365,8 +376,34 @@ describe("layoutMap edges", () => {
         expect([empty.center.x, empty.center.y]).toEqual([450, 190]);
     });
 
-    it("splits a long metric at its separator rather than cutting it", () => {
+    it("draws a Payments metric over 24 characters as its total paid", () => {
         const payments = layout.placed.find((p) => p.node.id === "payments")!;
-        expect(payments.metricLines).toEqual(["0.125 USDC paid", "0.02 USDC refunded"]);
+        expect(payments.node.metric).toBe("0.125 USDC paid · 0.02 USDC refunded");
+        expect(payments.metricLines).toEqual(["0.125 USDC paid"]);
+        const busy = layoutMap(busiest(), 720).placed.find((p) => p.node.kind === "payments")!;
+        expect(busy.metricLines).toEqual(["12.345678 USDC paid"]);
+    });
+
+    it("draws a host metric over 24 characters as its amount, and a short one whole", () => {
+        const call = (i: number): SessionEvent => ({
+            at,
+            kind: "x402",
+            host: i < 100 ? "big.example" : "small.example",
+            method: "GET",
+            path: "/",
+            status: i % 100 === 0 ? "paid" : "free",
+            amountMicros: i % 100 === 0 ? 12_345_678 : 0,
+            asset: "USDC",
+            network: "n",
+        });
+        const model = mapOf([
+            { at, kind: "placement", phase: "placed", vcpu: 2, memoryMib: 2_048, minutes: 10 },
+            ...Array.from({ length: 103 }, (_, i) => call(i)),
+        ]);
+        const placed = layoutMap(model, 720).placed;
+        const host = (id: string) => placed.find((p) => p.node.id === `x402-host:${id}`)!;
+        expect(host("big.example").node.metric).toBe("100 calls · 12.345678 USDC");
+        expect(host("big.example").metricLines).toEqual(["12.345678 USDC"]);
+        expect(host("small.example").metricLines).toEqual(["3 calls · 12.345678 USDC"]);
     });
 });

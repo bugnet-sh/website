@@ -22,7 +22,7 @@ export interface Placed {
     labelX: number;
     // The first line's baseline
     labelY: number;
-    // The metric as drawn, split at its separators where one line would be too long
+    // The metric as drawn, one line beside a bubble and one line per part inside the centre
     metricLines: string[];
 }
 
@@ -95,18 +95,13 @@ export function radiusFor(count: number): number {
 
 const chars = (s: string) => Array.from(s).length;
 
-function packLines(metric: string, maxChars: number): string[] {
-    if (metric === "") return [];
-    const lines: string[] = [];
-    for (const part of metric.split(SEPARATOR)) {
-        const last = lines.at(-1);
-        if (last !== undefined && chars(last) + SEPARATOR.length + chars(part) <= maxChars) {
-            lines[lines.length - 1] = `${last}${SEPARATOR}${part}`;
-        } else {
-            lines.push(part);
-        }
-    }
-    return lines;
+// A label is two lines, and at 720 px a column holds about 26 characters beside a 40 px bubble,
+// so a longer metric is drawn as its money alone; the aria-label and the list keep it whole
+function metricLines(node: MapNode): string[] {
+    if (node.metric === "") return [];
+    if (chars(node.metric) <= LINE_CHARS) return [node.metric];
+    if (node.kind === "payments") return [copy.metrics.paid(node.paidMicros)];
+    return [node.paidMicros > 0 ? copy.metrics.usdc(node.paidMicros) : node.metric];
 }
 
 function labelWidth(node: MapNode, metricLines: string[]): number {
@@ -177,12 +172,12 @@ interface Sized {
 
 function sizeAll(nodes: MapNode[], cap: number): Sized[] {
     return nodes.map((node) => {
-        const metricLines = packLines(node.metric, LINE_CHARS);
+        const lines = metricLines(node);
         return {
             node,
             r: Math.min(radiusFor(node.count), cap),
-            metricLines,
-            width: labelWidth(node, metricLines),
+            metricLines: lines,
+            width: labelWidth(node, lines),
         };
     });
 }
