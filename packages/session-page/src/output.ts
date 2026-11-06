@@ -20,6 +20,10 @@ export const DEFAULT_LIMITS: OutputLimits = {
 
 const ELLIPSIS = "…";
 
+function isHighSurrogate(unit: number): boolean {
+    return unit >= 0xd800 && unit <= 0xdbff;
+}
+
 /**
  * Holds the tail of one command's output under hard caps, so a flood or a minified blob cannot
  * grow the page without bound. Dropped lines are counted, never kept.
@@ -27,6 +31,8 @@ const ELLIPSIS = "…";
 export class OutputBuffer {
     private readonly limits: OutputLimits;
     private store: Line[] = [];
+    // A cut line swallows the rest of its text until its newline
+    private readonly cut = new WeakSet<Line>();
     // Front of the live window; advancing it avoids the O(n) shift per dropped line.
     private start = 0;
     private chars = 0;
@@ -38,7 +44,8 @@ export class OutputBuffer {
         this.limits = limits;
     }
 
-    get lines(): readonly Line[] {
+    // May alias the internal storage, so callers only read it
+    get lines(): ReadonlyArray<Readonly<Line>> {
         return this.start === 0 ? this.store : this.store.slice(this.start);
     }
 
@@ -89,6 +96,7 @@ export class OutputBuffer {
                 this.add({ s, t: "", open: true }, piece);
             } else {
                 this.chars -= tail.t.length;
+                this.cut.delete(tail);
                 tail.s = s;
                 tail.t = "";
                 tail.open = true;
@@ -117,12 +125,16 @@ export class OutputBuffer {
     }
 
     private extend(line: Line, piece: string): void {
+        if (this.cut.has(line) || piece === "") return;
         const max = this.limits.maxLineChars;
-        // A cut line is one char over the cap and swallows the rest until its newline.
-        if (line.t.length > max || piece === "") return;
         let next = line.t + piece;
-        // slice() alone returns a view that pins the whole source frame; the concat forces a copy.
-        if (next.length > max) next = (" " + next.slice(0, max)).slice(1) + ELLIPSIS;
+        if (next.length > max) {
+            // Cutting inside a surrogate pair would leave half a character, drawn as U+FFFD
+            const end = isHighSurrogate(next.charCodeAt(max - 1)) ? max - 1 : max;
+            // slice() alone keeps a view pinning the whole source frame, the concat forces a copy
+            next = (" " + next.slice(0, end)).slice(1) + ELLIPSIS;
+            this.cut.add(line);
+        }
         this.chars += next.length - line.t.length;
         line.t = next;
     }

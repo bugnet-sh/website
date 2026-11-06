@@ -1,7 +1,7 @@
 import { setFlagsFromString } from "node:v8";
 import { runInNewContext } from "node:vm";
-import { describe, expect, it } from "vitest";
-import { DEFAULT_LIMITS, OutputBuffer } from "./output.js";
+import { describe, expect, expectTypeOf, it } from "vitest";
+import { DEFAULT_LIMITS, OutputBuffer, type Line } from "./output.js";
 
 const o = (t: string, cr = false) => ({ s: "o" as const, t, cr });
 const e = (t: string, cr = false) => ({ s: "e" as const, t, cr });
@@ -52,6 +52,26 @@ describe("OutputBuffer", () => {
         expect(b.lines[0]!.t.endsWith("…")).toBe(true);
     });
 
+    it("never cuts between the two halves of a character", () => {
+        const b = new OutputBuffer();
+        const kept = "a".repeat(DEFAULT_LIMITS.maxLineChars - 1);
+        b.apply(o(`${kept}😀 and more`));
+        b.apply(o("still the same line"));
+        expect(b.lines).toHaveLength(1);
+        const t = b.lines[0]!.t;
+        expect(t.endsWith("…")).toBe(true);
+        const last = t.charCodeAt(t.length - 2);
+        expect(last >= 0xd800 && last <= 0xdbff).toBe(false);
+        expect(t).toBe(`${kept}…`);
+    });
+
+    it("starts a cut line afresh on a carriage return", () => {
+        const b = new OutputBuffer();
+        b.apply(o(`${"a".repeat(DEFAULT_LIMITS.maxLineChars - 1)}😀`));
+        b.apply(o("fresh", true));
+        expect(b.lines.map((l) => l.t)).toEqual(["fresh"]);
+    });
+
     it("drops lines from the front past the line cap", () => {
         const b = new OutputBuffer();
         for (let i = 0; i < 6000; i++) b.apply(o(`l${i}\n`));
@@ -68,6 +88,10 @@ describe("OutputBuffer", () => {
         expect(performance.now() - started).toBeLessThan(1500);
         expect(b.text().length).toBeLessThanOrEqual(DEFAULT_LIMITS.maxChars);
         expect(b.droppedLines).toBeGreaterThan(0);
+    });
+
+    it("hands out its lines read-only", () => {
+        expectTypeOf(new OutputBuffer().lines).toEqualTypeOf<ReadonlyArray<Readonly<Line>>>();
     });
 
     it("joins text with newlines", () => {
