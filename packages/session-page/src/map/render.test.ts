@@ -116,10 +116,55 @@ describe("renderMapSvg", () => {
             line("x402-host:unregistered.example").getAttribute("stroke-dasharray"),
         ).toBeTruthy();
         expect(line("mcp").getAttribute("stroke-dasharray")).toBeNull();
-        const refused = [...svg.querySelectorAll(".map-edge-label .warn")].map(
-            (t) => t.textContent,
-        );
-        expect(refused).toContain("2 refused");
+        const label = (id: string) =>
+            [...svg.querySelectorAll<SVGGElement>(".map-edge-label")].find(
+                (g) => g.dataset.nodeId === id,
+            )!;
+        const parts = (id: string, tone: string) =>
+            [...label(id).querySelectorAll(`tspan.${tone}`)].map((t) => t.textContent);
+        expect(parts("payments", "money")).toEqual([formatUsdc(125_000)]);
+        expect(parts("mcp", "muted")).toEqual(["19"]);
+        expect(label("mcp").querySelector(".money")).toBeNull();
+        const search = "x402-host:search-api.example";
+        expect(parts(search, "money")).toEqual([formatUsdc(24_000)]);
+        expect(parts(search, "warn")).toEqual(["2 refused"]);
+        expect(parts("x402-host:unregistered.example", "warn")).toEqual(["1"]);
+        expect(label(search).querySelector("text")!.classList.contains("money")).toBe(false);
+    });
+
+    it("draws each line of an edge label centred on its own, separators muted", () => {
+        const { svg } = svgOf(modelOf("ended-full"));
+        const g = svg.querySelector(
+            '.map-edge-label[data-node-id="x402-host:search-api.example"]',
+        )!;
+        const text = g.querySelector("text")!;
+        const spans = [...text.querySelectorAll("tspan")];
+        expect(spans.map((t) => [t.textContent, t.getAttribute("class")])).toEqual([
+            ["5", "muted"],
+            [" · ", "muted"],
+            ["0.024 USDC", "money"],
+            ["2 refused", "warn"],
+        ]);
+        expect(spans.map((t) => t.getAttribute("x"))).toEqual([
+            text.getAttribute("x"),
+            null,
+            null,
+            text.getAttribute("x"),
+        ]);
+        expect(spans.map((t) => t.getAttribute("dy"))).toEqual([null, null, null, "16"]);
+        expect(g.querySelector("rect")!.getAttribute("height")).toBe("32");
+    });
+
+    it("draws the line but no label for an edge with nothing that fits", () => {
+        const layout = layoutMap(modelOf("ended-full"), 900);
+        const bare = {
+            ...layout,
+            edges: layout.edges.map((e) => (e.to.node.id === "payments" ? { ...e, lines: [] } : e)),
+        };
+        const svg = renderMapSvg(document, bare, { selectedId: null, onSelect: vi.fn() });
+        expect(svg.querySelector('line[data-node-id="payments"]')).not.toBeNull();
+        expect(svg.querySelector('.map-edge-label[data-node-id="payments"]')).toBeNull();
+        expect(svg.querySelectorAll(".map-edge-label")).toHaveLength(layout.edges.length - 1);
     });
 
     it("shows the sandbox alone with No calls recorded when the map is empty", () => {

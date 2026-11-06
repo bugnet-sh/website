@@ -5,7 +5,9 @@
  * column each, with labels on the outer side, and each column moves inward only as far as its
  * longest label needs. Bottom nodes spread along one row under the centre, alternate their labels
  * between two rows when one row cannot hold them, and drop lower when their outer edges would cross
- * a column. The centre moves sideways only when an edge label needs the room. Label sizes are
+ * a column. The centre moves sideways only when an edge label needs the room, first for every
+ * edge's shortest label, then for the amounts. Each edge label starts in its shortest form, then
+ * takes the fullest form that clears every circle, label and other edge label. Label sizes are
  * estimated at 7.5 px per character on 16 px lines, wider than the page's fonts draw them.
  */
 import { copy } from "../copy.ts";
@@ -31,17 +33,27 @@ export interface Box {
     height: number;
 }
 
+export type EdgeTone = "muted" | "money" | "warn";
+
+export interface EdgePart {
+    text: string;
+    tone: EdgeTone;
+}
+
 export interface MapEdge {
     to: Placed;
     x1: number;
     y1: number;
     x2: number;
     y2: number;
+    // The edge label of session-page-ui.md 5 in full, such as "5 · 0.024 USDC" for calls and paid
     label: string;
     dashed: boolean;
     money: boolean;
     refusedLabel: string | null;
-    // The background behind the label, centred on the line's midpoint
+    // What the map draws, one array of parts per line, shorter than the full label where it must be
+    lines: EdgePart[][];
+    // The background behind the drawn lines, centred on the line's midpoint
     box: Box;
 }
 
@@ -62,11 +74,6 @@ const CENTER_Y = 190;
 const CENTER_R = 56;
 const COLUMN_TOP = 40;
 const COLUMN_SPAN = 300;
-// Without a bottom row the columns get the same space below as above
-const COLUMNS_HEIGHT = 2 * COLUMN_TOP + COLUMN_SPAN;
-// The sandbox alone sits near the top, with the line that says nothing was recorded under it
-const EMPTY_Y = COLUMN_TOP + CENTER_R;
-const EMPTY_HEIGHT = EMPTY_Y + CENTER_R + 48;
 const LEFT_AT = 0.24;
 const RIGHT_AT = 0.76;
 const BOTTOM_Y = 380;
@@ -79,6 +86,8 @@ const MARGIN = 4;
 const SPACE = 8;
 const LINE_CHARS = 24;
 const EDGE_PAD = 4;
+// A fuller edge label keeps this far from everything, so it never sits flush against a neighbour
+const EDGE_CLEAR = 2;
 
 export function radiusFor(count: number): number {
     return Math.min(40, 16 + 5 * Math.sqrt(Math.max(0, count)));
@@ -106,15 +115,56 @@ function labelWidth(node: MapNode, metricLines: string[]): number {
 
 const blockHeight = (metricLines: string[]) => (1 + metricLines.length) * LINE_HEIGHT;
 
-// A part-refused edge shows its refusals in place of the count, which its node's metric holds
-function edgeText(node: MapNode): { label: string; refusedLabel: string | null; shown: string } {
-    const label = String(node.count);
-    const partRefused = node.refused > 0 && node.refused < node.count;
-    const refusedLabel = partRefused ? copy.metrics.refused(node.refused) : null;
-    return { label, refusedLabel, shown: refusedLabel ?? label };
+/* Edge labels */
+
+interface EdgeText {
+    label: string;
+    refusedLabel: string | null;
+    // Fullest first, the last is the one an edge keeps when nothing fuller fits
+    forms: EdgePart[][][];
 }
 
-const edgeBoxWidth = (node: MapNode) => chars(edgeText(node).shown) * CHAR_WIDTH + 2 * EDGE_PAD;
+const lineText = (line: EdgePart[]) => line.map((part) => part.text).join(SEPARATOR);
+
+// Counts stay muted (warn when every call was refused) and only amounts take the money tone
+function edgeText(node: MapNode): EdgeText {
+    const paid: EdgePart | null =
+        node.paidMicros > 0 ? { text: copy.metrics.usdc(node.paidMicros), tone: "money" } : null;
+    if (node.kind === "payments") {
+        const total = paid ?? { text: copy.metrics.usdc(0), tone: "muted" };
+        // Any other figure here would read as the total, so a total with no room leaves it bare
+        return { label: total.text, refusedLabel: null, forms: [[[total]], []] };
+    }
+    const allRefused = node.refused > 0 && node.refused === node.count;
+    const count: EdgePart = { text: String(node.count), tone: allRefused ? "warn" : "muted" };
+    const full = paid ? [count, paid] : [count];
+    const label = lineText(full);
+    const kept = paid ? [full, [paid], [count]] : [full];
+    if (node.refused === 0 || allRefused) {
+        return { label, refusedLabel: null, forms: kept.map((parts) => [parts]) };
+    }
+    const refusedLabel = copy.metrics.refused(node.refused);
+    const refused: EdgePart = { text: refusedLabel, tone: "warn" };
+    const forms = kept.flatMap((parts) => [[[...parts, refused]], [parts, [refused]]]);
+    // The refusals show nowhere else on the map, so they are the last thing an edge gives up
+    forms.push([[refused]]);
+    return { label, refusedLabel, forms };
+}
+
+function formWidth(lines: EdgePart[][]): number {
+    if (lines.length === 0) return 0;
+    return Math.max(...lines.map((line) => chars(lineText(line)))) * CHAR_WIDTH + 2 * EDGE_PAD;
+}
+
+// Need is the shortest form, want the shortest that still shows the money or says anything
+type Room = "need" | "want";
+
+function edgeBoxWidth(node: MapNode, room: Room = "need"): number {
+    const { forms } = edgeText(node);
+    if (room === "need") return formWidth(forms.at(-1)!);
+    const money = forms.findLast((lines) => lines.flat().some((part) => part.tone === "money"));
+    return formWidth(money ?? forms.findLast((lines) => lines.length > 0)!);
+}
 
 /* Columns */
 
@@ -179,7 +229,7 @@ function placeBottom(nodes: MapNode[], cx: number, width: number, rowY: number):
     const stagger = n > 2 && flat > most;
     const even = n > 1 ? (width * (BOTTOM_TO - BOTTOM_FROM)) / (n - 1) : 0;
     // Edges fanning down meet their labels at about half the step, so those need room too
-    const edges = 2 * (Math.max(...nodes.map(edgeBoxWidth)) + SPACE);
+    const edges = 2 * (Math.max(...nodes.map((node) => edgeBoxWidth(node))) + SPACE);
     const step = Math.min(most, Math.max(even, edges, stagger ? staggered : flat));
     const r = sized.map((s) => (n > 1 ? Math.min(s.r, step / 2 - SPACE / 2) : s.r));
     const half = ((n - 1) * step) / 2;
@@ -240,42 +290,101 @@ function placeBottomClear(
 function centerX(width: number, left: Placed[], right: Placed[]): number {
     const middle = width / 2;
     if (left.length === 0 || right.length === 0) return middle;
-    const gap = (side: Placed[]) => Math.max(...side.map((p) => edgeBoxWidth(p.node)));
-    const leftSpare = middle - CENTER_R - Math.max(...left.map((p) => p.x + p.r)) - gap(left);
-    const rightSpare = Math.min(...right.map((p) => p.x - p.r)) - middle - CENTER_R - gap(right);
-    if (rightSpare < 0 && leftSpare > 0) return middle - Math.min(-rightSpare, leftSpare);
-    if (leftSpare < 0 && rightSpare > 0) return middle + Math.min(-leftSpare, rightSpare);
+    const gap = (side: Placed[], room: Room) =>
+        Math.max(...side.map((p) => edgeBoxWidth(p.node, room)));
+    const leftEdge = Math.max(...left.map((p) => p.x + p.r));
+    const rightEdge = Math.min(...right.map((p) => p.x - p.r));
+    // Both sides' shortest labels come before either side's amounts
+    for (const room of ["need", "want"] as const) {
+        const leftSpare = middle - CENTER_R - leftEdge - gap(left, room);
+        const rightSpare = rightEdge - middle - CENTER_R - gap(right, room);
+        if (rightSpare < 0 && leftSpare > 0) return middle - Math.min(-rightSpare, leftSpare);
+        if (leftSpare < 0 && rightSpare > 0) return middle + Math.min(-leftSpare, rightSpare);
+    }
     return middle;
+}
+
+function boxAt(edge: { x1: number; y1: number; x2: number; y2: number }, lines: EdgePart[][]): Box {
+    const width = formWidth(lines);
+    const height = lines.length * LINE_HEIGHT;
+    return {
+        x: (edge.x1 + edge.x2) / 2 - width / 2,
+        y: (edge.y1 + edge.y2) / 2 - height / 2,
+        width,
+        height,
+    };
 }
 
 function edgeTo(center: Placed, to: Placed): MapEdge {
     const length = Math.hypot(to.x - center.x, to.y - center.y);
     const dx = (to.x - center.x) / length;
     const dy = (to.y - center.y) / length;
-    const x1 = center.x + dx * center.r;
-    const y1 = center.y + dy * center.r;
-    const x2 = to.x - dx * to.r;
-    const y2 = to.y - dy * to.r;
+    const ends = {
+        x1: center.x + dx * center.r,
+        y1: center.y + dy * center.r,
+        x2: to.x - dx * to.r,
+        y2: to.y - dy * to.r,
+    };
     const node = to.node;
-    const { label, refusedLabel } = edgeText(node);
-    const boxWidth = edgeBoxWidth(node);
+    const { label, refusedLabel, forms } = edgeText(node);
+    const lines = forms.at(-1)!;
     return {
         to,
-        x1,
-        y1,
-        x2,
-        y2,
+        ...ends,
         label,
         dashed: node.refused > 0 && node.refused === node.count,
         money: node.paidMicros > 0,
         refusedLabel,
-        box: {
-            x: (x1 + x2) / 2 - boxWidth / 2,
-            y: (y1 + y2) / 2 - LINE_HEIGHT / 2,
-            width: boxWidth,
-            height: LINE_HEIGHT,
-        },
+        lines,
+        box: boxAt(ends, lines),
     };
+}
+
+function labelBox(p: Placed): Box {
+    const width = labelWidth(p.node, p.metricLines);
+    const before = { start: 0, middle: width / 2, end: width }[p.labelAnchor];
+    return {
+        x: p.labelX - before,
+        y: p.labelY - ASCENT,
+        width,
+        height: blockHeight(p.metricLines),
+    };
+}
+
+const boxesMeet = (a: Box, b: Box, gap: number) =>
+    a.x < b.x + b.width + gap &&
+    b.x < a.x + a.width + gap &&
+    a.y < b.y + b.height + gap &&
+    b.y < a.y + a.height + gap;
+
+function circleMeetsBox(c: Placed, b: Box, gap: number): boolean {
+    const nx = Math.min(Math.max(c.x, b.x), b.x + b.width);
+    const ny = Math.min(Math.max(c.y, b.y), b.y + b.height);
+    return Math.hypot(c.x - nx, c.y - ny) < c.r + gap;
+}
+
+function widenLabels(edges: MapEdge[], circles: Placed[], width: number, height: number) {
+    const labels = circles.filter((c) => c.node.side !== "center").map(labelBox);
+    const out = [...edges];
+    for (const [i, edge] of out.entries()) {
+        const others = out.filter((e, j) => j !== i && e.lines.length > 0);
+        const blocks = [...labels, ...others.map((e) => e.box)];
+        const fits = (b: Box) =>
+            b.x >= EDGE_CLEAR &&
+            b.y >= EDGE_CLEAR &&
+            b.x + b.width <= width - EDGE_CLEAR &&
+            b.y + b.height <= height - EDGE_CLEAR &&
+            circles.every((c) => !circleMeetsBox(c, b, EDGE_CLEAR)) &&
+            blocks.every((other) => !boxesMeet(other, b, EDGE_CLEAR));
+        for (const lines of edgeText(edge.to.node).forms.slice(0, -1)) {
+            const box = boxAt(edge, lines);
+            if (fits(box)) {
+                out[i] = { ...edge, lines, box };
+                break;
+            }
+        }
+    }
+    return out;
 }
 
 export function layoutMap(model: MapModel, width: number): MapLayout {
@@ -286,23 +395,26 @@ export function layoutMap(model: MapModel, width: number): MapLayout {
     const right = placeColumn(on("right"), "right", width);
     const cx = centerX(width, left, right);
     const centerLines = sandbox.metric === "" ? [] : sandbox.metric.split(SEPARATOR);
-    const cy = model.nodes.length === 1 ? EMPTY_Y : CENTER_Y;
     const center: Placed = {
         node: sandbox,
         x: cx,
-        y: cy,
+        y: CENTER_Y,
         r: CENTER_R,
         labelAnchor: "middle",
         labelX: cx,
-        labelY: cy - blockHeight(centerLines) / 2 + ASCENT,
+        labelY: CENTER_Y - blockHeight(centerLines) / 2 + ASCENT,
         metricLines: centerLines,
     };
     const columns = [...left, ...right];
     const placed = [...columns, ...placeBottomClear(on("bottom"), center, columns, width)];
-    const lowest = Math.max(...placed.map((p) => p.labelY - ASCENT + blockHeight(p.metricLines)));
-    const height =
-        placed.length === 0
-            ? EMPTY_HEIGHT
-            : Math.max(placed.length > columns.length ? HEIGHT : COLUMNS_HEIGHT, lowest);
-    return { width, height, center, placed, edges: placed.map((p) => edgeTo(center, p)) };
+    // Only a bottom row that had to drop or stagger its labels reaches below the usual height
+    const height = Math.max(HEIGHT, ...placed.map(labelBox).map((b) => b.y + b.height));
+    const edges = placed.map((p) => edgeTo(center, p));
+    return {
+        width,
+        height,
+        center,
+        placed,
+        edges: widenLabels(edges, [center, ...placed], width, height),
+    };
 }

@@ -1,6 +1,7 @@
 import { copy } from "../copy.ts";
 import { svgEl } from "../render/dom.ts";
 import { ASCENT, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
+import { SEPARATOR } from "./model.ts";
 
 export interface MapSelect {
     selectedId: string | null;
@@ -97,16 +98,27 @@ function edgeLine(doc: Document, e: MapEdge): SVGLineElement {
     return svgEl(doc, "line", attrs);
 }
 
+// Each part takes its own tone, so a count next to an amount never shows in the money colour
+function edgeText(doc: Document, e: MapEdge): SVGTextElement {
+    const x = num(e.box.x + e.box.width / 2);
+    const spans = e.lines.flatMap((line, row) =>
+        line.flatMap((part, i) => {
+            // A tspan with its own x starts a chunk that the anchor centres on its own
+            const at: Record<string, string> =
+                i > 0 ? {} : row > 0 ? { x, dy: String(LINE_HEIGHT) } : { x };
+            const span = tspan(doc, part.text, { ...at, class: part.tone });
+            return i > 0 ? [tspan(doc, SEPARATOR, { class: "muted" }), span] : [span];
+        }),
+    );
+    return svgEl(
+        doc,
+        "text",
+        { x, y: num(e.box.y + ASCENT), "text-anchor": "middle", fill: "currentColor" },
+        spans,
+    );
+}
+
 function edgeLabel(doc: Document, e: MapEdge): SVGGElement {
-    const shown = e.refusedLabel ?? e.label;
-    const label = svgEl(doc, "text", {
-        class: e.refusedLabel ? "warn" : tone(e),
-        x: num(e.box.x + e.box.width / 2),
-        y: num(e.box.y + ASCENT),
-        "text-anchor": "middle",
-        fill: "currentColor",
-    });
-    label.textContent = shown;
     return svgEl(doc, "g", { class: "map-edge-label", "data-node-id": e.to.node.id }, [
         svgEl(doc, "rect", {
             class: "map-edge-label-bg",
@@ -115,7 +127,7 @@ function edgeLabel(doc: Document, e: MapEdge): SVGGElement {
             width: num(e.box.width),
             height: num(e.box.height),
         }),
-        label,
+        edgeText(doc, e),
     ]);
 }
 
@@ -133,7 +145,7 @@ export function renderMapSvg(doc: Document, layout: MapLayout, opts: MapSelect):
     svg.append(
         svgEl(doc, "g", { class: "map-edges", "aria-hidden": "true" }, [
             ...layout.edges.map((e) => edgeLine(doc, e)),
-            ...layout.edges.map((e) => edgeLabel(doc, e)),
+            ...layout.edges.filter((e) => e.lines.length > 0).map((e) => edgeLabel(doc, e)),
         ]),
         ...[center, ...layout.placed].map((p) => bubble(doc, p, opts)),
     );
