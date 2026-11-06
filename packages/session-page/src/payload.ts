@@ -146,7 +146,8 @@ export interface X402Event {
     host: string;
     method: string;
     path: string;
-    status: X402Status;
+    // Kept as its raw word when unknown, since newer statuses may still have paid
+    status: X402Status | (string & {});
     amountMicros: number;
     asset: string;
     network: string;
@@ -405,18 +406,7 @@ const eventReaders = new Map<string, (d: Doc, at: Date) => SessionEvent>([
             host: need(d, "host", isText),
             method: need(d, "method", isText),
             path: need(d, "path", isText),
-            status: need(
-                d,
-                "status",
-                oneOf(
-                    "paid",
-                    "free",
-                    "refused_cap",
-                    "refused_price",
-                    "refused_host",
-                    "upstream_error",
-                ),
-            ),
+            status: need(d, "status", isText),
             amountMicros: need(d, "amountMicros", isCount),
             asset: need(d, "asset", isText),
             network: need(d, "network", isText),

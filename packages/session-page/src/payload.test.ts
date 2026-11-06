@@ -319,12 +319,28 @@ describe("parseGetBody", () => {
             { ...valid[1], op: "delete" },
             { ...valid[1], bytes: -1 },
             { ...valid[2], port: "3000" },
-            { ...valid[3], status: "stolen" },
+            { ...valid[3], status: 7 },
             { ...valid[3], host: undefined },
             { ...valid[4], amountMicros: 1.5 },
         ];
         const record = ended(withEvents(...bad, { at, kind: "ssh", phase: "start" }));
         expect(record.events).toEqual([{ at: new Date(at), kind: "ssh", phase: "start" }]);
+    });
+
+    it("keeps an x402 call whose status it does not know, so no paid call is lost", () => {
+        const call = {
+            at,
+            kind: "x402",
+            host: "pay.example",
+            method: "GET",
+            path: "/",
+            status: "settled_late",
+            amountMicros: 3_000,
+            asset: "USDC",
+            network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+            tx: sig,
+        };
+        expect(ended(withEvents(call)).events).toEqual([{ ...call, at: new Date(at) }]);
     });
 
     it("names the payment's own kind payKind, apart from the event's kind", () => {
