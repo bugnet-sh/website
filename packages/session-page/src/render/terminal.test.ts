@@ -85,6 +85,23 @@ describe("terminal block", () => {
         expect(block.root.querySelector(".term-notes")!.textContent).toContain(copy.dropped(1000));
     });
 
+    it("removes dropped nodes from the front and keeps the ones that survive", () => {
+        const { buffer, scheduler, block } = make();
+        for (let i = 0; i < 5000; i++) buffer.apply({ s: "o", t: `l${i}\n`, cr: false });
+        block.update();
+        scheduler.flush();
+        const survivor = lines(block.root)[4999]!;
+        expect(survivor.textContent).toBe("l4999");
+        for (let i = 5000; i < 6000; i++) buffer.apply({ s: "o", t: `l${i}\n`, cr: false });
+        block.update();
+        scheduler.flush();
+        const after = lines(block.root);
+        expect(after).toHaveLength(5000);
+        expect(after[0]!.textContent).toBe("l1000");
+        expect(after[3999]).toBe(survivor);
+        expect(after.at(-1)!.textContent).toBe("l5999");
+    });
+
     it("labels the log and shows a missing command", () => {
         const { block } = make(null);
         expect(block.root.querySelector(".term-cmd")!.textContent).toBe("$ (command not recorded)");

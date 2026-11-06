@@ -90,6 +90,23 @@ describe("OutputBuffer", () => {
         expect(b.droppedLines).toBeGreaterThan(0);
     });
 
+    it("drops the oldest lines once the char cap binds before the line cap", () => {
+        const b = new OutputBuffer();
+        const line = (i: number) => `${String(i).padStart(5, "0")}${"x".repeat(995)}`;
+        const total = 3_000;
+        for (let i = 0; i < total; i++) b.apply(o(`${line(i)}\n`));
+        const held = b.lines;
+        expect(b.droppedLines).toBeGreaterThan(0);
+        expect(held.length).toBeLessThan(DEFAULT_LIMITS.maxLines);
+        expect(held.reduce((n, l) => n + l.t.length, 0)).toBeLessThanOrEqual(
+            DEFAULT_LIMITS.maxChars,
+        );
+        expect(held.length + b.droppedLines).toBe(total);
+        expect(held.map((l) => l.t)).toEqual(
+            Array.from({ length: held.length }, (_, k) => line(b.droppedLines + k)),
+        );
+    });
+
     it("hands out its lines read-only", () => {
         expectTypeOf(new OutputBuffer().lines).toEqualTypeOf<ReadonlyArray<Readonly<Line>>>();
     });
