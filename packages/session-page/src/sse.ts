@@ -130,17 +130,28 @@ export async function readSse(
         reader.cancel().catch(() => {});
     };
     signal.addEventListener("abort", stop, { once: true });
+    let finished = false;
     try {
         while (!signal.aborted) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            parser.push(decoder.decode(value, { stream: true }));
+            let chunk: ReadableStreamReadResult<Uint8Array>;
+            try {
+                chunk = await reader.read();
+            } catch {
+                // An abort surfaces as a read error; any other read failure ends the stream the
+                // same way, and the caller decides whether to reconnect. Errors from onFrame are
+                // not caught here, so a caller bug is reported instead of looking like a clean end.
+                break;
+            }
+            if (chunk.done) {
+                finished = true;
+                break;
+            }
+            parser.push(decoder.decode(chunk.value, { stream: true }));
         }
-        if (!signal.aborted) parser.push(decoder.decode());
-    } catch {
-        // An abort surfaces as a read error; any other failure ends the stream the same way,
-        // and the caller decides whether to reconnect.
+        if (finished) parser.push(decoder.decode());
     } finally {
         signal.removeEventListener("abort", stop);
+        // Without this a stream abandoned on error or abort stays open on the server.
+        if (!finished) stop();
     }
 }

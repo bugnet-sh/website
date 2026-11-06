@@ -135,4 +135,59 @@ describe("readSse", () => {
         ac.abort();
         await expect(done).resolves.toBeUndefined();
     });
+
+    it("rejects and cancels the body when onFrame throws", async () => {
+        let cancelled = false;
+        const body = new ReadableStream<Uint8Array>({
+            start(c) {
+                c.enqueue(new TextEncoder().encode('event: end\ndata: {"reason":"exited"}\n\n'));
+            },
+            cancel() {
+                cancelled = true;
+            },
+        });
+        const boom = new Error("render bug");
+        await expect(
+            readSse(
+                new Response(body),
+                () => {
+                    throw boom;
+                },
+                new AbortController().signal,
+            ),
+        ).rejects.toBe(boom);
+        expect(cancelled).toBe(true);
+    });
+
+    it("cancels the body when the signal is already aborted", async () => {
+        let cancelled = false;
+        const body = new ReadableStream<Uint8Array>({
+            cancel() {
+                cancelled = true;
+            },
+        });
+        const ac = new AbortController();
+        ac.abort();
+        await expect(readSse(new Response(body), () => {}, ac.signal)).resolves.toBeUndefined();
+        expect(cancelled).toBe(true);
+    });
+
+    it("resolves with the frames delivered before a mid-read error", async () => {
+        let sent = false;
+        const body = new ReadableStream<Uint8Array>({
+            pull(c) {
+                if (sent) {
+                    c.error(new Error("network"));
+                    return;
+                }
+                sent = true;
+                c.enqueue(new TextEncoder().encode('event: end\ndata: {"reason":"exited"}\n\n'));
+            },
+        });
+        const got: LiveFrame[] = [];
+        await expect(
+            readSse(new Response(body), (f) => got.push(f), new AbortController().signal),
+        ).resolves.toBeUndefined();
+        expect(got).toEqual([{ type: "end", reason: "exited" }]);
+    });
 });
