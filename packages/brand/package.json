@@ -1,0 +1,16 @@
+{
+    "name": "@bugnet/brand",
+    "version": "0.1.0",
+    "private": true,
+    "type": "module",
+    "exports": {
+        "./tokens.css": "./tokens.css",
+        "./logo.svg": "./logo.svg",
+        "./icon.svg": "./icon.svg",
+        "./fonts/*": "./fonts/*",
+        "./contrast": "./src/contrast.ts"
+    },
+    "scripts": {
+        "typecheck": "tsc -p ."
+    }
+}

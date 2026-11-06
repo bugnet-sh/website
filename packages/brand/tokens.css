@@ -1,0 +1,66 @@
+@font-face {
+    font-family: "Manrope";
+    font-weight: 400;
+    font-display: block;
+    src: url("./fonts/manrope-400.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Manrope";
+    font-weight: 600;
+    font-display: block;
+    src: url("./fonts/manrope-600.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Lexend Deca";
+    font-weight: 200;
+    font-display: block;
+    src: url("./fonts/lexend-deca-200.woff2") format("woff2");
+}
+
+@font-face {
+    font-family: "Obel Mono";
+    font-weight: 400;
+    font-display: block;
+    src: url("./fonts/obel-mono-400.woff2") format("woff2");
+}
+
+:root {
+    color-scheme: dark;
+
+    --bg: #0a0a0a;
+    --surface: #111111;
+    --surface-hover: #171717;
+    --line: #262626;
+    --text: #ededed;
+    --text-muted: #a1a1a1;
+    --accent: #52ffb8;
+    --accent-ink: #0a0a0a;
+    --accent-2: #fab2ea;
+    --bad: #ff6b6b;
+    --warn: #f5c451;
+
+    --max: 1200px;
+    --inset: 24px;
+    --row: 40px;
+    --header: 56px;
+
+    --space-1: 4px;
+    --space-2: 8px;
+    --space-3: 12px;
+    --space-4: 16px;
+    --space-5: 24px;
+    --space-6: 32px;
+    --space-7: 48px;
+
+    --font-ui: "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --font-head: "Lexend Deca", "Manrope", ui-sans-serif, system-ui, sans-serif;
+    --font-mono: "Obel Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+}
+
+@media (max-width: 767.98px) {
+    :root {
+        --inset: 16px;
+    }
+}
