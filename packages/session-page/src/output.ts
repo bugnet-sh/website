@@ -121,7 +121,8 @@ export class OutputBuffer {
         // A cut line is one char over the cap and swallows the rest until its newline.
         if (line.t.length > max || piece === "") return;
         let next = line.t + piece;
-        if (next.length > max) next = next.slice(0, max) + ELLIPSIS;
+        // slice() alone returns a view that pins the whole source frame; the concat forces a copy.
+        if (next.length > max) next = (" " + next.slice(0, max)).slice(1) + ELLIPSIS;
         this.chars += next.length - line.t.length;
         line.t = next;
     }

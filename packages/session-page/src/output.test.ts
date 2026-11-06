@@ -1,3 +1,5 @@
+import { setFlagsFromString } from "node:v8";
+import { runInNewContext } from "node:vm";
 import { describe, expect, it } from "vitest";
 import { DEFAULT_LIMITS, OutputBuffer } from "./output.js";
 
@@ -83,5 +85,27 @@ describe("OutputBuffer", () => {
         expect(v1).toBeGreaterThan(v0);
         expect(b.version).toBeGreaterThan(v1);
         expect(b.skippedBytes).toBe(15);
+    });
+
+    it("does not keep the source frames of cut lines alive", () => {
+        setFlagsFromString("--expose-gc");
+        const gc = runInNewContext("gc") as () => void;
+        const used = (): number => {
+            gc();
+            const m = process.memoryUsage();
+            return m.heapUsed + m.external;
+        };
+        // Decoded text is a flat string, the kind slice() turns into a view of the whole frame.
+        const decoder = new TextDecoder();
+        const b = new OutputBuffer();
+        const before = used();
+        for (let i = 0; i < 64; i++) {
+            const bytes = new Uint8Array(3 * 1024 * 1024).fill(97 + (i % 26));
+            bytes[bytes.length - 1] = 10;
+            b.apply(o(decoder.decode(bytes)));
+        }
+        used();
+        const grown = used() - before;
+        expect(grown).toBeLessThan(16 * 1024 * 1024);
     });
 });
