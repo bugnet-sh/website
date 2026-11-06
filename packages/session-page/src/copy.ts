@@ -1,5 +1,5 @@
 import { formatBytes, formatDuration, formatUsdc, plural } from "./format.ts";
-import type { EndedBecause, JobState } from "./payload.ts";
+import type { EndedBecause, JobState, X402Status } from "./payload.ts";
 
 const endedReason: Record<EndedBecause, string> = {
     stopped: "stopped",
@@ -127,6 +127,49 @@ export const copy = {
         sessions: (n: number) => plural(n, "session", "sessions"),
         files: (n: number) => plural(n, "file", "files"),
         refused: (n: number) => `${n} refused`,
+    },
+
+    spec: {
+        vcpu: (n: number) => `${n} vCPU`,
+        memory: (mib: number) => (mib % 1024 === 0 ? `${mib / 1024} GiB` : `${mib} MiB`),
+        disk: (gib: number) => `${gib} GiB disk`,
+        minutes: (n: number) => `${n} min`,
+    },
+
+    rows: {
+        placed: "Placed",
+        ready: "Ready",
+        extended: "Extended",
+        ended: "Ended",
+        extendedBy: (minutes: number) => `+${minutes} min`,
+        until: (time: string) => `until ${time}`,
+        startPayment: "Start payment",
+        extendPayment: "Extension payment",
+        allowancePaid: "Allowance paid",
+        allowanceRefunded: "Allowance refunded",
+        jobStarted: (seq: number) => `Command #${seq} started`,
+        jobEnded: (seq: number) => `Command #${seq} ended`,
+        exit: (code: number) => `exit ${code}`,
+        oom: "killed: out of memory",
+        file: (op: string) => `File ${op}`,
+        previewIssued: "Preview issued",
+        previewRevoked: "Preview revoked",
+        requests: "Requests",
+        port: (port: number) => `port ${port}`,
+        upload: "Upload",
+        download: "Download",
+        sshStarted: "SSH session started",
+        sshEnded: "SSH session ended",
+        sshBytes: (bytesIn: number, bytesOut: number) =>
+            `${formatBytes(bytesIn)} in · ${formatBytes(bytesOut)} out`,
+        x402: {
+            paid: "paid",
+            free: "free",
+            refused_cap: "refused: allowance used up",
+            refused_price: "refused: price above the cap",
+            refused_host: "refused: host not registered",
+            upstream_error: "upstream error",
+        } satisfies Record<X402Status, string>,
     },
 
     footer: {
