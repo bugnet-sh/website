@@ -205,6 +205,25 @@ importers:
 
   packages/brand: {}
 
+  packages/session-page:
+    dependencies:
+      '@bugnet/brand':
+        specifier: workspace:*
+        version: link:../brand
+    devDependencies:
+      '@types/jsdom':
+        specifier: 30.0.0
+        version: 30.0.0
+      esbuild:
+        specifier: 0.28.2
+        version: 0.28.2
+      jsdom:
+        specifier: 30.1.2
+        version: 30.1.2
+      playwright-core:
+        specifier: 1.64.0
+        version: 1.64.0
+
 packages:
 
   '@asamuzakjp/css-color@7.1.9':
