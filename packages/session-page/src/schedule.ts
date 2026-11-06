@@ -1,3 +1,5 @@
+import { reportError } from "./report.js";
+
 export interface Scheduler {
     frame(cb: () => void): void;
 }
@@ -7,19 +9,26 @@ export interface Scheduler {
  * background tab does not burn CPU rendering a stream nobody sees; the queue flushes on return.
  */
 export function createScheduler(doc: Document, win: Window): Scheduler {
-    let queue: (() => void)[] = [];
+    let queue = new Set<() => void>();
     let requested = false;
 
     const run = (): void => {
         requested = false;
         if (doc.hidden) return;
         const batch = queue;
-        queue = [];
-        for (const cb of batch) cb();
+        queue = new Set();
+        for (const cb of batch) {
+            // A callback that never runs leaves its block waiting for this frame forever
+            try {
+                cb();
+            } catch (err) {
+                reportError(err);
+            }
+        }
     };
 
     const request = (): void => {
-        if (requested || doc.hidden || queue.length === 0) return;
+        if (requested || doc.hidden || queue.size === 0) return;
         requested = true;
         win.requestAnimationFrame(run);
     };
@@ -33,7 +42,7 @@ export function createScheduler(doc: Document, win: Window): Scheduler {
 
     return {
         frame(cb) {
-            queue.push(cb);
+            queue.add(cb);
             request();
         },
     };
