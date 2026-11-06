@@ -83,13 +83,34 @@ function sampleKey(name: ScenarioName): string {
     return `bnk_${digest(`zz-sample-key:${name}`).toString("base64url")}`;
 }
 
-function sampleTx(seed: string, length = 88): string {
-    const base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-    let tx = "";
-    for (let round = 0; tx.length < length; round++) {
-        for (const b of digest(`zz-sample-tx:${seed}:${round}`)) tx += base58[b % 58];
+export function base58(bytes: Uint8Array): string {
+    const alphabet = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+    let n = 0n;
+    for (const b of bytes) n = (n << 8n) | BigInt(b);
+    let text = "";
+    for (; n > 0n; n /= 58n) text = alphabet[Number(n % 58n)] + text;
+    for (const b of bytes) {
+        if (b !== 0) break;
+        text = `1${text}`;
     }
-    return tx.slice(0, length);
+    return text;
+}
+
+// 64 bytes, as a Solana signature, whose top bytes are set so the base58 has the given length
+export function sampleTx(seed: string, length: 86 | 87 | 88 = 88): string {
+    const bytes = Buffer.concat([
+        digest(`zz-sample-tx:${seed}:0`),
+        digest(`zz-sample-tx:${seed}:1`),
+    ]);
+    if (length === 88) {
+        bytes[0] = bytes[0]! | 0x80;
+    } else if (length === 87) {
+        bytes[0] = 1 + (bytes[0]! % 32);
+    } else {
+        bytes[0] = 0;
+        bytes[1] = 1 + (bytes[1]! % 2);
+    }
+    return base58(bytes);
 }
 
 /* Frames and jobs */
@@ -511,7 +532,7 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
         { at: at(t0 + 9 * MIN), kind: "ssh", phase: "end", bytesIn: 18_432, bytesOut: 402_113 },
         mcp(at, t0 + 8 * MIN - SEC, "bugnet_extend", "ok", 2_100),
         placement(at, t0 + 8 * MIN, "extended", { minutes: 5, deadline: at(t0 + 15 * MIN) }),
-        payment(at, t0 + 8 * MIN + SEC, "extend", 25_000, sampleTx(`${name}:extend`)),
+        payment(at, t0 + 8 * MIN + SEC, "extend", 25_000, sampleTx(`${name}:extend`, 86)),
         mcp(at, t0 + 11 * MIN, "bugnet_transfer", "ok", 900),
         transfer(at, t0 + 11 * MIN, "out", `${sentinel(name)}-report.zip`, 812_000),
         mcp(at, end - 2 * SEC, "bugnet_stop", "ok", 1_800),

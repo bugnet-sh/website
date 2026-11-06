@@ -1,9 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { isSignature, parseGetBody, PayloadError, type SessionRecord } from "./payload.ts";
-import { makeScenarios } from "./testing/fixtures.ts";
+import { base58, makeScenarios, sampleTx } from "./testing/fixtures.ts";
 
-const base58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
-const sig88 = base58.repeat(2).slice(0, 88);
+const sig = sampleTx("payload-test");
 
 // The record example of session-page.md 7.3.1, field for field
 function exampleRecord(): Record<string, unknown> {
@@ -287,7 +286,7 @@ describe("parseGetBody", () => {
     it("drops a known kind with a bad field", () => {
         const network = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
         const valid = [
-            { at, kind: "payment", payKind: "start", amountMicros: 50_000, tx: sig88 },
+            { at, kind: "payment", payKind: "start", amountMicros: 50_000, tx: sig },
             { at, kind: "file", op: "read", path: "/a", bytes: 1 },
             { at, kind: "preview", port: 3000, phase: "issued" },
             {
@@ -300,7 +299,7 @@ describe("parseGetBody", () => {
                 amountMicros: 3_000,
                 asset: "USDC",
                 network,
-                tx: sig88,
+                tx: sig,
             },
             {
                 at,
@@ -309,7 +308,7 @@ describe("parseGetBody", () => {
                 amountMicros: 1,
                 asset: "USDC",
                 network,
-                tx: sig88,
+                tx: sig,
             },
         ];
         expect(ended(withEvents(...valid)).events).toHaveLength(valid.length);
@@ -330,7 +329,7 @@ describe("parseGetBody", () => {
 
     it("names the payment's own kind payKind, apart from the event's kind", () => {
         const record = ended(
-            withEvents({ at, kind: "payment", payKind: "extend", amountMicros: 25_000, tx: sig88 }),
+            withEvents({ at, kind: "payment", payKind: "extend", amountMicros: 25_000, tx: sig }),
         );
         expect(record.events).toEqual([
             {
@@ -338,7 +337,7 @@ describe("parseGetBody", () => {
                 kind: "payment",
                 payKind: "extend",
                 amountMicros: 25_000,
-                tx: sig88,
+                tx: sig,
             },
         ]);
     });
@@ -374,7 +373,7 @@ describe("parseGetBody", () => {
                     amountMicros: 982_000,
                     asset: "USDC",
                     network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-                    tx: sig88,
+                    tx: sig,
                 },
             ),
         );
@@ -413,7 +412,7 @@ describe("parseGetBody", () => {
                 amountMicros: 982_000,
                 asset: "USDC",
                 network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-                tx: sig88,
+                tx: sig,
             },
         ]);
     });
@@ -465,16 +464,40 @@ describe("parseGetBody", () => {
 });
 
 describe("isSignature", () => {
-    it("accepts 87 and 88 base58 characters", () => {
-        expect(isSignature(sig88)).toBe(true);
-        expect(isSignature(sig88.slice(0, 87))).toBe(true);
+    it("accepts base58 that decodes to 64 bytes, at 86, 87 or 88 characters", () => {
+        for (const length of [86, 87, 88] as const) {
+            const tx = sampleTx(`length-${length}`, length);
+            expect(tx).toHaveLength(length);
+            expect(isSignature(tx), tx).toBe(true);
+        }
     });
 
-    it("refuses other lengths, characters outside base58 and the empty string", () => {
-        expect(isSignature(sig88.slice(0, 86))).toBe(false);
-        expect(isSignature(`${sig88}1`)).toBe(false);
-        for (const c of "0OIl") expect(isSignature(`${c}${sig88.slice(1)}`), c).toBe(false);
+    it("refuses base58 that decodes to 63 or 65 bytes, whatever its length", () => {
+        const short = base58(Buffer.alloc(63, 0xff));
+        const long = base58(Buffer.alloc(65, 0x01));
+        expect([short.length, long.length]).toEqual([87, 88]);
+        expect(isSignature(short)).toBe(false);
+        expect(isSignature(long)).toBe(false);
+        // 58^86 - 1 fits in 63 bytes and 58^88 - 1 needs 65
+        expect(isSignature("z".repeat(86))).toBe(false);
+        expect(isSignature("z".repeat(88))).toBe(false);
+        expect(isSignature(`${sig}1`)).toBe(false);
+    });
+
+    it("counts each leading 1 as a zero byte", () => {
+        expect(isSignature("1".repeat(64))).toBe(true);
+        expect(isSignature("1".repeat(63))).toBe(false);
+        expect(isSignature("1".repeat(65))).toBe(false);
+        expect(isSignature(base58(Buffer.concat([Buffer.alloc(2), Buffer.alloc(62, 0xff)])))).toBe(
+            true,
+        );
+    });
+
+    it("refuses characters outside base58, the empty string and very long input", () => {
+        for (const c of "0OIl") expect(isSignature(`${c}${sig.slice(1)}`), c).toBe(false);
         expect(isSignature("")).toBe(false);
-        expect(isSignature(`${sig88.slice(0, 87)}\n`)).toBe(false);
+        expect(isSignature(`${sig}\n`)).toBe(false);
+        expect(isSignature("z".repeat(20_000))).toBe(false);
+        expect(isSignature("1".repeat(20_000))).toBe(false);
     });
 });

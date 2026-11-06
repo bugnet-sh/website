@@ -185,10 +185,27 @@ export type GetBody =
 
 export class PayloadError extends Error {}
 
-const SIGNATURE_RE = /^[1-9A-HJ-NP-Za-km-z]{87,88}$/;
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+const SIGNATURE_BYTES = 64;
 
+// Decoded, never measured, since a valid signature can be 86 characters (7.3.1)
 export function isSignature(tx: string): boolean {
-    return SIGNATURE_RE.test(tx);
+    // Each leading "1" stands for one zero byte
+    let zeros = 0;
+    while (tx[zeros] === "1") zeros++;
+    const width = SIGNATURE_BYTES - zeros;
+    if (width < 0) return false;
+    const limit = 1n << BigInt(8 * width);
+    let n = 0n;
+    for (let i = zeros; i < tx.length; i++) {
+        const digit = BASE58.indexOf(tx.charAt(i));
+        if (digit < 0) return false;
+        n = n * 58n + BigInt(digit);
+        // Stops a hostile 20,000-character string within a few dozen digits
+        if (n >= limit) return false;
+    }
+    // The rest fills its bytes exactly, so its top byte is not zero
+    return n >= limit >> 8n;
 }
 
 /* Field readers */

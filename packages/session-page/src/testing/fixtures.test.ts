@@ -1,7 +1,19 @@
 import { describe, expect, it } from "vitest";
 import { ID_RE, KEY_RE } from "../link.ts";
-import { parseGetBody, type Frame, type GetBody, type SessionRecord } from "../payload.ts";
-import { makeScenarios, sampleStrings, type Scenario, type ScenarioName } from "./fixtures.ts";
+import {
+    isSignature,
+    parseGetBody,
+    type Frame,
+    type GetBody,
+    type SessionRecord,
+} from "../payload.ts";
+import {
+    base58,
+    makeScenarios,
+    sampleStrings,
+    type Scenario,
+    type ScenarioName,
+} from "./fixtures.ts";
 
 const now = new Date("2026-11-06T12:00:00Z");
 const scenarios = makeScenarios(now);
@@ -100,6 +112,15 @@ describe("makeScenarios", () => {
         expect(r.output).toBe("complete");
     });
 
+    it("signs ended-full's payments with real signatures of 86, 87 and 88 characters", () => {
+        const txs = record("ended-full").events.flatMap((e) =>
+            "tx" in e && e.tx !== undefined ? [e.tx] : [],
+        );
+        expect(txs.length).toBeGreaterThan(0);
+        for (const tx of txs) expect(isSignature(tx), tx).toBe(true);
+        expect(new Set(txs.map((tx) => tx.length))).toEqual(new Set([86, 87, 88]));
+    });
+
     it("answers ended-pending pending twice, without frames, then complete", () => {
         const outputs = scenarios["ended-pending"].gets.map((_, i) => record("ended-pending", i));
         expect(outputs.map((r) => r.output)).toEqual(["pending", "pending", "complete"]);
@@ -147,7 +168,7 @@ describe("makeScenarios", () => {
         expect(Math.max(...r.jobs.map((j) => lineCount(j.frames ?? [])))).toBe(6_000);
         expect(all).toMatch(/wallet/i);
         const txs = r.events.flatMap((e) => ("tx" in e && e.tx !== undefined ? [e.tx] : []));
-        expect(txs.some((tx) => !/^[1-9A-HJ-NP-Za-km-z]{87,88}$/.test(tx))).toBe(true);
+        expect(txs.some((tx) => !isSignature(tx))).toBe(true);
     });
 
     it("runs two jobs and has two finished in running, with a script for each", () => {
@@ -174,5 +195,18 @@ describe("makeScenarios", () => {
         expect(parsed(scenarios["too-new"])).toEqual({ state: "too-new" });
         expect(scenarios["rate-limited"].gets).toEqual([{ status: 429, body: null }]);
         expect(parsed(scenarios.deletable).state).toBe("ended");
+    });
+});
+
+describe("base58", () => {
+    it("encodes as Bitcoin's alphabet does, so sample signatures decode like real ones", () => {
+        const hex = (h: string) => Buffer.from(h, "hex");
+        expect(base58(hex("61"))).toBe("2g");
+        expect(base58(hex("626262"))).toBe("a3gV");
+        expect(base58(Buffer.from("simply a long string"))).toBe("2cFupjhnEsSn59qHXstmK2ffpLv2");
+        expect(base58(hex("00eb15231dfceb60925886b67d065299925915aeb172c06647"))).toBe(
+            "1NS17iag9jJgTHD1VXjvLCEnZuQ3rJDE9L",
+        );
+        expect(base58(hex("00000000000000000000"))).toBe("1111111111");
     });
 });

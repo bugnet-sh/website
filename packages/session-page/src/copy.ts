@@ -111,8 +111,8 @@ export const copy = {
         ssh: "SSH",
         transfers: "Transfers",
         preview: (port: number) => `Preview :${port}`,
-        moreHosts: (n: number) => `+${plural(n, "more host", "more hosts")}`,
-        morePorts: (n: number) => `+${plural(n, "more port", "more ports")}`,
+        moreHosts: (n: number) => `+${n} more hosts`,
+        morePorts: (n: number) => `+${n} more ports`,
     },
 
     metrics: {

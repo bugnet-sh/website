@@ -51,7 +51,8 @@ describe("copy", () => {
         expect(copy.nodes.preview(3000)).toBe("Preview :3000");
         expect(copy.nodes.moreHosts(15)).toBe("+15 more hosts");
         expect(copy.nodes.morePorts(3)).toBe("+3 more ports");
-        expect(copy.nodes.morePorts(1)).toBe("+1 more port");
+        expect(copy.nodes.moreHosts(1)).toBe("+1 more hosts");
+        expect(copy.nodes.morePorts(1)).toBe("+1 more ports");
         expect(copy.metrics.toolCalls(1)).toBe("1 tool call");
         expect(copy.metrics.toolCalls(7)).toBe("7 tool calls");
         expect(copy.metrics.paid(75_000)).toBe("0.075 USDC paid");
