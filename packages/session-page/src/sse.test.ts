@@ -92,6 +92,50 @@ describe("toLiveFrame", () => {
         expect(toLiveFrame({ event: "skip", data: "{}", id: null })).toBeNull();
     });
 
+    it("gives no frame for counts that are not whole, safe and non-negative", () => {
+        const skip = (outBytes: unknown) =>
+            toLiveFrame({
+                event: "skip",
+                data: JSON.stringify({ outBytes, errBytes: 0 }),
+                id: "c1",
+            });
+        expect(skip(1.5)).toBeNull();
+        expect(skip(-1)).toBeNull();
+        expect(skip(2 ** 53)).toBeNull();
+        expect(skip("10")).toBeNull();
+        expect(skip(Number.MAX_SAFE_INTEGER)).toEqual({
+            type: "skip",
+            outBytes: Number.MAX_SAFE_INTEGER,
+            errBytes: 0,
+            cursor: "c1",
+        });
+        const exit = (peakMib: unknown) =>
+            toLiveFrame({
+                event: "exit",
+                data: JSON.stringify({ exitCode: 0, oom: false, peakMib }),
+                id: null,
+            });
+        expect(exit(0.5)).toBeNull();
+        expect(exit(0)).toEqual({ type: "exit", exitCode: 0, oom: false, peakMib: 0 });
+    });
+
+    it("still ends the stream when an end's data is not an object", () => {
+        for (const data of ["nope", "null", "[]", '"exited"']) {
+            expect(toLiveFrame({ event: "end", data, id: null }), data).toEqual({
+                type: "end",
+                reason: "other",
+            });
+        }
+    });
+
+    it("drops other events whose data is not an object", () => {
+        for (const event of ["out", "skip", "exit"]) {
+            for (const data of ["nope", "null", "[]"]) {
+                expect(toLiveFrame({ event, data, id: "c1" }), `${event} ${data}`).toBeNull();
+            }
+        }
+    });
+
     it("maps an unknown end reason to other", () => {
         expect(toLiveFrame({ event: "end", data: '{"reason":"weird"}', id: null })).toEqual({
             type: "end",

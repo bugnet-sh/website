@@ -3,8 +3,7 @@ import type { Frame } from "./payload.ts";
 export interface SseEvent {
     event: string;
     data: string;
-    // Only an id line in this event's own block. The router sends one only when it holds nothing
-    // back, so WHATWG's carried-over last id would resume past text not yet sent.
+    // Only this block's own id, a carried-over one is older and a resume from it shows text twice
     id: string | null;
 }
 
@@ -72,7 +71,7 @@ function isObject(v: unknown): v is Record<string, unknown> {
 }
 
 function count(v: unknown): number | null {
-    return typeof v === "number" && Number.isFinite(v) && v >= 0 ? v : null;
+    return typeof v === "number" && Number.isSafeInteger(v) && v >= 0 ? v : null;
 }
 
 export function toLiveFrame(e: SseEvent): LiveFrame | null {
@@ -80,7 +79,13 @@ export function toLiveFrame(e: SseEvent): LiveFrame | null {
     try {
         d = JSON.parse(e.data);
     } catch {
-        return null;
+        d = undefined;
+    }
+    // An end with bad data still ends the stream, so it is not resumed like a drop
+    if (e.event === "end") {
+        const r = isObject(d) ? d.reason : undefined;
+        const reason = typeof r === "string" && REASONS.includes(r) ? (r as EndReason) : "other";
+        return { type: "end", reason };
     }
     if (!isObject(d)) return null;
     switch (e.event) {
@@ -105,12 +110,6 @@ export function toLiveFrame(e: SseEvent): LiveFrame | null {
             if (peakMib === null || typeof d.oom !== "boolean") return null;
             if (code !== null && (typeof code !== "number" || !Number.isInteger(code))) return null;
             return { type: "exit", exitCode: code, oom: d.oom, peakMib };
-        }
-        case "end": {
-            const r = d.reason;
-            const reason =
-                typeof r === "string" && REASONS.includes(r) ? (r as EndReason) : "other";
-            return { type: "end", reason };
         }
         default:
             return null;
