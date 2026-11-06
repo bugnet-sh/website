@@ -86,7 +86,7 @@ describe("status mapping", () => {
     });
 
     it("maps a bad 200 body to bad-payload", async () => {
-        expect(await get(() => json(200, { state: "ended", record: {} }))).toEqual({
+        expect(await get(() => json(200, { state: "ended", record: { v: 1 } }))).toEqual({
             ok: false,
             error: "bad-payload",
         });
