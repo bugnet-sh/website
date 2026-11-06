@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import type { Api, ApiError } from "./api.ts";
 import { createLive, type Live } from "./live.ts";
 import { OutputBuffer } from "./output.ts";
@@ -63,6 +63,7 @@ function fakeClock() {
         clearTimer(t: unknown) {
             timers.delete(t as number);
         },
+        pending: () => timers.size,
         advance(ms: number) {
             const until = now + ms;
             for (;;) {
@@ -93,7 +94,12 @@ const sse = {
     end: (reason: string) => event("end", { reason }),
 };
 
-function setup(opts: { onFrame?: (seq: number, f: LiveFrame) => void } = {}) {
+function setup(
+    opts: {
+        onFrame?: (seq: number, f: LiveFrame) => void;
+        onState?: (seq: number, s: string) => void;
+    } = {},
+) {
     const fake = fakeApi();
     const clock = fakeClock();
     const states: [number, string][] = [];
@@ -105,7 +111,10 @@ function setup(opts: { onFrame?: (seq: number, f: LiveFrame) => void } = {}) {
         maxStreams: 4,
         retryMs: 2_000,
         onFrame: opts.onFrame ?? ((seq, f) => void frames.push([seq, f])),
-        onState: (seq, s) => void states.push([seq, s]),
+        onState: (seq, s) => {
+            states.push([seq, s]);
+            opts.onState?.(seq, s);
+        },
         onGone,
         onSessionEnd,
         setTimer: clock.setTimer,
@@ -115,6 +124,12 @@ function setup(opts: { onFrame?: (seq: number, f: LiveFrame) => void } = {}) {
     const openSeqs = () => fake.streams.filter((s) => !s.signal.aborted).map((s) => s.seq);
     return { ...fake, clock, states, stateOf, openSeqs, onGone, onSessionEnd, frames, live };
 }
+
+const text = (f: LiveFrame) => (f.type === "out" ? f.frame.t : f.type);
+
+afterEach(() => {
+    vi.unstubAllGlobals();
+});
 
 describe("createLive", () => {
     it("streams the first four wanted seqs and keeps the other two waiting", async () => {
@@ -334,23 +349,97 @@ describe("createLive", () => {
         expect(t.streams).toHaveLength(1);
     });
 
-    it("treats a throwing onFrame as a dropped stream", async () => {
-        let fail = true;
+    it("keeps streaming when onState throws, and reports the error", async () => {
+        const reported = vi.fn();
+        vi.stubGlobal("reportError", reported);
+        const boom = new Error("render bug");
         const t = setup({
-            onFrame: () => {
-                if (fail) throw new Error("render bug");
+            onState: (_seq, s) => {
+                if (s === "streaming") throw boom;
             },
         });
         t.live.setWanted([1]);
         await settle();
-        t.streams[0]!.send(sse.out("a", "c1"));
+        expect(t.openSeqs()).toEqual([1]);
+        t.streams[0]!.send(sse.out("a\n", "c1"));
         await settle();
-        expect(t.streams[0]!.cancelled).toBe(true);
-        fail = false;
-        t.clock.advance(2_000);
+        expect(t.frames.map(([seq, f]) => [seq, text(f)])).toEqual([[1, "a\n"]]);
+        expect(reported).toHaveBeenCalledExactlyOnceWith(boom);
+    });
+
+    it("delivers the rest of the held frames once each when onFrame throws", async () => {
+        const reported = vi.fn();
+        vi.stubGlobal("reportError", reported);
+        const boom = new Error("render bug");
+        const seen: string[] = [];
+        const t = setup({
+            onFrame: (_seq, f) => {
+                seen.push(text(f));
+                if (seen.length === 1) throw boom;
+            },
+        });
+        t.live.setWanted([1]);
         await settle();
-        expect(t.streams).toHaveLength(2);
-        expect(t.streams[1]!.cursor).toBeNull();
+        t.streams[0]!.send(sse.out("a") + sse.out("b") + sse.out("c", "c1"));
+        await settle();
+        expect(seen).toEqual(["a", "b", "c"]);
+        expect(reported).toHaveBeenCalledExactlyOnceWith(boom);
+        expect(t.streams[0]!.cancelled).toBe(false);
+        t.streams[0]!.send(sse.out("d", "c2"));
+        t.clock.advance(60_000);
+        await settle();
+        expect(t.streams).toHaveLength(1);
+        expect(seen).toEqual(["a", "b", "c", "d"]);
+        expect(t.stateOf(1)).toBe("streaming");
+    });
+
+    it("marks a seq done on an end with an unknown reason and never reopens it", async () => {
+        const t = setup();
+        t.live.setWanted([1]);
+        await settle();
+        t.streams[0]!.send(sse.end("weird"));
+        await settle();
+        expect(t.stateOf(1)).toBe("done");
+        expect(t.streams[0]!.signal.aborted).toBe(true);
+        t.clock.advance(60_000);
+        t.live.setWanted([1]);
+        await settle();
+        expect(t.streams).toHaveLength(1);
+        expect(t.onSessionEnd).not.toHaveBeenCalled();
+    });
+
+    it("discards held frames when a stream loses its slot", async () => {
+        const t = setup();
+        t.live.setWanted([1, 2, 3, 4, 5]);
+        await settle();
+        t.streams.find((s) => s.seq === 4)!.send(sse.out("held"));
+        await settle();
+        t.live.setWanted([5, 1, 2, 3, 4]);
+        await settle();
+        expect(t.stateOf(4)).toBe("waiting");
+        t.live.setWanted([4, 1, 2, 3]);
+        await settle();
+        const again = t.streams.at(-1)!;
+        expect(again).toMatchObject({ seq: 4, cursor: null });
+        again.send(sse.out("fresh", "c1"));
+        await settle();
+        expect(t.frames.filter(([seq]) => seq === 4).map(([, f]) => text(f))).toEqual(["fresh"]);
+    });
+
+    it("clears the retry of a seq that falls out of the slots and reports it waiting", async () => {
+        const t = setup();
+        t.live.setWanted([1]);
+        await settle();
+        t.streams[0]!.close();
+        await settle();
+        expect(t.clock.pending()).toBe(1);
+        t.live.setWanted([2]);
+        await settle();
+        expect(t.clock.pending()).toBe(0);
+        expect(t.stateOf(1)).toBe("waiting");
+        t.clock.advance(60_000);
+        await settle();
+        expect(t.streams.filter((s) => s.seq === 1)).toHaveLength(1);
     });
 
     it("stopAll aborts every open stream and every pending retry", async () => {

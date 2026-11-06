@@ -1,4 +1,5 @@
 import type { Api } from "./api.ts";
+import { reportError } from "./report.ts";
 import { readSse, type EndReason, type LiveFrame } from "./sse.ts";
 
 export type StreamState = "streaming" | "waiting" | "limit" | "done";
@@ -23,6 +24,15 @@ export interface LiveOpts {
 
 // A 429 means the route is already limiting this viewer, so asking again soon only adds load
 const RATE_LIMITED_FACTOR = 5;
+
+// App callbacks go through here, so a render bug cannot drop a stream, resend text or hold a slot
+function guard(cb: () => void): void {
+    try {
+        cb();
+    } catch (err) {
+        reportError(err);
+    }
+}
 
 type Held = Extract<LiveFrame, { type: "out" | "skip" }>;
 type Phase = "idle" | "open" | "retry" | "waiting" | "limit" | "done";
@@ -73,7 +83,7 @@ export function createLive(opts: LiveOpts): Live {
     function report(t: Track, state: StreamState): void {
         if (t.reported === state) return;
         t.reported = state;
-        opts.onState(t.seq, state);
+        guard(() => opts.onState(t.seq, state));
     }
 
     function halt(t: Track): void {
@@ -134,7 +144,7 @@ export function createLive(opts: LiveOpts): Live {
             }
             if (res === "not-found") {
                 stopEverything();
-                opts.onGone();
+                guard(() => opts.onGone());
                 return;
             }
             if (res === "rate-limited") wait = opts.retryMs * RATE_LIMITED_FACTOR;
@@ -142,7 +152,7 @@ export function createLive(opts: LiveOpts): Live {
                 await readSse(res, (f) => receive(t, conn, f), conn.signal);
             }
         } catch {
-            // A broken body or a throw from onFrame ends this stream like a network drop does
+            // Anything unexpected ends this stream like a network drop does
         }
         if (t.conn !== conn) return;
         t.conn = null;
@@ -166,21 +176,20 @@ export function createLive(opts: LiveOpts): Live {
         }
         const held = t.held;
         t.held = [];
-        for (const h of held) opts.onFrame(t.seq, h);
+        for (const h of held) guard(() => opts.onFrame(t.seq, h));
         if (f.type === "end") {
             end(t, f.reason);
             return;
         }
-        // Set first, so a throwing onFrame cannot turn a finished job into a reconnect loop
         if (f.type === "exit") t.exited = true;
-        opts.onFrame(t.seq, f);
+        guard(() => opts.onFrame(t.seq, f));
         if (f.type !== "exit") t.cursor = f.cursor;
     }
 
     function end(t: Track, reason: EndReason): void {
         if (reason === "ended" || reason === "closed") {
             stopEverything();
-            opts.onSessionEnd(reason);
+            guard(() => opts.onSessionEnd(reason));
             return;
         }
         halt(t);
