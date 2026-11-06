@@ -27,7 +27,7 @@ export function createTerminalBlock(opts: {
     const { doc, buffer, scheduler } = opts;
     const cmd = el(doc, "p", {
         class: "term-cmd",
-        text: `$ ${opts.command ?? "(command not recorded)"}`,
+        text: `$ ${opts.command ?? copy.noCommand}`,
     });
     const notes = el(doc, "div", { class: "term-notes" });
     const out = el(doc, "div", {

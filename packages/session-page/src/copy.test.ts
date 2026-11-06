@@ -88,6 +88,9 @@ describe("copy", () => {
             "Out",
             "Err",
         ]);
+        expect(Object.values(copy.exitCell)).toEqual(["OOM", "lost", "cancelled", "running"]);
+        expect(copy.noCommand).toBe("(command not recorded)");
+        expect(copy.noValue).toBe("—");
         expect(Object.values(copy.eventsHead)).toEqual([
             "Time",
             "Event",

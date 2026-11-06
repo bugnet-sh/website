@@ -77,6 +77,15 @@ export const copy = {
     collapseAll: "Collapse all",
     copyOutput: "Copy output",
     copied: "Copied",
+    noCommand: "(command not recorded)",
+    // A count the page was never given, such as the bytes of a job the provider lost
+    noValue: "—",
+    exitCell: {
+        oom: "OOM",
+        lost: "lost",
+        cancelled: "cancelled",
+        running: "running",
+    },
 
     eventsHead: {
         time: "Time",
