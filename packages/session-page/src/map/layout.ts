@@ -11,7 +11,7 @@
  * estimated at 7.5 px per character on 16 px lines, wider than the page's fonts draw them.
  */
 import { copy } from "../copy.ts";
-import { SEPARATOR, type MapModel, type MapNode } from "./model.ts";
+import { partsText, type MapModel, type MapNode, type MetricPart } from "./model.ts";
 
 export interface Placed {
     node: MapNode;
@@ -23,7 +23,7 @@ export interface Placed {
     // The first line's baseline
     labelY: number;
     // The metric as drawn, one line beside a bubble and one line per part inside the centre
-    metricLines: string[];
+    metricLines: MetricPart[][];
 }
 
 export interface Box {
@@ -95,20 +95,20 @@ export function radiusFor(count: number): number {
 
 const chars = (s: string) => Array.from(s).length;
 
-// A label is two lines, and at 720 px a column holds about 26 characters beside a 40 px bubble,
-// so a longer metric is drawn as its money alone; the aria-label and the list keep it whole
-function metricLines(node: MapNode): string[] {
-    if (node.metric === "") return [];
-    if (chars(node.metric) <= LINE_CHARS) return [node.metric];
-    if (node.kind === "payments") return [copy.metrics.paid(node.paidMicros)];
-    return [node.paidMicros > 0 ? copy.metrics.usdc(node.paidMicros) : node.metric];
+// A 720 px column holds about 26 characters, so a metric over 24 draws only its first amount
+function metricLines(node: MapNode): MetricPart[][] {
+    const parts = node.metricParts;
+    if (parts.length === 0) return [];
+    if (chars(node.metric) <= LINE_CHARS) return [parts];
+    const amount = parts.find((p) => p.money);
+    return [amount ? [amount] : parts];
 }
 
-function labelWidth(node: MapNode, metricLines: string[]): number {
-    return Math.max(...[node.label, ...metricLines].map(chars)) * CHAR_WIDTH;
+function labelWidth(node: MapNode, metricLines: MetricPart[][]): number {
+    return Math.max(...[node.label, ...metricLines.map(partsText)].map(chars)) * CHAR_WIDTH;
 }
 
-const blockHeight = (metricLines: string[]) => (1 + metricLines.length) * LINE_HEIGHT;
+const blockHeight = (metricLines: MetricPart[][]) => (1 + metricLines.length) * LINE_HEIGHT;
 
 /* Edge labels */
 
@@ -118,8 +118,6 @@ interface EdgeText {
     // Fullest first, the last is the one an edge keeps when nothing fuller fits
     forms: EdgePart[][][];
 }
-
-const lineText = (line: EdgePart[]) => line.map((part) => part.text).join(SEPARATOR);
 
 // Counts stay muted (warn when every call was refused) and only amounts take the money tone
 function edgeText(node: MapNode): EdgeText {
@@ -133,7 +131,7 @@ function edgeText(node: MapNode): EdgeText {
     const allRefused = node.refused > 0 && node.refused === node.count;
     const count: EdgePart = { text: String(node.count), tone: allRefused ? "warn" : "muted" };
     const full = paid ? [count, paid] : [count];
-    const label = lineText(full);
+    const label = partsText(full);
     const kept = paid ? [full, [paid], [count]] : [full];
     if (node.refused === 0 || allRefused) {
         return { label, refusedLabel: null, forms: kept.map((parts) => [parts]) };
@@ -148,7 +146,7 @@ function edgeText(node: MapNode): EdgeText {
 
 function formWidth(lines: EdgePart[][]): number {
     if (lines.length === 0) return 0;
-    return Math.max(...lines.map((line) => chars(lineText(line)))) * CHAR_WIDTH + 2 * EDGE_PAD;
+    return Math.max(...lines.map((line) => chars(partsText(line)))) * CHAR_WIDTH + 2 * EDGE_PAD;
 }
 
 // Need is the shortest form, want the shortest that still shows the money or says anything
@@ -166,7 +164,7 @@ function edgeBoxWidth(node: MapNode, room: Room = "need"): number {
 interface Sized {
     node: MapNode;
     r: number;
-    metricLines: string[];
+    metricLines: MetricPart[][];
     width: number;
 }
 
@@ -389,7 +387,7 @@ export function layoutMap(model: MapModel, width: number): MapLayout {
     const left = placeColumn(on("left"), "left", width);
     const right = placeColumn(on("right"), "right", width);
     const cx = centerX(width, left, right);
-    const centerLines = sandbox.metric === "" ? [] : sandbox.metric.split(SEPARATOR);
+    const centerLines = sandbox.metricParts.map((part) => [part]);
     const center: Placed = {
         node: sandbox,
         x: cx,

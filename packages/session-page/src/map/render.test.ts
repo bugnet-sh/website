@@ -38,6 +38,19 @@ const bubble = (root: Element, id: string) => bubbles(root).find((g) => g.datase
 
 const clipboard = () => ({ writeText: vi.fn(async (_text: string) => {}) });
 
+// Each drawn line starts at a tspan with its own x, and runs on through the tspans after it
+function labelLines(g: Element): string[] {
+    const lines: string[] = [];
+    for (const t of g.querySelectorAll(".map-label tspan")) {
+        if (t.hasAttribute("x")) lines.push("");
+        lines[lines.length - 1] += t.textContent;
+    }
+    return lines;
+}
+
+const parts = (root: Element, selector: string) =>
+    [...root.querySelectorAll(selector)].map((t) => [t.textContent, t.getAttribute("class")]);
+
 describe("renderMapSvg", () => {
     it("labels the map and gives every bubble a name and a button role", () => {
         const model = modelOf("ended-full");
@@ -53,6 +66,23 @@ describe("renderMapSvg", () => {
             expect(g.getAttribute("aria-label")).toBe(`${node.fullLabel}, ${node.metric}`);
             expect(g.querySelector("title")!.textContent).toBe(node.fullLabel);
         }
+    });
+
+    it("draws only the amounts of a metric in the money colour", () => {
+        const { svg } = svgOf(modelOf("ended-full"));
+        const search = bubble(svg, "x402-host:search-api.example");
+        expect(parts(search, ".map-label tspan")).toEqual([
+            ["search-api.example", "map-name"],
+            ["5 calls", "map-metric muted"],
+            [" · ", "map-metric muted"],
+            ["0.024 USDC", "map-metric money"],
+        ]);
+        expect(parts(bubble(svg, "mcp"), ".map-metric")).toEqual([
+            ["19 tool calls", "map-metric muted"],
+        ]);
+        expect(parts(bubble(svg, "payments"), ".map-metric")).toEqual([
+            ["0.125 USDC paid", "map-metric money"],
+        ]);
     });
 
     it("sets a hostile label as text, cut to 24 characters, its full text in the title", () => {
@@ -75,11 +105,20 @@ describe("renderMapSvg", () => {
     it("draws every bubble label as two lines, the whole metric kept in its name", () => {
         const { svg } = svgOf(modelOf("ended-full"));
         for (const g of bubbles(svg).filter((b) => b.dataset.nodeId !== "sandbox")) {
-            expect(g.querySelectorAll(".map-label tspan"), g.dataset.nodeId).toHaveLength(2);
+            expect(labelLines(g), g.dataset.nodeId).toHaveLength(2);
         }
+        expect(labelLines(bubble(svg, "x402-host:search-api.example"))).toEqual([
+            "search-api.example",
+            "5 calls · 0.024 USDC",
+        ]);
+        expect(labelLines(bubble(svg, "sandbox"))).toEqual([
+            "Sandbox",
+            "2 vCPU",
+            "2 GiB",
+            "15 min",
+        ]);
         const payments = bubble(svg, "payments");
-        const lines = [...payments.querySelectorAll(".map-label tspan")].map((t) => t.textContent);
-        expect(lines).toEqual(["Payments", "0.125 USDC paid"]);
+        expect(labelLines(payments)).toEqual(["Payments", "0.125 USDC paid"]);
         expect(payments.getAttribute("aria-label")).toBe(
             "Payments, 0.125 USDC paid · 0.02 USDC refunded",
         );
@@ -188,10 +227,17 @@ describe("renderMapSvg", () => {
 });
 
 describe("renderMapList", () => {
+    const listOf = (selectedId: string | null = null, onSelect = vi.fn()) => {
+        const list = renderMapList(document, modelOf("ended-full"), { selectedId, onSelect });
+        document.body.replaceChildren(list);
+        return { list, onSelect };
+    };
+    const rowOf = (list: Element, id: string) =>
+        list.querySelector<HTMLButtonElement>(`[data-node-id="${id}"]`)!;
+
     it("gives one button per node, pressed when selected", () => {
         const model = modelOf("ended-full");
-        const onSelect = vi.fn();
-        const list = renderMapList(document, model, { selectedId: "mcp", onSelect });
+        const { list, onSelect } = listOf("mcp");
         expect(list.tagName).toBe("UL");
         expect(list.classList.contains("map-list")).toBe(true);
         const buttons = [...list.querySelectorAll("button")];
@@ -199,20 +245,44 @@ describe("renderMapList", () => {
         for (const [i, b] of buttons.entries()) {
             const node = model.nodes[i]!;
             expect(b.textContent).toContain(node.label);
-            expect(b.textContent).toContain(node.metric);
+            expect(b.textContent).toContain(node.metricParts[0]?.text ?? "");
             expect(b.getAttribute("aria-pressed")).toBe(String(node.id === "mcp"));
         }
         buttons[2]!.click();
         expect(onSelect).toHaveBeenCalledExactlyOnceWith(model.nodes[2]!.id);
     });
 
-    it("marks paid totals and refusals, and says when nothing was recorded", () => {
-        const list = renderMapList(document, modelOf("ended-full"), {
-            selectedId: null,
-            onSelect: vi.fn(),
-        });
-        const row = list.querySelector('[data-node-id="x402-host:search-api.example"]')!;
-        expect(row.querySelector(".money")!.textContent).toBe("5 calls · 0.024 USDC");
+    it("shows a row's name, count and total paid, its whole metric in its name", () => {
+        const { list } = listOf();
+        const payments = rowOf(list, "payments");
+        expect(payments.querySelector(".map-row-name")!.textContent).toBe("Payments");
+        expect(payments.querySelector(".map-row-metric")!.textContent).toBe("0.125 USDC paid");
+        expect(payments.getAttribute("aria-label")).toBe(
+            "Payments, 0.125 USDC paid · 0.02 USDC refunded",
+        );
+        const search = rowOf(list, "x402-host:search-api.example");
+        expect(search.querySelector(".map-row-metric")!.textContent).toBe("5 calls · 0.024 USDC");
+        expect(search.getAttribute("aria-label")).toBe(
+            "search-api.example, 5 calls · 0.024 USDC, 2 refused",
+        );
+    });
+
+    it("draws only the amounts of a row in the money colour", () => {
+        const { list } = listOf();
+        const search = rowOf(list, "x402-host:search-api.example");
+        expect(parts(search, ".map-row-metric span")).toEqual([
+            ["5 calls", "muted"],
+            [" · ", "muted"],
+            ["0.024 USDC", "money"],
+        ]);
+        expect(parts(rowOf(list, "mcp"), ".map-row-metric span")).toEqual([
+            ["19 tool calls", "muted"],
+        ]);
+    });
+
+    it("marks refusals, and says when nothing was recorded", () => {
+        const { list } = listOf();
+        const row = rowOf(list, "x402-host:search-api.example");
         expect(row.querySelector(".warn")!.textContent).toBe("2 refused");
         const empty = renderMapList(document, modelOf("ended-empty"), {
             selectedId: null,

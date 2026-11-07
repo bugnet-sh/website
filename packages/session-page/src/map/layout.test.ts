@@ -1,9 +1,10 @@
 import { describe, expect, it } from "vitest";
+import { copy } from "../copy.ts";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
 import { formatUsdc } from "../format.ts";
-import { layoutMap, radiusFor, type EdgePart, type MapLayout, type Placed } from "./layout.ts";
-import { buildMap, SEPARATOR, type MapModel } from "./model.ts";
+import { layoutMap, radiusFor, type MapLayout, type Placed } from "./layout.ts";
+import { buildMap, type MapModel } from "./model.ts";
 
 const scenarios = makeScenarios(new Date("2026-11-06T12:00:00Z"));
 
@@ -120,9 +121,10 @@ interface Box {
 }
 
 const chars = (s: string) => Array.from(s).length;
+const lineText = (line: { text: string }[]) => line.map((part) => part.text).join(copy.SEP);
 
 function lineBoxes(p: Placed): Box[] {
-    const lines = [p.node.label, ...p.metricLines];
+    const lines = [p.node.label, ...p.metricLines.map(lineText)];
     return lines.map((line, i) => {
         const w = chars(line) * CHAR;
         const x0 =
@@ -159,8 +161,7 @@ function edgeBoxes(layout: MapLayout): Box[] {
         }));
 }
 
-const lineText = (line: EdgePart[]) => line.map((part) => part.text).join(SEPARATOR);
-const drawn = (lines: EdgePart[][]) => lines.map(lineText);
+const drawn = (lines: { text: string }[][]) => lines.map(lineText);
 
 function circleHitsBox(p: Placed, b: Box): boolean {
     const nx = Math.min(Math.max(p.x, b.x0), b.x1);
@@ -234,7 +235,16 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
         it("gives each label two lines, its name and a metric of 24 characters at most", () => {
             for (const p of layout.placed) {
                 expect(lineBoxes(p), p.node.id).toHaveLength(2);
-                expect(chars(p.metricLines[0]!), p.node.id).toBeLessThanOrEqual(24);
+                expect(chars(lineText(p.metricLines[0]!)), p.node.id).toBeLessThanOrEqual(24);
+            }
+        });
+
+        it("marks only the amounts of a node's metric as money", () => {
+            for (const p of [layout.center, ...layout.placed]) {
+                for (const part of p.metricLines.flat()) {
+                    const amount = / USDC( paid| refunded)?$/.test(part.text);
+                    expect(part.money, `${p.node.id} ${part.text}`).toBe(amount);
+                }
             }
         });
 
@@ -278,7 +288,7 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
 
         it("draws every refusal, and the total paid or nothing on the Payments edge", () => {
             for (const e of layout.edges) {
-                const text = drawn(e.lines).join(SEPARATOR);
+                const text = drawn(e.lines).join(copy.SEP);
                 const { node } = e.to;
                 if (e.refusedLabel) expect(text, node.id).toContain(e.refusedLabel);
                 if (node.kind !== "payments") continue;
@@ -364,7 +374,7 @@ describe("layoutMap edges", () => {
     it("keeps the total paid on a narrow map, dropping the call count first", () => {
         const narrow = layoutMap(buildMap(recordOf("ended-full")), 720);
         for (const e of narrow.edges.filter((x) => x.to.node.paidMicros > 0)) {
-            const text = drawn(e.lines).join(SEPARATOR);
+            const text = drawn(e.lines).join(copy.SEP);
             expect(text, e.to.node.id).toContain(formatUsdc(e.to.node.paidMicros));
         }
     });
@@ -389,9 +399,9 @@ describe("layoutMap edges", () => {
     it("draws a Payments metric over 24 characters as its total paid", () => {
         const payments = layout.placed.find((p) => p.node.id === "payments")!;
         expect(payments.node.metric).toBe("0.125 USDC paid · 0.02 USDC refunded");
-        expect(payments.metricLines).toEqual(["0.125 USDC paid"]);
+        expect(drawn(payments.metricLines)).toEqual(["0.125 USDC paid"]);
         const busy = layoutMap(busiest(), 720).placed.find((p) => p.node.kind === "payments")!;
-        expect(busy.metricLines).toEqual(["12.345678 USDC paid"]);
+        expect(drawn(busy.metricLines)).toEqual(["12.345678 USDC paid"]);
     });
 
     it("draws a host metric over 24 characters as its amount, and a short one whole", () => {
@@ -413,7 +423,9 @@ describe("layoutMap edges", () => {
         const placed = layoutMap(model, 720).placed;
         const host = (id: string) => placed.find((p) => p.node.id === `x402-host:${id}`)!;
         expect(host("big.example").node.metric).toBe("100 calls · 12.345678 USDC");
-        expect(host("big.example").metricLines).toEqual(["12.345678 USDC"]);
-        expect(host("small.example").metricLines).toEqual(["3 calls · 12.345678 USDC"]);
+        expect(host("big.example").metricLines).toEqual([
+            [{ text: "12.345678 USDC", money: true }],
+        ]);
+        expect(drawn(host("small.example").metricLines)).toEqual(["3 calls · 12.345678 USDC"]);
     });
 });

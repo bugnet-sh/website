@@ -45,6 +45,12 @@ export interface EventRow {
     tone: Tone;
 }
 
+// Only an amount is money, so a count beside it never takes the money colour
+export interface MetricPart {
+    text: string;
+    money: boolean;
+}
+
 export interface MapNode {
     id: string;
     kind: NodeKind;
@@ -52,7 +58,9 @@ export interface MapNode {
     label: string;
     fullLabel: string;
     count: number;
+    // The parts joined by copy.SEP
     metric: string;
+    metricParts: MetricPart[];
     paidMicros: number;
     refused: number;
     rows: EventRow[];
@@ -74,11 +82,11 @@ export interface MapSelect {
 export const MAX_RIGHT = 6;
 export const MAX_PREVIEWS = 4;
 
-// The separator the page text puts between parts, where a long metric may break
-export const SEPARATOR = " · ";
+export const partsText = (parts: readonly { text: string }[]) =>
+    parts.map((p) => p.text).join(copy.SEP);
 
 function join(parts: (string | null)[]): string {
-    return parts.filter((p): p is string => p !== null && p !== "").join(SEPARATOR);
+    return parts.filter((p): p is string => p !== null && p !== "").join(copy.SEP);
 }
 
 /* Rows */
@@ -235,7 +243,7 @@ interface Group {
     fullLabel: string;
     events: SessionEvent[];
     count: number;
-    metric: string;
+    metricParts: MetricPart[];
     paidMicros: number;
     refused: number;
 }
@@ -246,7 +254,7 @@ interface GroupOptions {
     fullLabel: string;
     events: SessionEvent[];
     count: number;
-    metric?: string;
+    metricParts?: MetricPart[];
     paidMicros?: number;
     // The kind, unless several nodes share it
     id?: string;
@@ -260,11 +268,13 @@ function group(o: GroupOptions): Group {
         fullLabel: o.fullLabel,
         events: o.events,
         count: o.count,
-        metric: o.metric ?? "",
+        metricParts: o.metricParts ?? [],
         paidMicros: o.paidMicros ?? 0,
         refused: 0,
     };
 }
+
+const plain = (text: string): MetricPart => ({ text, money: false });
 
 function toNode(g: Group, ctx: RowContext): MapNode {
     return {
@@ -274,7 +284,8 @@ function toNode(g: Group, ctx: RowContext): MapNode {
         label: truncateLabel(g.fullLabel),
         fullLabel: g.fullLabel,
         count: g.count,
-        metric: g.metric,
+        metric: partsText(g.metricParts),
+        metricParts: g.metricParts,
         paidMicros: g.paidMicros,
         refused: g.refused,
         rows: rowsOf(g.events, ctx),
@@ -285,11 +296,12 @@ function foldNode(
     groups: Group[],
     id: "more-right" | "more-bottom",
     fullLabel: string,
-    metric: (count: number, paidMicros: number) => string,
+    metric: (count: number, paidMicros: number) => MetricPart[],
     ctx: RowContext,
 ): MapNode {
     const count = groups.reduce((n, g) => n + g.count, 0);
     const paidMicros = groups.reduce((n, g) => n + g.paidMicros, 0);
+    const metricParts = metric(count, paidMicros);
     return {
         id,
         kind: id,
@@ -297,7 +309,8 @@ function foldNode(
         label: fullLabel,
         fullLabel,
         count,
-        metric: metric(count, paidMicros),
+        metric: partsText(metricParts),
+        metricParts,
         paidMicros,
         refused: groups.reduce((n, g) => n + g.refused, 0),
         rows: rowsOf(
@@ -307,19 +320,28 @@ function foldNode(
     };
 }
 
-function hostMetric(kind: NodeKind, count: number, paidMicros: number): string {
-    if (kind === "secret-host") return copy.metrics.requests(count);
-    return join([copy.metrics.calls(count), paidMicros > 0 ? copy.metrics.usdc(paidMicros) : null]);
+function hostParts(word: "calls" | "requests", count: number, paidMicros: number): MetricPart[] {
+    const counted = plain(copy.metrics[word](count));
+    if (paidMicros <= 0) return [counted];
+    return [counted, { text: copy.metrics.usdc(paidMicros), money: true }];
 }
 
-function sandboxMetric(placements: PlacementEvent[]): string {
+function paymentParts(paidMicros: number, refundedMicros: number): MetricPart[] {
+    const paid = { text: copy.metrics.paid(paidMicros), money: paidMicros > 0 };
+    if (refundedMicros <= 0) return [paid];
+    return [paid, { text: copy.metrics.refunded(refundedMicros), money: true }];
+}
+
+function sandboxParts(placements: PlacementEvent[]): MetricPart[] {
     const placed = placements.find((e) => e.phase === "placed");
     let minutes = placed?.minutes;
     for (const e of placements) {
         if (e.phase === "extended" && e.minutes !== undefined) minutes = (minutes ?? 0) + e.minutes;
     }
-    if (!placed) return minutes === undefined ? "" : copy.spec.minutes(minutes);
-    return join(specParts({ ...placed, diskGib: undefined }, minutes));
+    if (!placed) return minutes === undefined ? [] : [plain(copy.spec.minutes(minutes))];
+    return specParts({ ...placed, diskGib: undefined }, minutes)
+        .filter((p): p is string => p !== null)
+        .map(plain);
 }
 
 function byCountThenName(a: Group, b: Group): number {
@@ -414,7 +436,7 @@ export function buildMap(record: SessionRecord): MapModel {
         fullLabel: names.sandbox,
         events: b.placements,
         count: b.placements.length,
-        metric: sandboxMetric(b.placements),
+        metricParts: sandboxParts(b.placements),
     });
 
     let paid = 0;
@@ -430,7 +452,7 @@ export function buildMap(record: SessionRecord): MapModel {
             fullLabel: names.mcp,
             events: b.tools,
             count: b.toolCalls,
-            metric: metrics.toolCalls(b.toolCalls),
+            metricParts: [plain(metrics.toolCalls(b.toolCalls))],
         }),
         group({
             kind: "payments",
@@ -438,24 +460,26 @@ export function buildMap(record: SessionRecord): MapModel {
             fullLabel: names.payments,
             events: b.money,
             count: b.money.length,
-            metric: metrics.paid(paid, refunded),
+            metricParts: paymentParts(paid, refunded),
             paidMicros: paid,
         }),
     ];
 
     const right = [...b.hosts.values()].sort(byCountThenName);
-    for (const g of right) g.metric = hostMetric(g.kind, g.count, g.paidMicros);
+    for (const g of right) {
+        const word = g.kind === "x402-host" ? "calls" : "requests";
+        g.metricParts = hostParts(word, g.count, g.paidMicros);
+    }
     const rightNodes = right.slice(0, MAX_RIGHT).map((g) => toNode(g, ctx));
     const extraHosts = right.slice(MAX_RIGHT);
     if (extraHosts.length > 0) {
-        const anyX402 = extraHosts.some((g) => g.kind === "x402-host");
+        const word = extraHosts.some((g) => g.kind === "x402-host") ? "calls" : "requests";
         rightNodes.push(
             foldNode(
                 extraHosts,
                 "more-right",
                 names.moreHosts(extraHosts.length),
-                (count, paidMicros) =>
-                    hostMetric(anyX402 ? "x402-host" : "secret-host", count, paidMicros),
+                (count, paidMicros) => hostParts(word, count, paidMicros),
                 ctx,
             ),
         );
@@ -472,7 +496,7 @@ export function buildMap(record: SessionRecord): MapModel {
                 fullLabel: names.preview(port),
                 events,
                 count: requests,
-                metric: metrics.requests(requests),
+                metricParts: [plain(metrics.requests(requests))],
             });
         });
     const bottomNodes = previews.slice(0, MAX_PREVIEWS).map((g) => toNode(g, ctx));
@@ -483,7 +507,7 @@ export function buildMap(record: SessionRecord): MapModel {
                 extraPorts,
                 "more-bottom",
                 names.morePorts(extraPorts.length),
-                (count) => metrics.requests(count),
+                (count) => [plain(metrics.requests(count))],
                 ctx,
             ),
         );
@@ -497,7 +521,7 @@ export function buildMap(record: SessionRecord): MapModel {
             fullLabel: names.ssh,
             events: b.ssh,
             count: sessions,
-            metric: metrics.sessions(sessions),
+            metricParts: [plain(metrics.sessions(sessions))],
         }),
         group({
             kind: "transfers",
@@ -505,7 +529,7 @@ export function buildMap(record: SessionRecord): MapModel {
             fullLabel: names.transfers,
             events: b.transfers,
             count: files,
-            metric: metrics.files(files),
+            metricParts: [plain(metrics.files(files))],
         }),
     ];
 

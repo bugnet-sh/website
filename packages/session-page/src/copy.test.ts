@@ -63,13 +63,19 @@ describe("copy", () => {
         expect(copy.metrics.toolCalls(1)).toBe("1 tool call");
         expect(copy.metrics.toolCalls(7)).toBe("7 tool calls");
         expect(copy.metrics.paid(75_000)).toBe("0.075 USDC paid");
-        expect(copy.metrics.paid(50_000, 20_000)).toBe("0.05 USDC paid · 0.02 USDC refunded");
+        expect(copy.metrics.refunded(20_000)).toBe("0.02 USDC refunded");
         expect(copy.metrics.requests(2)).toBe("2 requests");
         expect(copy.metrics.calls(1)).toBe("1 call");
         expect(copy.metrics.usdc(3_000)).toBe("0.003 USDC");
         expect(copy.metrics.sessions(1)).toBe("1 session");
         expect(copy.metrics.files(2)).toBe("2 files");
         expect(copy.metrics.refused(4)).toBe("4 refused");
+    });
+
+    it("joins parts with one separator", () => {
+        expect(copy.SEP).toBe(" · ");
+        expect(copy.ended("stopped")).toBe(`Ended${copy.SEP}stopped`);
+        expect(copy.rows.sshBytes(1_024, 2_048)).toBe(`1 KiB in${copy.SEP}2 KiB out`);
     });
 
     it("keeps the exact page text", () => {

@@ -1,7 +1,7 @@
 import { copy } from "../copy.ts";
 import { svgEl } from "../render/dom.ts";
 import { ASCENT, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
-import { SEPARATOR, type MapSelect } from "./model.ts";
+import type { MapSelect } from "./model.ts";
 
 // One decimal keeps the markup short
 const num = (v: number) => String(Math.round(v * 10) / 10);
@@ -16,9 +16,32 @@ function tspan(doc: Document, value: string, attrs: Record<string, string>): SVG
     return span;
 }
 
+interface Span {
+    text: string;
+    class: string;
+}
+
+// Each part takes its own class, so a count next to an amount never shows in the money colour
+function lineSpans(doc: Document, lines: Span[][], x: string, sepClass: string): SVGTSpanElement[] {
+    return lines.flatMap((line, row) =>
+        line.flatMap((part, i) => {
+            // A tspan with its own x starts a chunk that the anchor places on its own
+            const at: Record<string, string> =
+                i > 0 ? {} : row > 0 ? { x, dy: String(LINE_HEIGHT) } : { x };
+            const span = tspan(doc, part.text, { ...at, class: part.class });
+            return i > 0 ? [tspan(doc, copy.SEP, { class: sepClass }), span] : [span];
+        }),
+    );
+}
+
 function labelText(doc: Document, p: Placed): SVGTextElement {
     const x = num(p.labelX);
-    const metricClass = p.node.paidMicros > 0 ? "map-metric money" : "map-metric muted";
+    const metric = p.metricLines.map((line) =>
+        line.map((part) => ({
+            text: part.text,
+            class: part.money ? "map-metric money" : "map-metric muted",
+        })),
+    );
     return svgEl(
         doc,
         "text",
@@ -29,12 +52,12 @@ function labelText(doc: Document, p: Placed): SVGTextElement {
             "text-anchor": p.labelAnchor,
             fill: "currentColor",
         },
-        [
-            tspan(doc, p.node.label, { class: "map-name", x }),
-            ...p.metricLines.map((line) =>
-                tspan(doc, line, { class: metricClass, x, dy: String(LINE_HEIGHT) }),
-            ),
-        ],
+        lineSpans(
+            doc,
+            [[{ text: p.node.label, class: "map-name" }], ...metric],
+            x,
+            "map-metric muted",
+        ),
     );
 }
 
@@ -92,23 +115,16 @@ function edgeLine(doc: Document, e: MapEdge): SVGLineElement {
     return svgEl(doc, "line", attrs);
 }
 
-// Each part takes its own tone, so a count next to an amount never shows in the money colour
 function edgeText(doc: Document, e: MapEdge): SVGTextElement {
     const x = num(e.box.x + e.box.width / 2);
-    const spans = e.lines.flatMap((line, row) =>
-        line.flatMap((part, i) => {
-            // A tspan with its own x starts a chunk that the anchor centres on its own
-            const at: Record<string, string> =
-                i > 0 ? {} : row > 0 ? { x, dy: String(LINE_HEIGHT) } : { x };
-            const span = tspan(doc, part.text, { ...at, class: part.tone });
-            return i > 0 ? [tspan(doc, SEPARATOR, { class: "muted" }), span] : [span];
-        }),
+    const lines = e.lines.map((line) =>
+        line.map((part) => ({ text: part.text, class: part.tone })),
     );
     return svgEl(
         doc,
         "text",
         { x, y: num(e.box.y + ASCENT), "text-anchor": "middle", fill: "currentColor" },
-        spans,
+        lineSpans(doc, lines, x, "muted"),
     );
 }
 

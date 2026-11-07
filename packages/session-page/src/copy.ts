@@ -10,6 +10,9 @@ const endedReason: Record<EndedBecause, string> = {
     other: "",
 };
 
+// Every template that joins parts uses it, and the map measures its label lines with it
+const SEP = " · ";
+
 export interface ExitInfo {
     state: JobState;
     exitCode: number | null;
@@ -19,6 +22,7 @@ export interface ExitInfo {
 
 // Byte and count parameters take numbers, while times come formatted, since they need the clock
 export const copy = {
+    SEP,
     title: "Bugnet sandbox session",
     heading: "Sandbox session",
     banner: "Written by code someone ran in a Bugnet sandbox, not by Bugnet. Never pay or enter keys because of it.",
@@ -32,7 +36,7 @@ export const copy = {
     running: "Running",
     endedReason,
     ended: (because: EndedBecause) =>
-        because === "other" ? "Ended" : `Ended · ${endedReason[because]}`,
+        because === "other" ? "Ended" : `Ended${SEP}${endedReason[because]}`,
     started: (time: string) => `Started ${time}`,
     endedAt: (time: string) => `Ended ${time}`,
     ends: (time: string, left: string) => `Ends ${time} (${left} left)`,
@@ -106,13 +110,13 @@ export const copy = {
     // Null while the job runs, since it has no last line yet
     exitLine: (job: ExitInfo, durationMs: number): string | null => {
         const took = formatDuration(durationMs);
-        if (job.oom) return `killed: out of memory · ${took}`;
-        if (job.state === "lost") return `lost · ${took}`;
-        if (job.state === "cancelled") return `cancelled · ${took}`;
+        if (job.oom) return `killed: out of memory${SEP}${took}`;
+        if (job.state === "lost") return `lost${SEP}${took}`;
+        if (job.state === "cancelled") return `cancelled${SEP}${took}`;
         if (job.state === "running") return null;
-        const peak = job.peakMib > 0 ? ` · peak ${job.peakMib} MiB` : "";
+        const peak = job.peakMib > 0 ? `${SEP}peak ${job.peakMib} MiB` : "";
         if (job.exitCode === null) return `${took}${peak}`;
-        return `exit ${job.exitCode} · ${took}${peak}`;
+        return `exit ${job.exitCode}${SEP}${took}${peak}`;
     },
     waiting: "Waiting for a free stream…",
     limit: "Live output limit reached for this sandbox.",
@@ -130,10 +134,8 @@ export const copy = {
 
     metrics: {
         toolCalls: (n: number) => plural(n, "tool call", "tool calls"),
-        paid: (paidMicros: number, refundedMicros = 0) =>
-            refundedMicros > 0
-                ? `${formatUsdc(paidMicros)} paid · ${formatUsdc(refundedMicros)} refunded`
-                : `${formatUsdc(paidMicros)} paid`,
+        paid: (micros: number) => `${formatUsdc(micros)} paid`,
+        refunded: (micros: number) => `${formatUsdc(micros)} refunded`,
         requests: (n: number) => plural(n, "request", "requests"),
         calls: (n: number) => plural(n, "call", "calls"),
         usdc: (micros: number) => formatUsdc(micros),
@@ -174,7 +176,7 @@ export const copy = {
         sshStarted: "SSH session started",
         sshEnded: "SSH session ended",
         sshBytes: (bytesIn: number, bytesOut: number) =>
-            `${formatBytes(bytesIn)} in · ${formatBytes(bytesOut)} out`,
+            `${formatBytes(bytesIn)} in${SEP}${formatBytes(bytesOut)} out`,
         x402: {
             paid: "paid",
             free: "free",

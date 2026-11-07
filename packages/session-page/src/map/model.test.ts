@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { copy } from "../copy.ts";
 import { formatClock } from "../format.ts";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, sampleTx, type ScenarioName } from "../testing/fixtures.ts";
@@ -41,6 +42,36 @@ describe("buildMap on the sample sessions", () => {
         expect(new Set(model.nodes.map((n) => n.id)).size).toBe(model.nodes.length);
         expect(nodeOf(model, "payments").paidMicros).toBe(125_000);
     });
+
+    it("splits each metric into parts, marking only amounts as money", () => {
+        const model = buildMap(recordOf("ended-full"));
+        const parts = (id: string) => nodeOf(model, id).metricParts;
+        expect(parts("x402-host:search-api.example")).toEqual([
+            { text: "5 calls", money: false },
+            { text: "0.024 USDC", money: true },
+        ]);
+        expect(parts("payments")).toEqual([
+            { text: "0.125 USDC paid", money: true },
+            { text: "0.02 USDC refunded", money: true },
+        ]);
+        expect(parts("sandbox")).toEqual([
+            { text: "2 vCPU", money: false },
+            { text: "2 GiB", money: false },
+            { text: "15 min", money: false },
+        ]);
+        expect(parts("mcp")).toEqual([{ text: "19 tool calls", money: false }]);
+        expect(parts("x402-host:unregistered.example")).toEqual([{ text: "1 call", money: false }]);
+    });
+
+    it.each(["ended-full", "ended-crowded", "ended-hostile", "ended-empty"] as const)(
+        "keeps %s's metrics as their parts joined by the page's separator",
+        (name) => {
+            for (const node of buildMap(recordOf(name)).nodes) {
+                const joined = node.metricParts.map((p) => p.text).join(copy.SEP);
+                expect(node.metric, node.id).toBe(joined);
+            }
+        },
+    );
 
     it("gives the MCP node its job and file rows, and sorts every node's rows by time", () => {
         const model = buildMap(recordOf("ended-full"));
@@ -111,6 +142,7 @@ describe("buildMap on the sample sessions", () => {
         expect(moreHosts.refused).toBe(5);
         expect(moreHosts.paidMicros).toBeGreaterThan(0);
         expect(moreHosts.metric).toMatch(/^88 calls · \d+(\.\d+)? USDC$/);
+        expect(moreHosts.metricParts.map((p) => p.money)).toEqual([false, true]);
         // The folded table still names each row's host
         expect(moreHosts.rows.some((r) => r.detail.startsWith("sentry.io · "))).toBe(true);
         expect(moreHosts.rows.some((r) => r.detail === "geo.x402.example · paid")).toBe(true);
