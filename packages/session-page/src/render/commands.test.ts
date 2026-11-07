@@ -117,7 +117,9 @@ describe("createCommandsView", () => {
             "9.2 s",
             "148 B",
             "126 B",
-            `${copy.copyOutput}${copy.copied}${copy.copyFailed}`,
+            [copy.copyOutput, copy.copied, copy.copiedPartial, copy.copyFailed, copy.loading].join(
+                "",
+            ),
         ]);
         // The provider lost job 5, so no end event gave its byte counts
         expect(cellTexts(view.root, 5).slice(4, 6)).toEqual([copy.noValue, copy.noValue]);
@@ -169,18 +171,38 @@ describe("createCommandsView", () => {
         expect(plain(notes(view.root, 6))).toBe("Earlier output not kept (1.2 MiB)");
     });
 
-    it("says the output is saving or expired in place of the rows", () => {
+    it("says the output is saving in place of the rows, in the muted tone of a wait", () => {
         const pending = showEnded("ended-pending");
         const note = pending.view.root.querySelector<HTMLElement>(".commands-note")!;
         expect(note.textContent).toBe("Saving output…");
         expect(note.hidden).toBe(false);
+        expect(note.classList.contains("warn")).toBe(false);
         expect(pending.view.root.querySelector<HTMLElement>("table")!.hidden).toBe(true);
         expect(expandAll(pending.view.root).closest("[hidden]")).not.toBeNull();
+    });
 
-        const expired = showEnded("ended-output-expired");
-        const line = expired.view.root.querySelector<HTMLElement>(".commands-note")!;
-        expect(line.textContent).toBe("The output expired before it was saved.");
-        expect(expired.view.root.querySelector<HTMLElement>("table")!.hidden).toBe(true);
+    it("keeps the commands and how they exited when their output expired, with no copy", () => {
+        const { view } = showEnded("ended-output-expired");
+        const note = view.root.querySelector<HTMLElement>(".commands-note")!;
+        expect(note.textContent).toBe("The output expired before it was saved.");
+        expect(note.classList.contains("warn")).toBe(true);
+        const table = view.root.querySelector<HTMLElement>("table")!;
+        expect(table.hidden).toBe(false);
+        expect(table.classList.contains("no-output")).toBe(true);
+        expect(expandAll(view.root).closest("[hidden]")).toBeNull();
+        expect(rows(view.root).map((r) => r.dataset.seq)).toEqual(["1", "2"]);
+        expect(cellTexts(view.root, 2).slice(1, 3)).toEqual(["npm run build", "0"]);
+        // The stylesheet hides these, since there is no output to copy or show
+        expect(view.root.querySelectorAll("td.copy .copy-output")).toHaveLength(2);
+        const open = detail(view.root, 2);
+        expect(open.querySelector(".term-cmd")!.textContent).toBe("$ npm run build");
+        expect(open.querySelector(".copy-command")).not.toBeNull();
+        expect(footer(view.root, 2)[0]).toBe("exit 0");
+
+        const complete = showEnded("ended-full");
+        expect(complete.view.root.querySelector("table")!.classList.contains("no-output")).toBe(
+            false,
+        );
     });
 
     it("keeps the rows a running view streamed when the end leaves its output saving", () => {
@@ -370,9 +392,13 @@ describe("createCommandsView", () => {
         t.view.setLive(4, "waiting");
         t.scheduler.flush();
         expect(notes(t.view.root, 4)).toBe(`${copy.waiting}${copy.skipped(12_345)}`);
+        const tones = () =>
+            [...detail(t.view.root, 4).querySelectorAll(".term-notes p")].map((p) => p.className);
+        expect(tones()).toEqual(["muted", "warn"]);
         t.view.setLive(4, "limit");
         t.scheduler.flush();
         expect(notes(t.view.root, 4)).toBe(`${copy.limit}${copy.skipped(12_345)}`);
+        expect(tones()).toEqual(["warn", "warn"]);
         t.view.setLive(4, "streaming");
         t.scheduler.flush();
         expect(notes(t.view.root, 4)).toBe(copy.skipped(12_345));
@@ -386,11 +412,58 @@ describe("createCommandsView", () => {
         );
     });
 
-    it("copies the output from the open row's command line too, for phones", () => {
+    it("says Copied, cut for output the page holds only part of", async () => {
+        const { view, scheduler } = showEnded("ended-full");
+        const copied = async (seq: number) => {
+            row(view.root, seq).querySelector<HTMLButtonElement>("button.copy-button")!.click();
+            await Promise.resolve();
+            await Promise.resolve();
+            scheduler.flush();
+            const button = row(view.root, seq).querySelector("button.copy-button")!;
+            return shownLabel(button as HTMLElement);
+        };
+        // Row 6 lost its first 1.2 MiB
+        expect(await copied(6)).toEqual([copy.copiedPartial]);
+        expect(await copied(1)).toEqual([copy.copied]);
+    });
+
+    it("loads a closed row's output on Copy, rather than say Copied over nothing", async () => {
+        const t = make();
+        t.view.setJobs(runningJobs(), NOW);
+        t.scheduler.flush();
+        const toggled = vi.fn();
+        t.view.onToggle(toggled);
+        // Row 2 finished with output, which a snapshot does not carry
+        expect(toggle(t.view.root, 2).getAttribute("aria-expanded")).toBe("false");
+        const button = row(t.view.root, 2).querySelector<HTMLButtonElement>("button.copy-button")!;
+        button.click();
+        await Promise.resolve();
+        t.scheduler.flush();
+        expect(t.clipboard.writeText).not.toHaveBeenCalled();
+        expect(shownLabel(button)).toEqual([copy.loading]);
+        expect(toggle(t.view.root, 2).getAttribute("aria-expanded")).toBe("true");
+        expect(toggled.mock.calls).toEqual([[2, true]]);
+        expect(t.view.openSeqs()[0]).toBe(2);
+
+        t.view.apply(2, { type: "out", frame: { s: "o", t: "lint ok\n", cr: false }, cursor: "c" });
+        button.click();
+        await Promise.resolve();
+        expect(t.clipboard.writeText).toHaveBeenCalledExactlyOnceWith("lint ok");
+    });
+
+    it("copies the command and the output from the open row's command line", () => {
         const { view, clipboard } = showEnded("ended-full");
         const head = detail(view.root, 6).querySelector(".term-head")!;
-        expect([...head.children].map((c) => c.className)).toEqual(["term-cmd", "copy-button"]);
-        head.querySelector<HTMLButtonElement>("button.copy-button")!.click();
+        expect([...head.children].map((c) => c.className)).toEqual([
+            "term-cmd",
+            "copy-button copy-command",
+            "copy-button copy-output",
+        ]);
+        head.querySelector<HTMLButtonElement>("button.copy-command")!.click();
+        expect(clipboard.writeText).toHaveBeenLastCalledWith(
+            "pip install torch==2.5.1 --progress-bar on",
+        );
+        head.querySelector<HTMLButtonElement>("button.copy-output")!.click();
         expect(clipboard.writeText).toHaveBeenCalledWith(view.buffer(6).text());
         expect(view.buffer(6).text()).toContain("Successfully installed torch-2.5.1");
     });

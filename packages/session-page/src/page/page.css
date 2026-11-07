@@ -672,6 +672,11 @@ table.events th:nth-child(5) {
     color: var(--accent);
 }
 
+/* Copied, but less than the whole: cut output or lines the page dropped */
+.copy-button.is-partial {
+    color: var(--warn);
+}
+
 .copy-button.is-failed {
     color: var(--bad);
 }
@@ -782,6 +787,12 @@ td.copy {
     text-align: end;
 }
 
+/* Expired output leaves the commands and their exits, and nothing to copy or show */
+table.commands.no-output .copy-output,
+table.commands.no-output .term-out {
+    display: none;
+}
+
 td.exit .dot {
     margin-inline-end: var(--space-2);
 }
@@ -807,7 +818,7 @@ tr.cmd-detail > td {
     line-height: var(--mono-line);
 }
 
-/* The command line, with the phone's copy button at its right */
+/* The command line, with its copy button and the phone's output copy button at its right */
 .term-head {
     display: flex;
     align-items: flex-start;
@@ -846,9 +857,9 @@ tr.cmd-detail > td {
     color: var(--text);
 }
 
+/* Each notice takes its own tone, muted for a wait and warn for a loss */
 .term-notes {
     margin-bottom: var(--space-2);
-    color: var(--warn);
 }
 
 /* As wide as its text, so the block scrolls sideways, and clipped, so marks never spill */
@@ -912,7 +923,8 @@ tr.cmd-detail > td {
 }
 
 @media (min-width: 768px) {
-    .term-head > .copy-button {
+    /* The table's own column copies the output from here up */
+    .term-head > .copy-output {
         display: none;
     }
 

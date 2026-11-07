@@ -356,11 +356,11 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
         const { page } = o;
         await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
         expect(await page.evaluate(() => matchMedia("(hover: hover)").matches)).toBe(false);
-        const copyButton = page.locator("tr.cmd-detail:not([hidden]) .term-head .copy-button");
+        const copyButton = page.locator("tr.cmd-detail:not([hidden]) .term-head .copy-output");
         await copyButton.tap();
         await page.waitForTimeout(AFTER_COPIED_MS);
         expect(
-            (await colours(page, "tr.cmd-detail:not([hidden]) .term-head .copy-button")).color,
+            (await colours(page, "tr.cmd-detail:not([hidden]) .term-head .copy-output")).color,
         ).toBe(MUTED);
         const toggle = page.locator('tr.cmd-row[data-seq="6"] .cmd-toggle');
         await toggle.tap();

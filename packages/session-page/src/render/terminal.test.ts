@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { copy } from "../copy.js";
 import { OutputBuffer } from "../output.js";
 import type { Scheduler } from "../schedule.js";
@@ -19,9 +19,12 @@ function manual(): Scheduler & { flush(): number; queued(): number } {
     };
 }
 
+const board = () => ({ writeText: vi.fn(async (_text: string) => {}) });
+
 function make(command: string | null = "ls") {
     const buffer = new OutputBuffer();
     const scheduler = manual();
+    const clipboard = board();
     const block = createTerminalBlock({
         doc: document,
         buffer,
@@ -29,10 +32,11 @@ function make(command: string | null = "ls") {
         command,
         notices: () => [],
         footer: () => [],
+        clipboard,
         scheduler,
     });
     scheduler.flush();
-    return { buffer, scheduler, block };
+    return { buffer, scheduler, block, clipboard };
 }
 
 const lines = (root: HTMLElement) => [...root.querySelectorAll(".line")] as HTMLElement[];
@@ -82,7 +86,60 @@ describe("terminal block", () => {
         scheduler.flush();
         expect(lines(block.root)).toHaveLength(5000);
         expect(lines(block.root)[0]!.textContent).toBe("l1000");
-        expect(block.root.querySelector(".term-notes")!.textContent).toContain(copy.dropped(1000));
+        const note = block.root.querySelector(".term-notes p")!;
+        expect(note.textContent).toBe(copy.dropped(1000));
+        expect(note.className).toBe("warn");
+    });
+
+    it("tones each notice, a wait muted and a loss in the warning colour", () => {
+        const buffer = new OutputBuffer();
+        const scheduler = manual();
+        let notices = [
+            { text: copy.cut(2048), tone: "warn" as const },
+            { text: copy.waiting, tone: "muted" as const },
+        ];
+        const block = createTerminalBlock({
+            doc: document,
+            buffer,
+            seq: 1,
+            command: "x",
+            notices: () => notices,
+            footer: () => [],
+            clipboard: board(),
+            scheduler,
+        });
+        buffer.skip(2048, 0);
+        block.update();
+        scheduler.flush();
+        const shown = () =>
+            [...block.root.querySelectorAll(".term-notes p")].map((p) => [
+                p.textContent,
+                p.className,
+            ]);
+        expect(shown()).toEqual([
+            [copy.cut(2048), "warn"],
+            [copy.waiting, "muted"],
+            [copy.skipped(2048), "warn"],
+        ]);
+        notices = [{ text: copy.waiting, tone: "warn" as const }];
+        block.update();
+        scheduler.flush();
+        expect(shown()[0]).toEqual([copy.waiting, "warn"]);
+    });
+
+    it("copies the command without its $ prompt", async () => {
+        const { block, clipboard } = make("npm test -- --grep x");
+        const head = block.root.querySelector(".term-head")!;
+        const button = head.querySelector<HTMLButtonElement>("button.copy-command")!;
+        expect(button.textContent).toContain(copy.copyCommand);
+        button.click();
+        await Promise.resolve();
+        expect(clipboard.writeText).toHaveBeenCalledExactlyOnceWith("npm test -- --grep x");
+    });
+
+    it("offers no command copy when the command was not recorded", () => {
+        const { block } = make(null);
+        expect(block.root.querySelector(".copy-command")).toBeNull();
     });
 
     it("removes dropped nodes from the front and keeps the ones that survive", () => {
@@ -119,8 +176,9 @@ describe("terminal block", () => {
             buffer,
             seq: 1,
             command: "x",
-            notices: () => [copy.cut(2048)],
+            notices: () => [{ text: copy.cut(2048), tone: "warn" }],
             footer: () => ["exit 0", "9.2 s"],
+            clipboard: board(),
             scheduler,
         });
         scheduler.flush();
@@ -144,8 +202,9 @@ describe("terminal block", () => {
             buffer,
             seq: 1,
             command: "x",
-            notices: () => [copy.cut(2048)],
+            notices: () => [{ text: copy.cut(2048), tone: "warn" }],
             footer: () => [],
+            clipboard: board(),
             scheduler,
         });
         scheduler.flush();

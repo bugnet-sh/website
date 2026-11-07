@@ -6,7 +6,7 @@ import type { Scheduler } from "../schedule.ts";
 import type { LiveFrame } from "../sse.ts";
 import { copyButton, type Clipboard } from "./controls.ts";
 import { el } from "./dom.ts";
-import { createTerminalBlock, type TerminalBlock } from "./terminal.ts";
+import { createTerminalBlock, type Notice, type TerminalBlock } from "./terminal.ts";
 
 export type LiveState = "idle" | "streaming" | "waiting" | "limit" | "done";
 
@@ -161,23 +161,47 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         return buffer;
     }
 
-    function notices(row: Row): string[] {
-        const list: string[] = [];
-        if (row.job.cutBytes > 0) list.push(copy.cut(row.job.cutBytes));
+    function notices(row: Row): Notice[] {
+        const list: Notice[] = [];
+        if (row.job.cutBytes > 0) list.push({ text: copy.cut(row.job.cutBytes), tone: "warn" });
         const state = live.get(row.seq);
-        if (state === "waiting") list.push(copy.waiting);
-        else if (state === "limit") list.push(copy.limit);
+        // The page's own cap on streams is a wait, not a loss
+        if (state === "waiting") list.push({ text: copy.waiting, tone: "muted" });
+        else if (state === "limit") list.push({ text: copy.limit, tone: "warn" });
         return list;
     }
 
+    // A snapshot carries no output, so a closed row's copy opens it, which streams the output
+    function outputReady(seq: number): boolean {
+        const row = rows.get(seq);
+        if (row === undefined || row.filled || bufferOf(seq).text() !== "") return true;
+        if ((row.job.outBytes ?? 0) + (row.job.errBytes ?? 0) === 0) return true;
+        if (!row.open) {
+            setOpen(row, true);
+            syncExpand();
+            notify([row], true);
+        }
+        return false;
+    }
+
     function copyOutput(seq: number): HTMLButtonElement {
-        return copyButton(
+        const button = copyButton(
             doc,
             copy.copyOutput,
             () => bufferOf(seq).text(),
             opts.clipboard,
             scheduler,
+            {
+                prepare: () => outputReady(seq),
+                isPartial: () => {
+                    const buffer = bufferOf(seq);
+                    const cut = rows.get(seq)?.job.cutBytes ?? 0;
+                    return cut > 0 || buffer.droppedLines > 0 || buffer.skippedBytes > 0;
+                },
+            },
         );
+        button.classList.add("copy-output");
+        return button;
     }
 
     // Phones show no copy column, so the open row's command line carries its own copy button
@@ -190,6 +214,7 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             notices: () => notices(row),
             footer: () => copy.exitLine(exitOf(row).info, durationMs(row, opts.now()) ?? 0),
             control: copyOutput(row.seq),
+            clipboard: opts.clipboard,
             scheduler,
         });
         row.slot.replaceChildren(row.block.root);
@@ -235,11 +260,14 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
                     : null;
         note.textContent = message ?? "";
         note.hidden = message === null;
-        note.className = output === "partial" ? "commands-note warn" : "commands-note";
-        const shown =
-            output !== "expired" && order.length > 0 && (output !== "pending" || streamed);
+        // Lost output warns; "Saving output…" is a wait and stays muted
+        const lost = output === "partial" || output === "expired";
+        note.className = lost ? "commands-note warn" : "commands-note";
+        // Expired output still leaves each command, its exit and its time to show
+        const shown = order.length > 0 && (output !== "pending" || streamed);
         table.hidden = !shown;
         bar.hidden = !shown;
+        table.classList.toggle("no-output", output === "expired");
     }
 
     // True when the shown time changed

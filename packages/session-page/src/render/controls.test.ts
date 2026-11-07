@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { copy } from "../copy.ts";
 import type { Scheduler } from "../schedule.ts";
-import { copyButton, tip } from "./controls.ts";
+import { COPIED_MS, copyButton, tip } from "./controls.ts";
 
 function mount(text = "Nothing loads until you click.", label = "About this page") {
     const root = tip(document, text, label);
@@ -87,6 +87,7 @@ describe("copyButton", () => {
         [...b.children].filter((c) => c.getAttribute("aria-hidden") !== "true")[0]!.textContent;
 
     it("copies getText() at click time and shows Copied for 1,500 ms", async () => {
+        expect(COPIED_MS).toBe(1_500);
         const clipboard = board();
         let text = "first";
         const button = copyButton(document, copy.copySignature, () => text, clipboard);
@@ -105,10 +106,16 @@ describe("copyButton", () => {
         expect(visible(button)).toBe(copy.copySignature);
     });
 
-    it("holds all three labels at all times, so its width never changes", async () => {
+    it("holds all its labels at all times, so its width never changes", async () => {
         const button = copyButton(document, copy.copyOutput, () => "x", board());
         const labels = () => [...button.children].map((c) => c.textContent);
-        const all = [copy.copyOutput, copy.copied, copy.copyFailed];
+        const all = [
+            copy.copyOutput,
+            copy.copied,
+            copy.copiedPartial,
+            copy.copyFailed,
+            copy.loading,
+        ];
         expect(labels()).toEqual(all);
         button.click();
         await vi.advanceTimersByTimeAsync(0);
@@ -156,6 +163,50 @@ describe("copyButton", () => {
         expect(visible(button)).toBe(copy.copied);
         await vi.advanceTimersByTimeAsync(500);
         expect(visible(button)).toBe(copy.copyOutput);
+    });
+
+    it("says Copied, cut when what it copied is less than the whole", async () => {
+        const clipboard = board();
+        let cut = true;
+        const button = copyButton(document, copy.copyOutput, () => "x", clipboard, undefined, {
+            isPartial: () => cut,
+        });
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(clipboard.writeText).toHaveBeenCalledExactlyOnceWith("x");
+        expect(visible(button)).toBe(copy.copiedPartial);
+        expect(button.classList.contains("is-partial")).toBe(true);
+        expect(button.classList.contains("is-copied")).toBe(false);
+        await vi.advanceTimersByTimeAsync(1_500);
+        expect(visible(button)).toBe(copy.copyOutput);
+        cut = false;
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(visible(button)).toBe(copy.copied);
+        expect(button.classList.contains("is-partial")).toBe(false);
+    });
+
+    it("says Loading and writes nothing while the text is not there yet", async () => {
+        const clipboard = board();
+        let ready = false;
+        const prepare = vi.fn(() => ready);
+        const button = copyButton(document, copy.copyOutput, () => "", clipboard, undefined, {
+            prepare,
+        });
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(prepare).toHaveBeenCalledOnce();
+        expect(clipboard.writeText).not.toHaveBeenCalled();
+        expect(visible(button)).toBe(copy.loading);
+        expect(button.classList.contains("is-loading")).toBe(true);
+        expect(button.classList.contains("is-copied")).toBe(false);
+        await vi.advanceTimersByTimeAsync(1_500);
+        expect(visible(button)).toBe(copy.copyOutput);
+        ready = true;
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(clipboard.writeText).toHaveBeenCalledOnce();
+        expect(visible(button)).toBe(copy.copied);
     });
 
     it("changes its look inside the scheduler's frames when given one", async () => {

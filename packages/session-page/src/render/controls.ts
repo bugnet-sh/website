@@ -46,20 +46,30 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
     return root;
 }
 
-type CopyState = "idle" | "copied" | "failed";
+type CopyState = "idle" | "copied" | "partial" | "failed" | "loading";
 
-// All three labels stay in the button and the CSS shows one, so its width never changes
+export interface CopyChecks {
+    // False when the text has not come yet; the click then starts loading it and copies nothing
+    prepare?: () => boolean;
+    // True when the text is only part of the whole, such as output cut short
+    isPartial?: () => boolean;
+}
+
+// Every label stays in the button and the CSS shows one, so its width never changes
 export function copyButton(
     doc: Document,
     label: string,
     getText: () => string,
     clipboard: Clipboard,
     scheduler?: Scheduler,
+    checks: CopyChecks = {},
 ): HTMLButtonElement {
     const labels: [CopyState, HTMLSpanElement][] = [
         ["idle", el(doc, "span", { class: "copy-idle", text: label })],
         ["copied", el(doc, "span", { class: "copy-done", text: copy.copied })],
+        ["partial", el(doc, "span", { class: "copy-partial", text: copy.copiedPartial })],
         ["failed", el(doc, "span", { class: "copy-failed", text: copy.copyFailed })],
+        ["loading", el(doc, "span", { class: "copy-loading", text: copy.loading })],
     ];
     const button = el(
         doc,
@@ -69,7 +79,9 @@ export function copyButton(
     );
     const apply = (state: CopyState) => {
         button.classList.toggle("is-copied", state === "copied");
+        button.classList.toggle("is-partial", state === "partial");
         button.classList.toggle("is-failed", state === "failed");
+        button.classList.toggle("is-loading", state === "loading");
         for (const [shows, span] of labels) {
             if (shows === state) span.removeAttribute("aria-hidden");
             else span.setAttribute("aria-hidden", "true");
@@ -87,8 +99,13 @@ export function copyButton(
         timer = setTimeout(() => show("idle"), COPIED_MS);
     };
     button.addEventListener("click", () => {
+        // A write after waiting for the text would fall outside the click, which browsers refuse
+        if (checks.prepare?.() === false) {
+            flash("loading");
+            return;
+        }
         clipboard.writeText(getText()).then(
-            () => flash("copied"),
+            () => flash(checks.isPartial?.() ? "partial" : "copied"),
             // A silent failure would read as a copy, so the button says it failed
             () => flash("failed"),
         );

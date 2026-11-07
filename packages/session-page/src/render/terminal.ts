@@ -1,7 +1,14 @@
 import { copy } from "../copy.js";
 import type { Line, OutputBuffer } from "../output.js";
 import type { Scheduler } from "../schedule.js";
+import { copyButton, type Clipboard } from "./controls.js";
 import { el, partSpans } from "./dom.js";
+
+// A wait reads muted, and a loss of output in the warning colour
+export interface Notice {
+    text: string;
+    tone: "muted" | "warn";
+}
 
 export interface TerminalBlock {
     root: HTMLElement;
@@ -20,11 +27,12 @@ export function createTerminalBlock(opts: {
     buffer: OutputBuffer;
     seq: number;
     command: string | null;
-    notices: () => string[];
+    notices: () => Notice[];
     // The last line's parts, none while there is no last line
     footer: () => string[];
-    // A control beside the command, such as a copy button
+    // A control after the command's own copy button, such as the output's
     control?: HTMLElement;
+    clipboard: Clipboard;
     scheduler: Scheduler;
 }): TerminalBlock {
     const { doc, buffer, scheduler } = opts;
@@ -32,7 +40,21 @@ export function createTerminalBlock(opts: {
         class: "term-cmd",
         text: `$ ${opts.command ?? copy.noCommand}`,
     });
-    const head = el(doc, "div", { class: "term-head" }, opts.control ? [cmd, opts.control] : [cmd]);
+    const head = el(doc, "div", { class: "term-head" }, [cmd]);
+    const { command } = opts;
+    if (command !== null) {
+        // Copies without the "$ " the line shows, so it pastes straight into a shell
+        const copyCommand = copyButton(
+            doc,
+            copy.copyCommand,
+            () => command,
+            opts.clipboard,
+            scheduler,
+        );
+        copyCommand.classList.add("copy-command");
+        head.append(copyCommand);
+    }
+    if (opts.control) head.append(opts.control);
     const notes = el(doc, "div", { class: "term-notes" });
     const out = el(doc, "div", {
         class: "term-out",
@@ -75,12 +97,18 @@ export function createTerminalBlock(opts: {
         }
 
         const notices = [...opts.notices()];
-        if (buffer.droppedLines > 0) notices.push(copy.dropped(buffer.droppedLines));
-        if (buffer.skippedBytes > 0) notices.push(copy.skipped(buffer.skippedBytes));
-        const joined = notices.join("\n");
+        if (buffer.droppedLines > 0) {
+            notices.push({ text: copy.dropped(buffer.droppedLines), tone: "warn" });
+        }
+        if (buffer.skippedBytes > 0) {
+            notices.push({ text: copy.skipped(buffer.skippedBytes), tone: "warn" });
+        }
+        const joined = notices.map((n) => `${n.tone} ${n.text}`).join("\n");
         if (joined !== shownNotices) {
             shownNotices = joined;
-            notes.replaceChildren(...notices.map((text) => el(doc, "p", { text })));
+            notes.replaceChildren(
+                ...notices.map(({ text, tone }) => el(doc, "p", { class: tone, text })),
+            );
             notes.hidden = notices.length === 0;
         }
 
