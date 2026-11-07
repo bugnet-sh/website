@@ -40,6 +40,7 @@ describe("index.html", () => {
         const logo = doc.querySelector("header.site a.logo")!;
         expect(logo.getAttribute("href")).toBe("https://bugnet.sh/");
         expect(logo.getAttribute("aria-label")).toBe(copy.logoLabel);
+        expect(logo.getAttribute("rel")).toBe("noreferrer");
         const banner = doc.querySelector("p.banner")!;
         expect(banner.getAttribute("role")).toBe("note");
         expect(squash(banner.textContent)).toBe(copy.banner);
