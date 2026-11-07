@@ -60,7 +60,10 @@ describe("buildPage", () => {
         expect(names).toHaveLength(expected.length);
         // Each name once, in any order, since the hashes decide how page-*.css and page-*.js sort
         for (const pattern of expected) {
-            expect(names.filter((n) => pattern.test(n)), String(pattern)).toHaveLength(1);
+            expect(
+                names.filter((n) => pattern.test(n)),
+                String(pattern),
+            ).toHaveLength(1);
         }
     });
 
