@@ -202,6 +202,12 @@ export function settlingCalls(events: SessionEvent[]): number {
     return calls;
 }
 
+// Payments writes the refund or kept row only after the last payment resolves
+export function allowanceOpen(events: SessionEvent[]): boolean {
+    const totals = allowanceTotals(events);
+    return totals !== null && !accountClosed(totals);
+}
+
 function specParts(e: PlacementEvent, minutes: number | undefined): (string | null)[] {
     const spec = copy.spec;
     return [
@@ -718,15 +724,19 @@ function allowanceTotals(events: SessionEvent[]): AllowanceTotals | null {
     const refusedByReason = [...refusals]
         .map(([key, calls]) => ({ key, words: copy.x402.reason(key), calls }))
         .sort((a, b) => b.calls - a.calls || (a.key < b.key ? -1 : 1));
-    const closed = refunded !== null || kept !== null || spentTotal === paidIn;
     const off = paidIn - spentTotal - (refunded?.micros ?? 0) - (kept ?? 0);
-    return {
+    const totals = {
         paidInMicros: paidIn,
         spent: spentList,
         settling,
         refunded,
         keptMicros: kept,
         refusedByReason,
-        reconciling: settling.calls === 0 && closed && off !== 0,
     };
+    return { ...totals, reconciling: settling.calls === 0 && accountClosed(totals) && off !== 0 };
+}
+
+function accountClosed(t: Omit<AllowanceTotals, "reconciling">): boolean {
+    const spent = t.spent.reduce((n, s) => n + s.micros, 0);
+    return t.refunded !== null || t.keptMicros !== null || spent === t.paidInMicros;
 }

@@ -3,6 +3,7 @@ import { formatClock } from "../format.ts";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, sampleTx, type ScenarioName } from "../testing/fixtures.ts";
 import {
+    allowanceOpen,
     buildMap,
     MAX_PREVIEWS,
     MAX_RIGHT,
@@ -787,6 +788,17 @@ describe("buildMap on x402 calls and the allowance", () => {
             x402("payment_failed", 1_000, { resolved: "released", tx: undefined }),
         ];
         expect(settlingCalls(events)).toBe(2);
+    });
+
+    it("keeps the allowance open until a refund or kept row, or until all of it is spent", () => {
+        const settled = recordOf("ended-x402-settling", 1).events;
+        expect(allowanceOpen(recordOf("ended-x402-settling").events)).toBe(true);
+        expect(allowanceOpen(settled)).toBe(false);
+        expect(
+            allowanceOpen(settled.filter((e) => e.kind !== "allowance" || e.phase !== "refunded")),
+        ).toBe(true);
+        expect(allowanceOpen(recordOf("ended-x402-kept").events)).toBe(false);
+        expect(allowanceOpen(recordOf("ended-full").events)).toBe(false);
     });
 
     const allScenarios = Object.keys(scenarios) as ScenarioName[];

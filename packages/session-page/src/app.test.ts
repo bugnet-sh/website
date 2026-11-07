@@ -741,6 +741,23 @@ describe("an ended session with payments settling", () => {
         expect(srv.gets()).toHaveLength(2);
     });
 
+    // Payments writes the refund after the last payment resolves, often in a later answer
+    it("keeps asking every 30 s after the last payment resolves, until the refund row comes", async () => {
+        type Body = { record: { events: { kind: string; phase?: string }[] } };
+        const unrefunded = structuredClone(settledBody) as { status: number; body: Body };
+        const events = unrefunded.body.record.events;
+        unrefunded.body.record.events = events.filter((e) => e.phase !== "refunded");
+        const srv = server([settlingBody, unrefunded, unrefunded, settledBody]);
+        open({ scenario: settling, fetch: srv.fetch });
+        await settle();
+        for (let ask = 2; ask <= 4; ask++) {
+            await advance(30_000);
+            expect(srv.gets()).toHaveLength(ask);
+        }
+        await advance(30 * MIN);
+        expect(srv.gets()).toHaveLength(4);
+    });
+
     it("asks nothing more for a record that ended 31 minutes ago", async () => {
         const old = makeScenarios(new Date(NOW.getTime() - 29 * MIN))["ended-x402-settling"];
         const srv = server([first(old)]);
