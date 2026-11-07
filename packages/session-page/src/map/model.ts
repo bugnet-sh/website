@@ -46,9 +46,11 @@ export interface EventRow {
     tone: Tone;
 }
 
-// Only an amount is money, so a count beside it never takes the money colour
+// Only a non-zero amount is money, so a count beside it never takes the money colour
 export interface MetricPart {
     text: string;
+    // A sum of USDC rather than a count, which a short form keeps
+    amount: boolean;
     money: boolean;
 }
 
@@ -276,7 +278,7 @@ function group(o: GroupOptions): Group {
     };
 }
 
-const plain = (text: string): MetricPart => ({ text, money: false });
+const plain = (text: string): MetricPart => ({ text, amount: false, money: false });
 
 function toNode(g: Group, ctx: RowContext): MapNode {
     return {
@@ -323,13 +325,13 @@ function foldNode(
 function hostParts(word: "calls" | "requests", count: number, paidMicros: number): MetricPart[] {
     const counted = plain(copy.metrics[word](count));
     if (paidMicros <= 0) return [counted];
-    return [counted, { text: copy.metrics.usdc(paidMicros), money: true }];
+    return [counted, { text: copy.metrics.usdc(paidMicros), amount: true, money: true }];
 }
 
 function paymentParts(paidMicros: number, refundedMicros: number): MetricPart[] {
-    const paid = { text: copy.metrics.paid(paidMicros), money: paidMicros > 0 };
+    const paid = { text: copy.metrics.paid(paidMicros), amount: true, money: paidMicros > 0 };
     if (refundedMicros <= 0) return [paid];
-    return [paid, { text: copy.metrics.refunded(refundedMicros), money: true }];
+    return [paid, { text: copy.metrics.refunded(refundedMicros), amount: true, money: true }];
 }
 
 function sandboxParts(placements: PlacementEvent[]): MetricPart[] {

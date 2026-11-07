@@ -45,24 +45,19 @@ describe("buildMap on the sample sessions", () => {
         expect(nodeOf(model, "payments").paidMicros).toBe(125_000);
     });
 
-    it("splits each metric into parts, marking only amounts as money", () => {
+    it("splits each metric into parts, marking amounts, and only non-zero ones as money", () => {
         const model = buildMap(recordOf("ended-full"));
         const parts = (id: string) => nodeOf(model, id).metricParts;
+        const count = (text: string) => ({ text, amount: false, money: false });
+        const usdc = (text: string) => ({ text, amount: true, money: true });
         expect(parts("x402-host:search-api.example")).toEqual([
-            { text: "5 calls", money: false },
-            { text: "0.024 USDC", money: true },
+            count("5 calls"),
+            usdc("0.024 USDC"),
         ]);
-        expect(parts("payments")).toEqual([
-            { text: "0.125 USDC paid", money: true },
-            { text: "0.02 USDC refunded", money: true },
-        ]);
-        expect(parts("sandbox")).toEqual([
-            { text: "2 vCPU", money: false },
-            { text: "2 GiB", money: false },
-            { text: "15 min", money: false },
-        ]);
-        expect(parts("mcp")).toEqual([{ text: "19 tool calls", money: false }]);
-        expect(parts("x402-host:unregistered.example")).toEqual([{ text: "1 call", money: false }]);
+        expect(parts("payments")).toEqual([usdc("0.125 USDC paid"), usdc("0.02 USDC refunded")]);
+        expect(parts("sandbox")).toEqual([count("2 vCPU"), count("2 GiB"), count("15 min")]);
+        expect(parts("mcp")).toEqual([count("19 tool calls")]);
+        expect(parts("x402-host:unregistered.example")).toEqual([count("1 call")]);
     });
 
     it.each(["ended-full", "ended-crowded", "ended-hostile", "ended-empty"] as const)(

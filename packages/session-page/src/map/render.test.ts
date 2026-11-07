@@ -302,6 +302,23 @@ describe("renderMapList", () => {
         );
     });
 
+    it("shows Payments with nothing paid and a refund as 0 USDC paid alone", () => {
+        const record = recordOf("ended-full");
+        const money = (e: SessionRecord["events"][number]) =>
+            e.kind === "payment" || e.kind === "allowance";
+        const refund = record.events.filter(
+            (e) => e.kind === "allowance" && e.phase === "refunded",
+        );
+        expect(refund).toHaveLength(1);
+        const model = buildMap({
+            ...record,
+            events: [...record.events.filter((e) => !money(e)), ...refund],
+        });
+        const list = renderMapList(document, model, { selectedId: null, onSelect: vi.fn() });
+        const row = list.querySelector('[data-node-id="payments"]')!;
+        expect(parts(row, ".map-row-metric span")).toEqual([["0 USDC paid", "muted"]]);
+    });
+
     it("draws only the amounts of a row in the money colour", () => {
         const { list } = listOf();
         const search = rowOf(list, "x402-host:search-api.example");

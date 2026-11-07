@@ -416,6 +416,29 @@ describe("layoutMap edges", () => {
         expect(drawn(busy.metricLines)).toEqual([["12.345678 USDC paid"]]);
     });
 
+    it("draws Payments with nothing paid and a refund as 0 USDC paid, never the refund alone", () => {
+        const model = mapOf([
+            { at, kind: "placement", phase: "placed", vcpu: 2, memoryMib: 2_048, minutes: 10 },
+            {
+                at,
+                kind: "allowance",
+                phase: "refunded",
+                amountMicros: 20_000,
+                asset: "USDC",
+                network: "n",
+                tx: "x",
+            },
+        ]);
+        const payments = layoutMap(model, 720).placed.find((p) => p.node.kind === "payments")!;
+        expect(payments.node.metricParts.map((p) => p.text)).toEqual([
+            "0 USDC paid",
+            "0.02 USDC refunded",
+        ]);
+        expect(payments.metricLines).toEqual([
+            [{ text: "0 USDC paid", amount: true, money: false }],
+        ]);
+    });
+
     it("draws a host metric over 24 characters as its amount, and a short one whole", () => {
         const call = (i: number): SessionEvent => ({
             at,
@@ -439,7 +462,7 @@ describe("layoutMap edges", () => {
             "12.345678 USDC",
         ]);
         expect(host("big.example").metricLines).toEqual([
-            [{ text: "12.345678 USDC", money: true }],
+            [{ text: "12.345678 USDC", amount: true, money: true }],
         ]);
         expect(drawn(host("small.example").metricLines)).toEqual([["3 calls", "12.345678 USDC"]]);
     });

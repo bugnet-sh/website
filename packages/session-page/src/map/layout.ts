@@ -108,7 +108,7 @@ function metricLines(node: MapNode): MetricPart[][] {
     const parts = node.metricParts;
     if (parts.length === 0) return [];
     if (partsWidth(parts) <= LINE_CHARS * CHAR_WIDTH) return [parts];
-    const amount = parts.find((p) => p.money);
+    const amount = parts.find((p) => p.amount);
     return [amount ? [amount] : parts];
 }
 

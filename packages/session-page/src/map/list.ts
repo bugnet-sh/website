@@ -10,7 +10,7 @@ import {
 
 // The count and the total paid, so Payments leaves its refund to the table and the row's name
 function shown(parts: MetricPart[]): MetricPart[] {
-    const paid = parts.findIndex((p) => p.money);
+    const paid = parts.findIndex((p) => p.amount);
     return paid === -1 ? parts : parts.slice(0, paid + 1);
 }
 
