@@ -39,7 +39,20 @@ export function formatClock(iso: string): string {
     return `${two(at.getHours())}:${two(at.getMinutes())}:${two(at.getSeconds())}`;
 }
 
-const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+export const months = [
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
+];
 
 /** A feed day is a UTC date, read from its text so no time zone can move it. */
 export function formatDay(day: string): string {
