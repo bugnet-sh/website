@@ -18,7 +18,7 @@ function Money({ micros, signed = false }: { micros: number; signed?: boolean })
     return (
         <>
             <span className={negative ? "text-bad" : "text-accent-2"}>{text}</span>
-            <span className="ml-(--space-2) font-ui text-(length:--ui-size) text-text-muted">
+            <span className="ml-(--space-2) font-ui text-(length:--ui-size) text-text-muted phone:ml-(--space-1) phone:text-(length:--fine-size)">
                 USDC
             </span>
         </>

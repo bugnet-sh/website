@@ -43,7 +43,7 @@ export function Limits() {
                             {limits.map((limit) => (
                                 // Positioned, so a tip opens under its own row
                                 <tr key={limit.key} className="relative">
-                                    <td className={cx(bodyCell(), "whitespace-normal")}>
+                                    <td className={cx(bodyCell(), "whitespace-normal!")}>
                                         {limit.label}
                                     </td>
                                     <td className={bodyCell(true)}>{limit.value}</td>
@@ -65,40 +65,43 @@ export function Limits() {
                         >
                             What you can buy
                         </h3>
-                        <table aria-labelledby={buyId} className={cx(tableClass, "mt-(--space-4)")}>
-                            <thead>
-                                <tr>
-                                    <th scope="col" className={headCell()}>
-                                        Size
-                                    </th>
-                                    <th scope="col" className={headCell(true)}>
-                                        Disk
-                                    </th>
-                                    <th scope="col" className={headCell(true)}>
-                                        Length
-                                    </th>
-                                    <th scope="col" className={headCell(true)}>
-                                        Price
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {packages.map((p) => (
-                                    <tr key={p.id}>
-                                        <td className={bodyCell()}>{sizeText(p)}</td>
-                                        <td className={bodyCell(true)}>
-                                            {formatBytes(p.diskGiB * GiB)}
-                                        </td>
-                                        <td className={bodyCell(true)}>
-                                            {formatDuration(p.minutes * 60)}
-                                        </td>
-                                        <td className={bodyCell(true)}>
-                                            <Usdc micros={p.priceMicros} />
-                                        </td>
+                        {/* Five columns do not fit a phone, so the table scrolls inside its own box */}
+                        <div className="mt-(--space-4) overflow-x-auto">
+                            <table aria-labelledby={buyId} className={tableClass}>
+                                <thead>
+                                    <tr>
+                                        <th scope="col" className={headCell()}>
+                                            Size
+                                        </th>
+                                        <th scope="col" className={headCell(true)}>
+                                            Disk
+                                        </th>
+                                        <th scope="col" className={headCell(true)}>
+                                            Length
+                                        </th>
+                                        <th scope="col" className={headCell(true)}>
+                                            Price
+                                        </th>
                                     </tr>
-                                ))}
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    {packages.map((p) => (
+                                        <tr key={p.id}>
+                                            <td className={bodyCell()}>{sizeText(p)}</td>
+                                            <td className={bodyCell(true)}>
+                                                {formatBytes(p.diskGiB * GiB)}
+                                            </td>
+                                            <td className={bodyCell(true)}>
+                                                {formatDuration(p.minutes * 60)}
+                                            </td>
+                                            <td className={bodyCell(true)}>
+                                                <Usdc micros={p.priceMicros} />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </>
                 )}
                 {isUnavailable(stats) && <Unavailable />}
