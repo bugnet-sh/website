@@ -53,6 +53,22 @@
     --band: clamp(44px, 4.4vw, 72px);
     --nav: 62px;
 
+    /* The site shell's type and control sizes, each a line box on whole pixels */
+    --ui-size: 14px;
+    --ui-line: 20px;
+    --fine-size: 12px;
+    --fine-line: 16px;
+    --wordmark-size: 20px;
+    --wordmark-line: 24px;
+    --mark: 24px;
+    --button: 34px;
+    --hit: 40px;
+    --menu-row: 48px;
+    --arrow: 12px;
+    --menu-icon: 24px;
+    /* The footer's closing band, as tall as rewall's */
+    --waves: clamp(140px, 15vw, 240px);
+
     --max: 1200px;
     --inset: 24px;
     --row: 40px;
@@ -70,6 +86,7 @@
     --space-5: 24px;
     --space-6: 32px;
     --space-7: 48px;
+    --space-8: 64px;
 
     --font-ui: "Manrope", ui-sans-serif, system-ui, sans-serif;
     --font-head: "Lexend Deca", "Manrope", ui-sans-serif, system-ui, sans-serif;
