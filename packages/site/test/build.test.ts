@@ -6,6 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
+import { fakeValues } from "../lib/stats/testing/fake-data";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
@@ -211,5 +212,14 @@ describe("next build", () => {
     it("has inline scripts on the stats page for the policy to hash", async () => {
         const doc = await page("stats/index.html");
         expect(doc.querySelectorAll("script:not([src])").length).toBeGreaterThan(0);
+    });
+
+    it("ships none of the fake stats values", async () => {
+        for (const file of files.filter((f) => textFile.test(f))) {
+            const text = await read(file);
+            for (const value of fakeValues) {
+                expect(text.includes(value), `${file}: ${value.slice(0, 20)}`).toBe(false);
+            }
+        }
     });
 });

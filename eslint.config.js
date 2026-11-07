@@ -78,6 +78,24 @@ export default tseslint.config(
         },
     },
     {
+        // The fake feed holds hostile samples that must never ship in a page
+        files: ["packages/site/app/**/*.{ts,tsx}", "packages/site/components/**/*.{ts,tsx}"],
+        ignores: ["**/*.test.{ts,tsx}"],
+        rules: {
+            "no-restricted-imports": [
+                "error",
+                {
+                    patterns: [
+                        {
+                            group: ["**/stats/testing/*", "**/stats/testing"],
+                            message: "The fake stats feed is for tests and dev scripts only.",
+                        },
+                    ],
+                },
+            ],
+        },
+    },
+    {
         // Vendored from React Bits as published, so it keeps its own @ts-nocheck
         files: ["packages/site/components/waves/sliced-waves.tsx"],
         rules: { "@typescript-eslint/ban-ts-comment": "off" },
