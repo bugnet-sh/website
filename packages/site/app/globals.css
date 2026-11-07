@@ -1,6 +1,12 @@
 @import "@bugnet/brand/tokens.css";
 @import "tailwindcss";
 
+/* The site's breakpoints, as max-width queries so each matches the spec's "≤ N px" exactly.
+   Declared widest first, so a narrower one wins where both match. */
+@custom-variant narrow (@media (max-width: 1080px));
+@custom-variant tablet (@media (max-width: 860px));
+@custom-variant phone (@media (max-width: 720px));
+
 /* Tailwind's palette, fonts and radii are cleared, so a utility can only name a brand token */
 @theme inline {
     --color-*: initial;

@@ -1,0 +1,46 @@
+/** The mark from `@bugnet/brand/logo.svg`, drawn inline so it takes the text colour. */
+export function Logo({ withName = true }: { withName?: boolean }) {
+    // Beside the name, the mark is decoration; alone, it is the brand's name
+    const label = withName ? { "aria-hidden": true } : { role: "img", "aria-label": "Bugnet" };
+    return (
+        <span className="inline-flex items-center gap-(--space-2) text-text">
+            <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="320 264 608 693"
+                className="block h-(--mark) w-auto shrink-0"
+                focusable="false"
+                {...label}
+            >
+                <g fill="currentColor">
+                    <path
+                        d="M 556 415 C 546 364 514 330 460 309"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="31"
+                        strokeLinecap="round"
+                    />
+                    <path
+                        d="M 694 415 C 704 364 736 330 790 309"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="31"
+                        strokeLinecap="round"
+                    />
+                    <circle cx="440" cy="307" r="43" />
+                    <circle cx="810" cy="307" r="43" />
+                    <path
+                        fillRule="evenodd"
+                        d="M 446 563 L 446 534 C 446 455 524 393 624 393 C 724 393 802 455 802 534 L 802 563 L 624 640 Z M 573 499 A 31 31 0 1 0 511 499 A 31 31 0 1 0 573 499 Z M 737 499 A 31 31 0 1 0 675 499 A 31 31 0 1 0 737 499 Z"
+                    />
+                    <path d="M 430 501 L 333 547 Q 320 553 320 566 L 320 641 Q 320 653 334 659 L 375 675 L 375 822 Q 375 840 393 849 L 591 946 Q 611 957 611 935 L 611 691 Q 611 677 599 671 L 363 562 L 428 533 Q 426 518 430 501 Z" />
+                    <path d="M 818 501 L 915 547 Q 928 553 928 566 L 928 641 Q 928 653 914 659 L 873 675 L 873 822 Q 873 840 855 849 L 657 946 Q 637 957 637 935 L 637 691 Q 637 677 649 671 L 885 562 L 820 533 Q 822 518 818 501 Z" />
+                </g>
+            </svg>
+            {withName && (
+                <span className="font-head text-(length:--wordmark-size) leading-(--wordmark-line) font-extralight">
+                    Bugnet
+                </span>
+            )}
+        </span>
+    );
+}
