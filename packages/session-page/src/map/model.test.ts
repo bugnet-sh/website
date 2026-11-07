@@ -141,7 +141,8 @@ describe("buildMap on the sample sessions", () => {
         expect(moreHosts.count).toBe(37 + 51);
         expect(moreHosts.refused).toBe(5);
         expect(moreHosts.paidMicros).toBeGreaterThan(0);
-        expect(moreHosts.metric).toMatch(/^88 calls · \d+(\.\d+)? USDC$/);
+        // 37 secret host requests and 51 x402 calls, each call being one request
+        expect(moreHosts.metric).toMatch(/^88 requests · \d+(\.\d+)? USDC$/);
         expect(moreHosts.metricParts.map((p) => p.money)).toEqual([false, true]);
         // The folded table still names each row's host
         expect(moreHosts.rows.some((r) => r.detail.startsWith("sentry.io · "))).toBe(true);
@@ -442,6 +443,19 @@ describe("buildMap row text", () => {
         );
         expect(model.nodes.map((n) => n.kind)).toEqual(["sandbox", "mcp"]);
         expect(model.empty).toBe(false);
+    });
+
+    it("counts a fold of x402 hosts alone in calls, and one of secret hosts in requests", () => {
+        const hosts = (kind: "x402" | "secret_host") =>
+            Array.from({ length: MAX_RIGHT + 2 }, (_, i): SessionEvent => {
+                const host = `h${i}.example`;
+                if (kind === "secret_host") return { at: t(1), kind, host, requests: 2, bytes: 1 };
+                const paid = { status: "paid", amountMicros: 1_000, asset: "USDC", network };
+                return { at: t(1), kind, host, method: "GET", path: "/", ...paid };
+            });
+        const fold = (events: SessionEvent[]) => nodeOf(buildMap(record(events)), "more-right");
+        expect(fold(hosts("x402")).metric).toBe("2 calls · 0.002 USDC");
+        expect(fold(hosts("secret_host")).metric).toBe("4 requests");
     });
 
     it("folds one extra port as +1 more port", () => {

@@ -473,7 +473,8 @@ export function buildMap(record: SessionRecord): MapModel {
     const rightNodes = right.slice(0, MAX_RIGHT).map((g) => toNode(g, ctx));
     const extraHosts = right.slice(MAX_RIGHT);
     if (extraHosts.length > 0) {
-        const word = extraHosts.some((g) => g.kind === "x402-host") ? "calls" : "requests";
+        // Every x402 call is one request, so a fold of both kinds of host counts requests
+        const word = extraHosts.every((g) => g.kind === "x402-host") ? "calls" : "requests";
         rightNodes.push(
             foldNode(
                 extraHosts,

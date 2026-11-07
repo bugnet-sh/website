@@ -101,7 +101,8 @@ const widths = [720, 900, 1152] as const;
 // Pinned apart from the layout's own sums, so a label that grows past the map fails here
 const heights: Record<string, Record<(typeof widths)[number], number>> = {
     "ended-full": { 720: 460, 900: 460, 1152: 460 },
-    "ended-crowded": { 720: 484, 900: 460, 1152: 460 },
+    // Its 24-character fold metric pushes the right column in, so the bottom row drops clear of it
+    "ended-crowded": { 720: 516, 900: 460, 1152: 460 },
     "ended-hostile": { 720: 460, 900: 460, 1152: 460 },
     "ended-empty": { 720: 460, 900: 460, 1152: 460 },
     busiest: { 720: 616, 900: 516, 1152: 460 },
