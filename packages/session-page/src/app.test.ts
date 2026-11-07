@@ -383,6 +383,30 @@ describe("an ended session", () => {
         expect(document.activeElement).toBe(bubble());
     });
 
+    it("closes only the Allowance tip on Escape from its ?, and the table on the next", async () => {
+        const s = scenarios["ended-x402"];
+        const srv = server([first(s)]);
+        const { app } = open({ scenario: s, fetch: srv.fetch });
+        await settle();
+        const allowance = () => q<SVGGElement>(app, 'g.map-node[data-node-id="allowance"]')!;
+        allowance().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        const tipButton = q<HTMLButtonElement>(app, ".map-table .tip-button")!;
+        tipButton.focus();
+        const tipText = q(app, ".map-table .tip-text")!;
+        expect(tipText.hidden).toBe(false);
+        const escape = () =>
+            document.activeElement!.dispatchEvent(
+                new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+            );
+        escape();
+        expect(tipText.hidden).toBe(true);
+        expect(q(app, ".map-table .table-scroll")).not.toBeNull();
+        expect(document.activeElement).toBe(tipButton);
+        escape();
+        expect(q(app, ".map-table .table-scroll")).toBeNull();
+        expect(document.activeElement).toBe(allowance());
+    });
+
     it("lays the map out at its container's width, and again when that width changes", async () => {
         const observers: FakeObserver[] = [];
         class FakeObserver {

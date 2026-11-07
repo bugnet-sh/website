@@ -46,6 +46,12 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
         bubble.hidden = true;
         doc.removeEventListener("keydown", onKey);
     };
+    // Escape closes only the innermost layer, so a table holding the tip stays open
+    root.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" || bubble.hidden) return;
+        hide();
+        e.stopPropagation();
+    });
     button.addEventListener("focus", show);
     button.addEventListener("click", show);
     button.addEventListener("blur", hide);

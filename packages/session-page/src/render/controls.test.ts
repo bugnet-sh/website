@@ -82,6 +82,22 @@ describe("tip", () => {
         expect(bubble.hidden).toBe(true);
     });
 
+    it("keeps an Escape that closed it from the layers around it", () => {
+        const { root, button, bubble } = mount();
+        const outer = document.createElement("div");
+        const outerKeys = vi.fn();
+        outer.addEventListener("keydown", outerKeys);
+        outer.append(root);
+        document.body.replaceChildren(outer);
+        button.focus();
+        key(button, "Escape");
+        expect(bubble.hidden).toBe(true);
+        expect(outerKeys).not.toHaveBeenCalled();
+        // With the tip already closed, the next Escape is the next layer's
+        key(button, "Escape");
+        expect(outerKeys).toHaveBeenCalledTimes(1);
+    });
+
     it("is a round ? button named by its label, with its own tooltip id", () => {
         const { button } = mount("a", "About this page");
         expect(button.type).toBe("button");
