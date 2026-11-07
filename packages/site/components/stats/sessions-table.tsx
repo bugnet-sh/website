@@ -5,7 +5,8 @@ import { formatDuration } from "../../lib/stats/format";
 import { formatStamp, providerLabel, sizeText, statusText } from "../../lib/stats/labels";
 import type { SessionRow } from "../../lib/stats/types";
 import { formatCount } from "../../lib/stats/view";
-import { Cut, PagedTable, TxLink, Usdc, WalletCell, type Column, type Load } from "./paged-table";
+import { Cut, TxLink, Usdc, WalletCell } from "./cells";
+import { PagedTable, type Column, type Load } from "./paged-table";
 
 function Ended({ row }: { row: SessionRow }) {
     if (row.status === "running") {

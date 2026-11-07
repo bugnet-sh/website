@@ -3,7 +3,8 @@
 import { fetchPage } from "../../lib/stats/client";
 import { formatStamp, isOutgoing, listKindLabels, methodLabel } from "../../lib/stats/labels";
 import type { PaymentRow } from "../../lib/stats/types";
-import { Cut, PagedTable, TxLink, Usdc, WalletCell, type Column, type Load } from "./paged-table";
+import { Cut, TxLink, Usdc, WalletCell } from "./cells";
+import { PagedTable, type Column, type Load } from "./paged-table";
 
 const columns: Column<PaymentRow>[] = [
     { label: "Time", cell: (row) => formatStamp(row.at), fold: true },

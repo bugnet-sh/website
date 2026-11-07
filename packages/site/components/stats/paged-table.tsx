@@ -2,11 +2,9 @@
 
 import { useEffect, useState, type ReactNode } from "react";
 import { cx } from "../../lib/cx";
-import { formatShortWallet, formatUsdc } from "../../lib/stats/format";
 import type { Page } from "../../lib/stats/types";
-import { ExternalArrow } from "../icons";
 import { Band } from "../shell/frame";
-import { CopyButton } from "./copy-button";
+import { bodyCell, headCell, tableClass } from "./cells";
 import { Unavailable } from "./unavailable";
 
 export type Load<T> = (before?: string) => Promise<Page<T> | null>;
@@ -58,58 +56,6 @@ function usePaged<T>(load: Load<T>) {
 
     return { rows, next, phase, more, showMore };
 }
-
-/** Feed strings never wrap mid-token; a long one is cut by CSS, never by the page. */
-export function Cut({ children }: { children: ReactNode }) {
-    return <span className="block max-w-(--cell-max) truncate">{children}</span>;
-}
-
-/** An amount in USDC: the figure in mono, then the unit, as the headline numbers show it. */
-export function Usdc({
-    micros,
-    outgoing = false,
-}: {
-    micros: number;
-    /** Money going back to a user: a minus sign, and muted rather than the money colour. */
-    outgoing?: boolean;
-}) {
-    return (
-        <span className="whitespace-nowrap">
-            <span className={cx("font-mono", outgoing ? "text-text-muted" : "text-accent-2")}>
-                {outgoing ? `−${formatUsdc(micros)}` : formatUsdc(micros)}
-            </span>
-            <span className="ml-(--space-1) text-(length:--fine-size) text-text-muted">USDC</span>
-        </span>
-    );
-}
-
-export function WalletCell({ wallet }: { wallet: string | null }) {
-    if (wallet === null) return null;
-    return (
-        <span className="inline-flex items-center gap-(--space-2)">
-            <span className="font-mono">{formatShortWallet(wallet)}</span>
-            <CopyButton text={wallet} label="Copy wallet address" />
-        </span>
-    );
-}
-
-export function TxLink({ tx }: { tx: string | null }) {
-    if (tx === null) return null;
-    return (
-        <a
-            href={`https://solscan.io/tx/${tx}`}
-            target="_blank"
-            rel="noreferrer"
-            className="inline-flex items-center gap-(--space-1) text-text hover:text-accent"
-        >
-            View
-            <ExternalArrow />
-            <span className="sr-only">(opens in a new tab)</span>
-        </a>
-    );
-}
-
-const cellPad = "px-(--space-3) first:pl-0 last:pr-0 whitespace-nowrap";
 
 function FoldRow<T>({ row, fold, rest }: { row: T; fold: Column<T>[]; rest: Column<T>[] }) {
     const [open, setOpen] = useState(false);
@@ -181,18 +127,14 @@ export function PagedTable<T>({
                     {phase === "ready" && (
                         <>
                             <div className="h-full overflow-auto phone:hidden">
-                                <table className="w-full min-w-(--table-min) border-separate border-spacing-0 [&_tbody_tr:last-child_td]:border-b-0">
+                                <table className={cx(tableClass, "min-w-(--table-min)")}>
                                     <thead>
                                         <tr>
                                             {shown.map((column) => (
                                                 <th
                                                     key={column.label}
                                                     scope="col"
-                                                    className={cx(
-                                                        "sticky top-0 z-1 h-(--row) border-b-(length:--hairline) border-line bg-bg text-(length:--fine-size) font-semibold text-text-muted",
-                                                        column.numeric ? "text-right" : "text-left",
-                                                        cellPad,
-                                                    )}
+                                                    className={headCell(column.numeric)}
                                                 >
                                                     {column.label}
                                                 </th>
@@ -206,11 +148,7 @@ export function PagedTable<T>({
                                                 {shown.map((column) => (
                                                     <td
                                                         key={column.label}
-                                                        className={cx(
-                                                            "h-(--row) border-b-(length:--hairline) border-line",
-                                                            column.numeric && "text-right",
-                                                            cellPad,
-                                                        )}
+                                                        className={bodyCell(column.numeric)}
                                                     >
                                                         {column.cell(row)}
                                                     </td>

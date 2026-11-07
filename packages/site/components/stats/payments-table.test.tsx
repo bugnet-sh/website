@@ -30,7 +30,8 @@ it("names each payment and shows money going back with a minus in the muted colo
         "",
     ]);
 
-    const amount = (i: number) => rows[i]?.querySelector(".font-mono") as HTMLElement;
+    const amount = (i: number) =>
+        rows[i]?.querySelector("td:nth-child(4) span span") as HTMLElement;
     expect(amount(0).className).toContain("text-accent-2");
     expect(amount(3).textContent).toBe(`−${formatUsdc(page.items[3]?.amountMicros ?? 0)}`);
     expect(amount(3).className).toContain("text-text-muted");
