@@ -169,6 +169,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
             apply(result);
         } catch (err) {
             reportError(err);
+            // A throw after enter() skips the ask that apply ends with; one already set stays
+            if (!destroyed && timer === null) askIn(nextAsk());
         }
     }
 
@@ -329,6 +331,10 @@ export function startPage(env: PageEnv): { destroy(): void } {
                     reportError(err);
                     swapMiddle(view, null, emptyMapSection(doc, record));
                 }
+            } else if (record !== null) {
+                // The first draw failed; a later record may draw, and if not, the caption stays current
+                const map = drawMap(record);
+                swapMiddle(view, map, map !== null ? map.root : emptyMapSection(doc, record));
             }
             return view;
         }
@@ -384,6 +390,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
     function showEnded(record: SessionRecord): void {
         if (mode === "running") stopLive();
         const now = serverNow();
+        // Set before any drawing, so the catch in applySafely still knows whether to ask again
+        saving = record.output === "pending";
         const v = enter("ended", record);
         status = { text: copy.ended(record.endedBecause), running: false };
         paintStatus();
@@ -396,7 +404,6 @@ export function startPage(env: PageEnv): { destroy(): void } {
         startClock();
         v.commands.setOutput(record.output);
         v.commands.setJobs(record.jobs, now);
-        saving = record.output === "pending";
         askIn(nextAsk());
     }
 

@@ -451,6 +451,26 @@ describe("createCommandsView", () => {
         expect(t.clipboard.writeText).toHaveBeenCalledExactlyOnceWith("lint ok");
     });
 
+    it("copies at once on an ended record whose job has no frames", async () => {
+        const t = make();
+        const record = ended("ended-full");
+        const jobs = record.jobs.map((job) => ({
+            ...job,
+            outBytes: 40,
+            errBytes: 0,
+            frames: null,
+        }));
+        t.view.setOutput("partial");
+        t.view.setJobs(jobs, NOW);
+        t.scheduler.flush();
+        const button = row(t.view.root, 6).querySelector<HTMLButtonElement>(".copy-output")!;
+        button.click();
+        await Promise.resolve();
+        t.scheduler.flush();
+        expect(shownLabel(button)).not.toEqual([copy.loading]);
+        expect(t.clipboard.writeText).toHaveBeenCalledExactlyOnceWith("");
+    });
+
     it("copies the command and the output from the open row's command line", () => {
         const { view, clipboard } = showEnded("ended-full");
         const head = detail(view.root, 6).querySelector(".term-head")!;

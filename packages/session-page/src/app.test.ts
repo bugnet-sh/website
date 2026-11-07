@@ -584,6 +584,65 @@ describe("an ended session", () => {
         }
     });
 
+    it("tries the map again on each record, and keeps the empty map's caption current", async () => {
+        class Broken {
+            observe() {
+                throw new Error("map failed");
+            }
+            disconnect() {}
+        }
+        const win = document.defaultView as unknown as Record<string, unknown>;
+        win.ResizeObserver = Broken;
+        const reported = vi.fn();
+        vi.stubGlobal("reportError", reported);
+        try {
+            const body = pendingBody.body as { record: Record<string, unknown> };
+            const later: Answer = {
+                status: 200,
+                body: { ...body, record: { ...body.record, eventsDropped: 120 } },
+            };
+            const srv = server([pendingBody, later]);
+            const { app } = open({ scenario: scenarios["ended-pending"], fetch: srv.fetch });
+            await settle();
+            expect(reported).toHaveBeenCalledTimes(1);
+            expect(app.querySelectorAll(".map-caption p")).toHaveLength(1);
+            await advance(5_000);
+            expect(reported).toHaveBeenCalledTimes(2);
+            expect(app.querySelectorAll(".map-section")).toHaveLength(1);
+            expect(text(app, ".map-section .map-caption")).toContain(copy.eventsDropped(120));
+        } finally {
+            delete win.ResizeObserver;
+            vi.unstubAllGlobals();
+        }
+    });
+
+    it("asks again at the usual pace when drawing an answer throws after the view is up", async () => {
+        const reported = vi.fn();
+        vi.stubGlobal("reportError", reported);
+        try {
+            const srv = server([pendingBody]);
+            let armed = true;
+            // The first time read once the view's times row exists is the paint that follows enter
+            const now = () => {
+                if (armed && document.querySelector(".session-times") !== null) {
+                    armed = false;
+                    throw new Error("paint failed");
+                }
+                return new Date();
+            };
+            open({ scenario: scenarios["ended-pending"], fetch: srv.fetch, now });
+            await settle();
+            expect(reported).toHaveBeenCalledTimes(1);
+            expect(srv.gets()).toHaveLength(1);
+            await advance(4_999);
+            expect(srv.gets()).toHaveLength(1);
+            await advance(1);
+            expect(srv.gets()).toHaveLength(2);
+        } finally {
+            vi.unstubAllGlobals();
+        }
+    });
+
     it("asks every 5 s for two minutes, then every 30 s", async () => {
         const srv = server([pendingBody]);
         open({ scenario: scenarios["ended-pending"], fetch: srv.fetch });

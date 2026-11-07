@@ -176,8 +176,10 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         return list;
     }
 
-    // A snapshot carries no output, so a closed row's copy opens it, which streams the output
+    // A snapshot carries no output, so a closed row's copy opens it, which streams the output.
+    // A record has nothing more to stream, so only a live session or a pending save can wait.
     function outputReady(seq: number): boolean {
+        if (output !== null && output !== "pending") return true;
         const row = rows.get(seq);
         if (row === undefined || row.filled || bufferOf(seq).text() !== "") return true;
         if ((row.job.outBytes ?? 0) + (row.job.errBytes ?? 0) === 0) return true;
