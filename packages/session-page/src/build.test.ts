@@ -28,6 +28,21 @@ async function walk(dir: string): Promise<string[]> {
     return nested.flat();
 }
 
+// The character, then the escapes of JavaScript, HTML and CSS that write it
+const MIDDLE_DOT = new RegExp(
+    [
+        "\u00b7",
+        "\\\\x[bB]7",
+        "\\\\u00[bB]7",
+        "\\\\u\\{0*[bB]7\\}",
+        "&middot;",
+        "&#0*183;",
+        "&#[xX]0*[bB]7;",
+        // A CSS escape is up to six hex digits, so a following one would make another character
+        "\\\\0{0,4}[bB]7(?![0-9a-fA-F])",
+    ].join("|"),
+);
+
 const files = async () => (await walk(out)).map((f) => relative(out, f)).sort();
 const sha384 = (bytes: Uint8Array) =>
     `sha384-${createHash("sha384").update(bytes).digest("base64")}`;
@@ -148,13 +163,36 @@ describe("buildPage", () => {
         }
     });
 
+    it("finds a middle dot in every form a script, a page or a stylesheet can hold", () => {
+        const forms = [
+            "a\u00b7b",
+            "\\xB7",
+            "\\u00b7",
+            "\\u{b7}",
+            "&middot;",
+            "&#183;",
+            "&#xB7;",
+            "&#x00b7;",
+            'content: "\\b7"',
+            'content: "\\0000b7"',
+            'content: "\\B7 "',
+        ];
+        for (const form of forms) expect(form, form).toMatch(MIDDLE_DOT);
+        // Other characters that share the digits
+        for (const other of ["\\b7a", "&#1830;", "&#xb70;", "b7", "#0b7", "\\u00b8"]) {
+            expect(other, other).not.toMatch(MIDDLE_DOT);
+        }
+    });
+
     it("ships no middle dot, written out or escaped", async () => {
         const text = (name: string) => !name.endsWith(".woff2");
         const names = (await files()).filter(text);
         expect(names.some((n) => n.endsWith(".js"))).toBe(true);
+        expect(names.some((n) => n.endsWith(".css"))).toBe(true);
+        expect(names.some((n) => n.endsWith(".html"))).toBe(true);
         for (const name of names) {
             const body = await readFile(join(out, name), "utf8");
-            expect(body, name).not.toMatch(/\u00b7|\\x[bB]7|\\u00[bB]7|\\u\{0*[bB]7\}/);
+            expect(body, name).not.toMatch(MIDDLE_DOT);
         }
     });
 
