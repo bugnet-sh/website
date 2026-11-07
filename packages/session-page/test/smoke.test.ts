@@ -459,11 +459,29 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
             cut: [...document.querySelectorAll(".term-cmd, .term-out, .table-scroll")]
                 .filter((el) => el.scrollHeight > el.clientHeight + 1)
                 .map((el) => `${el.className} ${el.scrollHeight} > ${el.clientHeight}`),
-            shown: [...document.querySelectorAll(".delete, .copy-button, .commands-bar")]
+            shown: [...document.querySelectorAll(".delete, .copy-button, .commands-bar, .tip")]
                 .filter((el) => el.getClientRects().length > 0)
                 .map((el) => el.className),
         }));
         expect(printed).toEqual({ cut: [], shown: [] });
+        await expectClean(o);
+    });
+
+    it("keeps a phone list row's text off the selected ring on both sides", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-full"]), {
+            viewport: { width: 375, height: 812 },
+        });
+        const { page } = o;
+        await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
+        await page.locator('button.map-row[data-node-id="payments"]').click();
+        const gaps = await page.locator("button.map-row.is-selected").evaluate((row) => {
+            const box = row.getBoundingClientRect();
+            const name = row.querySelector(".map-row-name")!.getBoundingClientRect();
+            const metric = row.querySelector(".map-row-metric")!.getBoundingClientRect();
+            return { left: name.left - box.left, right: box.right - metric.right };
+        });
+        expect(gaps.left).toBeGreaterThanOrEqual(8);
+        expect(gaps.right).toBeGreaterThanOrEqual(8);
         await expectClean(o);
     });
 

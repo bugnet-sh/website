@@ -51,6 +51,23 @@ describe("terminal block", () => {
         expect(lines(block.root)[0]!.textContent).toBe("<img src=x onerror=alert(1)>");
     });
 
+    it("keeps a translator off the command and the output lines, and lets it read the rest", () => {
+        const { buffer, scheduler, block } = make();
+        buffer.apply({ s: "o", t: "one\n", cr: false });
+        buffer.apply({ s: "e", t: "two\n", cr: false });
+        block.update();
+        scheduler.flush();
+        const kept = [...block.root.querySelectorAll('[translate="no"]')];
+        expect(kept).toEqual([block.root.querySelector(".term-cmd"), ...lines(block.root)]);
+        expect(kept.length).toBeGreaterThan(2);
+        expect(block.root.hasAttribute("translate")).toBe(false);
+        for (const part of block.root.querySelectorAll(
+            ".term-head button, .term-notes, .term-foot",
+        )) {
+            expect(part.closest('[translate="no"]')).toBeNull();
+        }
+    });
+
     it("marks stderr lines", () => {
         const { buffer, scheduler, block } = make();
         buffer.apply({ s: "e", t: "bad\n", cr: false });

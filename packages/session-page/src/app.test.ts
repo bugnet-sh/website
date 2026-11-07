@@ -627,7 +627,9 @@ describe("an ended session", () => {
         const reported = vi.fn();
         vi.stubGlobal("reportError", reported);
         try {
-            const body = pendingBody.body as { record: Record<string, unknown> };
+            const body = (pendingBody as { body: unknown }).body as {
+                record: Record<string, unknown>;
+            };
             const later: Answer = {
                 status: 200,
                 body: { ...body, record: { ...body.record, eventsDropped: 120 } },

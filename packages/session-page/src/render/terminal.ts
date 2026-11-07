@@ -39,6 +39,8 @@ export function createTerminalBlock(opts: {
     const cmd = el(doc, "p", {
         class: "term-cmd",
         text: `$ ${opts.command ?? copy.noCommand}`,
+        // The command is code, which a page translation would rewrite
+        attrs: { translate: "no" },
     });
     const head = el(doc, "div", { class: "term-head" }, [cmd]);
     const { command } = opts;
@@ -62,13 +64,8 @@ export function createTerminalBlock(opts: {
         attrs: { tabindex: "0", role: "log", "aria-label": copy.outputLabel(opts.seq) },
     });
     const foot = el(doc, "p", { class: "term-foot parts" });
-    // The command and its output are code, which a page translation would rewrite
-    const root = el(doc, "div", { class: "term", attrs: { translate: "no" } }, [
-        head,
-        notes,
-        out,
-        foot,
-    ]);
+    // Only the command and the output lines are code; the buttons, notices and foot stay readable
+    const root = el(doc, "div", { class: "term" }, [head, notes, out, foot]);
 
     const nodes: HTMLElement[] = [];
     let droppedSeen = 0;
@@ -93,7 +90,11 @@ export function createTerminalBlock(opts: {
             const line = lines[i]!;
             const existing = nodes[i];
             if (existing === undefined) {
-                const node = el(doc, "div", { class: lineClass(line), text: line.t });
+                const node = el(doc, "div", {
+                    class: lineClass(line),
+                    text: line.t,
+                    attrs: { translate: "no" },
+                });
                 out.appendChild(node);
                 nodes.push(node);
             } else {

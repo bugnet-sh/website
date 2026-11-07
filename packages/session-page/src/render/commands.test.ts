@@ -511,7 +511,9 @@ describe("createCommandsView", () => {
         for (const text of view.root.querySelectorAll(".cmd-text")) {
             expect(text.getAttribute("translate")).toBe("no");
         }
-        expect(detail(view.root, 6).querySelector(".term")!.getAttribute("translate")).toBe("no");
+        const term = detail(view.root, 6).querySelector(".term")!;
+        expect(term.hasAttribute("translate")).toBe(false);
+        expect(term.querySelector(".term-cmd")!.getAttribute("translate")).toBe("no");
     });
 
     it("opens a row from a click anywhere on it, but not from its copy button or a selection", () => {
