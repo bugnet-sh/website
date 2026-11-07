@@ -3,3 +3,8 @@ dist/
 coverage/
 *.log
 packages/session-page/screens/
+packages/site/.next/
+packages/site/out/
+packages/site/next-env.d.ts
+# Written by next dev on every start
+packages/site/AGENTS.md

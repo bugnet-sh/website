@@ -1,0 +1,62 @@
+@import "@bugnet/brand/tokens.css";
+@import "tailwindcss";
+
+/* Tailwind's palette, fonts and radii are cleared, so a utility can only name a brand token */
+@theme inline {
+    --color-*: initial;
+    --color-bg: var(--bg);
+    --color-surface: var(--surface);
+    --color-surface-hover: var(--surface-hover);
+    --color-line: var(--line);
+    --color-text: var(--text);
+    --color-text-muted: var(--text-muted);
+    --color-accent: var(--accent);
+    --color-accent-ink: var(--accent-ink);
+    --color-accent-2: var(--accent-2);
+    --color-bad: var(--bad);
+    --color-warn: var(--warn);
+    --color-chart-profit: var(--chart-profit);
+    --color-chart-loss: var(--chart-loss);
+
+    --font-*: initial;
+    --font-ui: var(--font-ui);
+    --font-head: var(--font-head);
+    --font-mono: var(--font-mono);
+    --default-font-family: var(--font-ui);
+    --default-mono-font-family: var(--font-mono);
+
+    --radius-*: initial;
+    --radius: 0;
+    --radius-xs: 0;
+    --radius-sm: 0;
+    --radius-md: 0;
+    --radius-lg: 0;
+    --radius-xl: 0;
+    --radius-2xl: 0;
+    --radius-3xl: 0;
+    --radius-4xl: 0;
+}
+
+html {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-variant-numeric: tabular-nums;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    min-height: 100svh;
+    background: var(--bg);
+}
+
+:focus-visible {
+    outline: var(--ring) solid var(--accent);
+    outline-offset: var(--ring);
+}
+
+/* A click or a tap never draws an outline, the browser's own ring on SVG and buttons included */
+:focus:not(:focus-visible) {
+    outline: none;
+}

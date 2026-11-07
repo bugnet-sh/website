@@ -2,10 +2,19 @@ import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 
 const textOnly = "The session page sets text only, so nothing it shows is HTML.";
+const siteTextOnly = "The site renders text only, so nothing it shows is HTML.";
 
 export default tseslint.config(
     {
-        ignores: ["**/node_modules/**", "**/dist/**", "**/screens/**", ".superpowers/**"],
+        ignores: [
+            "**/node_modules/**",
+            "**/dist/**",
+            "**/screens/**",
+            ".superpowers/**",
+            "packages/site/.next/**",
+            "packages/site/out/**",
+            "packages/site/next-env.d.ts",
+        ],
     },
     js.configs.recommended,
     ...tseslint.configs.recommended,
@@ -52,6 +61,19 @@ export default tseslint.config(
                     property: "DOMParser",
                     message: textOnly,
                 })),
+            ],
+        },
+    },
+    {
+        files: ["packages/site/**/*.{ts,tsx}"],
+        rules: {
+            "no-restricted-syntax": [
+                "error",
+                ...[
+                    "JSXAttribute[name.name='dangerouslySetInnerHTML']",
+                    // The same prop handed to createElement or spread in from an object
+                    "Property[key.name='dangerouslySetInnerHTML']",
+                ].map((selector) => ({ selector, message: siteTextOnly })),
             ],
         },
     },
