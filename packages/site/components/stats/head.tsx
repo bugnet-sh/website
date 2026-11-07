@@ -17,7 +17,7 @@ export function StatsHead() {
                 </h1>
                 <div className="mt-(--space-3) flex flex-wrap items-baseline justify-between gap-x-(--space-5) gap-y-(--space-2)">
                     <p className="text-(length:--lead-size) leading-(--lead-line) text-text-muted">
-                        Live numbers from Bugnet. Nothing here is estimated unless it says so.
+                        Live numbers from Bugnet.
                     </p>
                     {/* Kept in the row while empty, so the time arriving moves nothing */}
                     <p className="flex min-h-(--lead-line) items-center gap-(--space-2) text-(length:--ui-size) leading-(--ui-line) tabular-nums">
