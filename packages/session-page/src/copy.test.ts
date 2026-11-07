@@ -80,6 +80,9 @@ describe("copy", () => {
 
     it("keeps the exact page text", () => {
         expect(copy.title).toBe("Bugnet sandbox session");
+        expect(copy.logoLabel).toBe("Bugnet");
+        expect(copy.noScript).toBe("This page needs JavaScript to show the session.");
+        expect(copy.tipLabel).toBe("About this link");
         expect(copy.copyFailed).toBe("Copy failed");
         expect(copy.tipMark).toBe("?");
         expect(copy.gateTip).toBe(

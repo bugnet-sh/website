@@ -1,0 +1,802 @@
+@import "@bugnet/brand/tokens.css";
+
+[hidden] {
+    display: none !important;
+}
+
+/* The page's own sizes, on the brand's grid */
+
+:root {
+    --hairline: 1px;
+    --ring: 2px;
+    --body-size: 15px;
+    --body-line: 24px;
+    --small-size: 13px;
+    --small-line: 20px;
+    --mono-size: 13px;
+    --mono-line: 20px;
+    --h1-size: 32px;
+    --h1-line: 40px;
+    --map-name-size: 13px;
+    --map-metric-size: 12px;
+    --logo: 24px;
+    --dot: 8px;
+    --tip-button: 24px;
+    --tip-width: 320px;
+    --term-max: 480px;
+    --events-max: 480px;
+    --col-seq: 40px;
+    --col-exit: 96px;
+    --col-time: 112px;
+    --col-bytes: 96px;
+    --col-copy: 104px;
+    --pulse: 1.6s;
+    /* Full-bleed blocks pad to the centred column, so hairlines run edge to edge */
+    --gutter: max(var(--inset), calc((100% - var(--max)) / 2 + var(--inset)));
+}
+
+/* Base */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    background: var(--bg);
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: var(--body-size);
+    line-height: var(--body-line);
+    font-weight: 400;
+    font-variant-numeric: tabular-nums;
+}
+
+p {
+    margin: 0;
+}
+
+a {
+    color: inherit;
+    text-underline-offset: var(--space-1);
+}
+
+a:hover {
+    color: var(--accent);
+}
+
+button {
+    font: inherit;
+    color: inherit;
+}
+
+:focus-visible {
+    outline: var(--ring) solid var(--accent);
+    outline-offset: var(--ring);
+}
+
+/* Headings and lines take focus only so a screen reader starts there */
+[tabindex="-1"]:focus,
+[tabindex="-1"]:focus-visible {
+    outline: none;
+}
+
+.site,
+.banner,
+main {
+    padding-inline: var(--gutter);
+}
+
+/* Header, banner and footer */
+
+header.site {
+    display: flex;
+    align-items: center;
+    height: var(--header);
+    border-bottom: var(--hairline) solid var(--line);
+}
+
+.logo {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--row);
+    color: var(--text);
+}
+
+.logo:hover {
+    color: var(--accent);
+}
+
+.logo svg {
+    display: block;
+    width: auto;
+    height: var(--logo);
+}
+
+.banner {
+    padding-block: var(--space-3);
+    border-bottom: var(--hairline) solid var(--line);
+    color: var(--text);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
+}
+
+main {
+    padding-block: var(--space-6) var(--space-7);
+}
+
+footer.site {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    column-gap: var(--space-5);
+    min-height: var(--header);
+    border-top: var(--hairline) solid var(--line);
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
+}
+
+footer.site a {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--row);
+    text-decoration: none;
+}
+
+footer.site a:hover {
+    color: var(--accent);
+    text-decoration: underline;
+}
+
+/* Session row */
+
+.session-head {
+    position: relative;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+}
+
+.session-heading {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+h1 {
+    margin: 0;
+    font-family: var(--font-head);
+    font-size: var(--h1-size);
+    line-height: var(--h1-line);
+    font-weight: 200;
+}
+
+.session-state {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+    min-height: var(--row);
+}
+
+.session-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-2) var(--space-4);
+    margin-top: var(--space-2);
+}
+
+.session-times {
+    color: var(--text-muted);
+}
+
+.time-part {
+    white-space: nowrap;
+}
+
+.delete,
+.confirm {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.confirm-text {
+    margin-inline-end: var(--space-2);
+}
+
+.dot {
+    display: inline-block;
+    flex: none;
+    width: var(--dot);
+    height: var(--dot);
+    border-radius: 50%;
+    background: var(--text);
+    animation: pulse var(--pulse) ease-in-out infinite;
+}
+
+@keyframes pulse {
+    50% {
+        opacity: 0.3;
+    }
+}
+
+.is-hidden-tab .dot {
+    animation: none;
+}
+
+/* The ? tip, placed against the session row so it never runs off a narrow screen */
+
+.tip {
+    display: inline-flex;
+}
+
+.tip-button {
+    display: inline-grid;
+    place-items: center;
+    width: var(--tip-button);
+    height: var(--tip-button);
+    padding: 0;
+    border: var(--hairline) solid var(--line);
+    border-radius: 50%;
+    background: none;
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    font-weight: 600;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.tip-button:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.tip-text {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 2;
+    width: max-content;
+    max-width: min(var(--tip-width), 100%);
+    margin-top: var(--space-1);
+    padding: var(--space-2) var(--space-3);
+    border: var(--hairline) solid var(--line);
+    background: var(--surface);
+    color: var(--text);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
+}
+
+/* Buttons and lines */
+
+.button {
+    display: inline-grid;
+    align-items: center;
+    min-height: var(--row);
+    padding: 0 var(--space-4);
+    border: var(--hairline) solid var(--line);
+    border-radius: 0;
+    background: none;
+    color: var(--text);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+/* Every label stays in one grid cell, so a button keeps its width as its label changes */
+.button > span,
+.copy-button > span {
+    grid-area: 1 / 1;
+}
+
+.button > [aria-hidden="true"],
+.copy-button > [aria-hidden="true"] {
+    visibility: hidden;
+}
+
+.button:hover:not(:disabled) {
+    border-color: var(--accent);
+    color: var(--accent);
+}
+
+.button:disabled {
+    color: var(--text-muted);
+    cursor: default;
+}
+
+.gate {
+    margin-top: var(--space-5);
+}
+
+.message {
+    margin-top: var(--space-4);
+}
+
+.message + .retry {
+    margin-top: var(--space-4);
+}
+
+.map-later {
+    margin-top: var(--space-6);
+    color: var(--text-muted);
+}
+
+/* Map */
+
+.map-section {
+    margin-top: var(--space-6);
+}
+
+.map-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    font-family: var(--font-ui);
+}
+
+.map-edge {
+    stroke: var(--line);
+    stroke-width: var(--hairline);
+}
+
+.map-edge.money {
+    stroke: var(--accent-2);
+}
+
+.map-edge.warn {
+    stroke: var(--warn);
+}
+
+.map-edge-label-bg {
+    fill: var(--bg);
+}
+
+.map-edge-label text,
+.map-metric,
+.map-empty {
+    font-size: var(--map-metric-size);
+}
+
+.map-bubble {
+    fill: var(--surface);
+    stroke: var(--line);
+    stroke-width: var(--hairline);
+}
+
+.map-node {
+    cursor: pointer;
+}
+
+.map-node:hover .map-bubble {
+    fill: var(--surface-hover);
+    stroke: var(--accent);
+}
+
+.map-node.is-selected .map-bubble {
+    stroke: var(--accent);
+    stroke-width: var(--ring);
+}
+
+.map-label,
+.map-name {
+    fill: var(--text);
+}
+
+.map-name {
+    font-size: var(--map-name-size);
+    font-weight: 600;
+}
+
+.map-svg .muted {
+    fill: var(--text-muted);
+}
+
+.map-svg .money {
+    fill: var(--accent-2);
+}
+
+.map-svg .warn {
+    fill: var(--warn);
+}
+
+.map-svg .bad {
+    fill: var(--bad);
+}
+
+.map-list {
+    display: none;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.map-row {
+    display: flex;
+    align-items: center;
+    gap: var(--space-3);
+    width: 100%;
+    height: var(--row);
+    padding: 0;
+    border: 0;
+    background: none;
+    box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--line);
+    color: var(--text);
+    text-align: start;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.map-row:hover {
+    background: var(--surface-hover);
+}
+
+.map-row.is-selected {
+    box-shadow:
+        inset 0 calc(-1 * var(--hairline)) 0 var(--line),
+        0 0 0 var(--hairline) var(--accent);
+}
+
+.map-row-name,
+.map-row-metric,
+.map-row-refused {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.map-row-name {
+    flex: 1 1 auto;
+    font-weight: 600;
+}
+
+.map-row-metric,
+.map-row-refused {
+    flex: 0 1 auto;
+    font-size: var(--small-size);
+}
+
+.map-list .map-empty {
+    display: flex;
+    align-items: center;
+    height: var(--row);
+}
+
+.map-caption {
+    margin-top: var(--space-3);
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
+}
+
+.map-table:not(:empty) {
+    margin-top: var(--space-5);
+}
+
+/* Tables */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+th,
+td {
+    height: var(--row);
+    padding: 0 var(--space-3);
+    border-bottom: var(--hairline) solid var(--line);
+    text-align: start;
+    vertical-align: middle;
+}
+
+/* A border on a sticky cell stays behind when it sticks, so the hairline is a shadow */
+thead th,
+thead td {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    border-bottom: 0;
+    box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--line);
+    background: var(--bg);
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    font-weight: 400;
+    white-space: nowrap;
+}
+
+.num {
+    text-align: end;
+}
+
+td.num {
+    font-family: var(--font-mono);
+    font-size: var(--mono-size);
+}
+
+th:first-child,
+td:first-child {
+    padding-inline-start: 0;
+    text-align: start;
+}
+
+th:last-child,
+td:last-child {
+    padding-inline-end: 0;
+}
+
+.table-scroll {
+    max-height: var(--events-max);
+    overflow: auto;
+}
+
+table.events caption {
+    padding-bottom: var(--space-2);
+    caption-side: top;
+    text-align: start;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+
+table.events td {
+    font-size: var(--small-size);
+    white-space: nowrap;
+}
+
+table.events th:nth-child(4) {
+    text-align: end;
+}
+
+.tx-link {
+    display: inline-flex;
+    align-items: center;
+    min-height: var(--row);
+    font-family: var(--font-mono);
+}
+
+.tx-link + .copy-button {
+    margin-inline-start: var(--space-3);
+}
+
+.copy-button {
+    display: inline-grid;
+    align-items: center;
+    min-height: var(--row);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    font-family: var(--font-ui);
+    font-size: var(--small-size);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.copy-button:hover,
+.copy-button.is-copied {
+    color: var(--accent);
+}
+
+.copy-button.is-failed {
+    color: var(--bad);
+}
+
+/* Commands */
+
+section.commands {
+    margin-top: var(--space-6);
+}
+
+.commands-bar {
+    display: flex;
+    justify-content: flex-end;
+}
+
+.expand-all {
+    min-height: var(--row);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    cursor: pointer;
+}
+
+.expand-all:hover {
+    color: var(--accent);
+}
+
+.commands-note {
+    color: var(--text-muted);
+}
+
+table.commands thead th:first-child {
+    width: var(--col-seq);
+}
+
+table.commands thead th:nth-child(3) {
+    width: var(--col-exit);
+}
+
+table.commands thead th:nth-child(4) {
+    width: var(--col-time);
+}
+
+table.commands thead th:nth-child(5),
+table.commands thead th:nth-child(6) {
+    width: var(--col-bytes);
+}
+
+table.commands thead td {
+    width: var(--col-copy);
+}
+
+table.commands td {
+    font-family: var(--font-mono);
+    font-size: var(--mono-size);
+    white-space: nowrap;
+}
+
+/* Takes the width the other columns leave, and lets its button cut the command short */
+td.cmd {
+    width: 100%;
+    max-width: 0;
+}
+
+.cmd-toggle {
+    display: block;
+    width: 100%;
+    min-height: var(--row);
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: var(--mono-size);
+    text-align: start;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+}
+
+.cmd-toggle:hover {
+    color: var(--accent);
+}
+
+tr.cmd-row:hover > td {
+    background: var(--surface-hover);
+}
+
+tr.cmd-row:has(.cmd-toggle[aria-expanded="true"]) > td {
+    background: var(--surface);
+}
+
+td.copy {
+    text-align: end;
+}
+
+td.exit .dot {
+    margin-inline-end: var(--space-2);
+}
+
+tr.cmd-detail > td {
+    height: auto;
+    padding: 0;
+}
+
+/* Terminal blocks */
+
+/* Sized by the table, never by its output, so a long line scrolls inside instead of widening it */
+.term {
+    contain: inline-size;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: var(--hairline) solid var(--line);
+    background: var(--surface);
+    font-family: var(--font-mono);
+    font-size: var(--mono-size);
+    line-height: var(--mono-line);
+}
+
+.term-cmd,
+.term-out {
+    max-height: var(--term-max);
+    overflow-x: auto;
+    overflow-y: auto;
+    white-space: pre;
+    contain: content;
+}
+
+/* Indented like the output lines, whose rule takes the same room */
+.term-cmd,
+.term-notes,
+.term-foot {
+    padding-inline-start: calc(var(--space-2) + var(--hairline));
+}
+
+.term-cmd {
+    margin-bottom: var(--space-2);
+    color: var(--text);
+}
+
+.term-notes {
+    margin-bottom: var(--space-2);
+    color: var(--warn);
+}
+
+/* As wide as its text, so the block scrolls sideways, and clipped, so marks never spill */
+.line {
+    overflow: hidden;
+    width: max-content;
+    min-width: 100%;
+    min-height: var(--mono-line);
+    padding-inline-start: var(--space-2);
+    border-left: var(--hairline) solid transparent;
+}
+
+.line-err {
+    color: var(--text-muted);
+    border-left: var(--hairline) solid var(--line);
+}
+
+.term-foot {
+    margin-top: var(--space-2);
+    color: var(--text-muted);
+}
+
+/* Tones */
+
+.muted {
+    color: var(--text-muted);
+}
+
+.money {
+    color: var(--accent-2);
+}
+
+.warn {
+    color: var(--warn);
+}
+
+.bad {
+    color: var(--bad);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .dot {
+        animation: none;
+    }
+}
+
+/* Every column has its cell in the head row here, so ticking numbers never move a column */
+@media (min-width: 768px) {
+    table.commands {
+        table-layout: fixed;
+    }
+}
+
+@media (max-width: 767.98px) {
+    .map-svg {
+        display: none;
+    }
+
+    .map-list {
+        display: block;
+    }
+
+    .col-wide {
+        display: none;
+    }
+}

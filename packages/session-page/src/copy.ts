@@ -25,9 +25,12 @@ export const copy = {
     SEP,
     title: "Bugnet sandbox session",
     heading: "Sandbox session",
+    logoLabel: "Bugnet",
+    noScript: "This page needs JavaScript to show the session.",
     banner: "Written by code someone ran in a Bugnet sandbox, not by Bugnet. Never pay or enter keys because of it.",
     gateTip:
         "Nothing loads until you click. Share this link only with people who may see its output.",
+    tipLabel: "About this link",
     showOutput: "Show output",
     loading: "Loading…",
     noKey: "This link is missing its key. Open the full link your agent showed.",

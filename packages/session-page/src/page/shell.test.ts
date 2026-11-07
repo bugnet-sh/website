@@ -1,0 +1,139 @@
+import { readFileSync } from "node:fs";
+import { JSDOM } from "jsdom";
+import { describe, expect, it } from "vitest";
+import { copy } from "../copy.ts";
+
+const read = (name: string) => readFileSync(new URL(name, import.meta.url), "utf8");
+const html = read("./index.html");
+const css = read("./page.css");
+const doc = new JSDOM(html).window.document;
+const squash = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
+
+describe("index.html", () => {
+    it("sets the head the build fills in", () => {
+        expect(doc.documentElement.lang).toBe("en");
+        expect(doc.querySelector("meta[charset]")?.getAttribute("charset")).toBe("utf-8");
+        const meta = (name: string) =>
+            doc.querySelector(`meta[name="${name}"]`)?.getAttribute("content");
+        expect(meta("viewport")).toBe("width=device-width, initial-scale=1");
+        expect(meta("referrer")).toBe("no-referrer");
+        expect(meta("robots")).toBe("noindex, nofollow, noarchive");
+        expect(meta("color-scheme")).toBe("dark");
+        expect(doc.title).toBe(copy.title);
+        expect(doc.querySelector('link[rel="icon"]')?.getAttribute("href")).toBe("__ICON__");
+        const style = doc.querySelector('link[rel="stylesheet"]');
+        expect(style?.getAttribute("href")).toBe("__PAGE_CSS__");
+        expect(style?.getAttribute("integrity")).toBe("__PAGE_CSS_INTEGRITY__");
+        const script = doc.querySelector("script");
+        expect(script?.getAttribute("src")).toBe("__PAGE_JS__");
+        expect(script?.getAttribute("integrity")).toBe("__PAGE_JS_INTEGRITY__");
+        expect(script?.hasAttribute("defer")).toBe(true);
+    });
+
+    it("holds only the two comments the build replaces", () => {
+        expect(html.match(/<!--[^>]*-->/g)).toEqual(["<!--FONT_PRELOADS-->", "<!--LOGO-->"]);
+        expect(doc.head.innerHTML).toContain("<!--FONT_PRELOADS-->");
+        expect(doc.querySelector("header.site a.logo")?.innerHTML.trim()).toBe("<!--LOGO-->");
+    });
+
+    it("links the logo home, and shows the banner, the fallback and the footer", () => {
+        const logo = doc.querySelector("header.site a.logo")!;
+        expect(logo.getAttribute("href")).toBe("https://bugnet.sh/");
+        expect(logo.getAttribute("aria-label")).toBe(copy.logoLabel);
+        const banner = doc.querySelector("p.banner")!;
+        expect(banner.getAttribute("role")).toBe("note");
+        expect(squash(banner.textContent)).toBe(copy.banner);
+        expect(squash(doc.querySelector("main#app noscript")?.textContent)).toBe(copy.noScript);
+        const links = [...doc.querySelectorAll("footer.site a")].map((a) => ({
+            text: squash(a.textContent),
+            href: a.getAttribute("href"),
+            rel: a.getAttribute("rel"),
+        }));
+        expect(links).toEqual([
+            { text: copy.footer.terms, href: "https://bugnet.sh/terms", rel: "noreferrer" },
+            { text: copy.footer.privacy, href: "https://bugnet.sh/privacy", rel: "noreferrer" },
+            { text: copy.footer.reportAbuse, href: "mailto:abuse@bugnet.sh", rel: "noreferrer" },
+        ]);
+    });
+
+    it("marks the logo, the banner and the footer as sharing the left edge", () => {
+        const edges = [...doc.querySelectorAll("[data-edge]")].map((e) => e.className);
+        expect(edges).toEqual(["logo", "banner", "site"]);
+    });
+});
+
+describe("headers.txt", () => {
+    it("is exactly the headers every file is served with", () => {
+        expect(read("./headers.txt")).toBe(
+            [
+                "Cache-Control: no-store",
+                "Referrer-Policy: no-referrer",
+                "X-Content-Type-Options: nosniff",
+                "Cross-Origin-Opener-Policy: same-origin",
+                "X-Robots-Tag: noindex, nofollow, noarchive",
+                "Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'",
+                "",
+            ].join("\n"),
+        );
+    });
+});
+
+/* page.css */
+
+const plain = css.replace(/\/\*[\s\S]*?\*\//g, "");
+const declarations = [...plain.matchAll(/([-\w]+)\s*:\s*([^;{}]+);/g)].map((m) => ({
+    property: m[1]!,
+    value: m[2]!.trim(),
+}));
+const rules = [...plain.replace(/@import[^;]*;/g, "").matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(
+    (m) => ({
+        selector: m[1]!.trim(),
+        body: m[2]!,
+    }),
+);
+const ruleFor = (selector: string) => rules.find((r) => r.selector === selector)?.body ?? "";
+
+describe("page.css", () => {
+    it("starts from the brand tokens and keeps hidden things hidden", () => {
+        expect(plain.trimStart().startsWith('@import "@bugnet/brand/tokens.css";')).toBe(true);
+        expect(rules[0]?.selector).toBe("[hidden]");
+        expect(rules[0]?.body).toMatch(/display:\s*none\s*!important/);
+    });
+
+    it("takes every colour, font and size from a token", () => {
+        expect(declarations.length).toBeGreaterThan(100);
+        for (const { property, value } of declarations) {
+            if (property.startsWith("--")) continue;
+            expect(value, property).not.toMatch(/#[0-9a-f]{3,8}\b|rgba?\(|hsla?\(/i);
+            expect(value, property).not.toMatch(/\d(px|rem|em|pt|vh|vw)\b/);
+            if (property === "font-family") expect(value).toMatch(/^var\(--font-/);
+        }
+    });
+
+    it("keeps output blocks to themselves", () => {
+        const block = ruleFor(".term-cmd,\n.term-out");
+        for (const d of ["white-space: pre", "overflow-x: auto", "contain: content"]) {
+            expect(block).toContain(d);
+        }
+        expect(block).toContain("max-height: var(--term-max)");
+        expect(css).toMatch(/--term-max:\s*480px/);
+        expect(ruleFor(".line")).toContain("overflow: hidden");
+        expect(ruleFor(".line-err")).toContain("color: var(--text-muted)");
+        expect(ruleFor(".line-err")).toContain("border-left: var(--hairline) solid var(--line)");
+    });
+
+    it("shows focus in the accent, and stops the dot for reduced motion and hidden tabs", () => {
+        expect(ruleFor(":focus-visible")).toContain("outline: var(--ring) solid var(--accent)");
+        expect(ruleFor(":focus-visible")).toContain("outline-offset: var(--ring)");
+        expect(css).toMatch(/--ring:\s*2px/);
+        expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.dot\s*\{/);
+        expect(ruleFor(".is-hidden-tab .dot")).toContain("animation: none");
+    });
+
+    it("turns the map into a list and drops the wide columns below 768 px", () => {
+        const phone = plain.slice(plain.indexOf("@media (max-width: 767.98px)"));
+        expect(phone).toMatch(/\.map-svg\s*\{\s*display: none;/);
+        expect(phone).toMatch(/\.map-list\s*\{\s*display: block;/);
+        expect(phone).toMatch(/\.col-wide\s*\{\s*display: none;/);
+    });
+});
