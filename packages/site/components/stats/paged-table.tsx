@@ -126,7 +126,8 @@ export function PagedTable<T>({
                 <div className="relative mt-(--space-4) h-(--table) border-b-(length:--hairline) border-line text-(length:--ui-size) leading-(--ui-line)">
                     {phase === "ready" && (
                         <>
-                            <div className="h-full overflow-auto phone:hidden">
+                            {/* Relative so the links' sr-only text is clipped here, not by the page */}
+                            <div className="relative h-full overflow-auto phone:hidden">
                                 <table className={cx(tableClass, "min-w-(--table-min)")}>
                                     <thead>
                                         <tr>

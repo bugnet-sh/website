@@ -66,7 +66,7 @@ export function Limits() {
                             What you can buy
                         </h3>
                         {/* Five columns do not fit a phone, so the table scrolls inside its own box */}
-                        <div className="mt-(--space-4) overflow-x-auto">
+                        <div className="relative mt-(--space-4) overflow-x-auto">
                             <table aria-labelledby={buyId} className={tableClass}>
                                 <thead>
                                     <tr>

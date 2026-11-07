@@ -124,6 +124,9 @@ describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("stats page in Ch
             ["hostile", 375],
         ] as const) {
             const { page } = await open(width, scenario);
+            expect(
+                await page.evaluate(() => document.documentElement.scrollWidth),
+            ).toBeLessThanOrEqual(width);
             await page.screenshot({ path: join(dir, `${scenario}-${width}.png`), fullPage: true });
             await page.context().close();
         }

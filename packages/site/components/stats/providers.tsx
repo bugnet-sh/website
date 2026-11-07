@@ -73,7 +73,7 @@ export function Providers() {
                     </p>
                 )}
                 {rows.length > 0 && (
-                    <div className="mt-(--space-4) overflow-x-auto">
+                    <div className="relative mt-(--space-4) overflow-x-auto">
                         <table
                             aria-labelledby={id}
                             className={cx(tableClass, "min-w-(--table-min)")}
