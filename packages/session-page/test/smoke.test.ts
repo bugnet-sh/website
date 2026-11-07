@@ -9,7 +9,7 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import type { Browser, BrowserContext, Page } from "playwright-core";
+import type { Browser, BrowserContext, BrowserContextOptions, Page } from "playwright-core";
 import { buildPage } from "../src/build.ts";
 import { copy } from "../src/copy.ts";
 import { isSignature } from "../src/payload.ts";
@@ -47,8 +47,15 @@ interface Opened {
 
 // One context per page, so no page sees another's sessionStorage
 function opener(contexts: BrowserContext[]) {
-    return async (browser: Browser, url: string): Promise<Opened> => {
-        const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+    return async (
+        browser: Browser,
+        url: string,
+        options: BrowserContextOptions = {},
+    ): Promise<Opened> => {
+        const context = await browser.newContext({
+            viewport: { width: 1280, height: 900 },
+            ...options,
+        });
         contexts.push(context);
         const page = await context.newPage();
         const errors: string[] = [];
@@ -84,6 +91,40 @@ async function endedView(page: Page): Promise<void> {
 
 async function messageShows(page: Page, text: string): Promise<void> {
     await page.locator("p.message", { hasText: text }).waitFor({ state: "visible" });
+}
+
+// The colours as the page computes them, the accent, --bad, --text and --text-muted
+const ACCENT = "rgb(82, 255, 184)";
+const BAD = "rgb(255, 107, 107)";
+const TEXT = "rgb(237, 237, 237)";
+const MUTED = "rgb(161, 161, 161)";
+// copyButton's COPIED_MS and a margin
+const AFTER_COPIED_MS = 1_500 + 500;
+
+interface Ring {
+    focused: string;
+    style: string;
+    color: string;
+}
+
+function focusRing(page: Page): Promise<Ring> {
+    return page.evaluate(() => {
+        const el = document.activeElement!;
+        const cs = getComputedStyle(el);
+        const id = el.getAttribute("data-node-id");
+        return {
+            focused: `${el.tagName.toLowerCase()}.${el.getAttribute("class")}${id ? `[${id}]` : ""}`,
+            style: cs.outlineStyle,
+            color: cs.outlineColor,
+        };
+    });
+}
+
+function colours(page: Page, selector: string): Promise<{ color: string; border: string }> {
+    return page.locator(selector).evaluate((el) => {
+        const cs = getComputedStyle(el);
+        return { color: cs.color, border: cs.borderTopColor };
+    });
 }
 
 async function expectClean(o: Opened): Promise<void> {
@@ -238,6 +279,92 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
         await expectClean(o);
     });
 
+    it("draws a focus ring for the keyboard only, never for a click", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-full"]));
+        const { page } = o;
+        await endedView(page);
+        const targets = [
+            { click: 'g.map-node[data-node-id="payments"] circle.map-bubble', focused: "payments" },
+            { click: 'tr.cmd-row[data-seq="2"] .cmd-toggle', focused: "cmd-toggle" },
+            { click: "button.expand-all", focused: "expand-all" },
+        ];
+        for (const target of targets) {
+            await page.locator(target.click).click();
+            const clicked = await focusRing(page);
+            expect(clicked.focused).toContain(target.focused);
+            expect(clicked.style, target.click).toBe("none");
+            // Back onto the same control from the keyboard
+            await page.keyboard.press("Shift+Tab");
+            await page.keyboard.press("Tab");
+            const keyed = await focusRing(page);
+            expect(keyed.focused).toBe(clicked.focused);
+            expect(keyed.style, target.click).toBe("solid");
+            expect(keyed.color, target.click).toBe(ACCENT);
+        }
+        await expectClean(o);
+    });
+
+    it("draws Delete now and Delete in the failure colour, hovered or not", async () => {
+        const o = await open(browser, linkOf(route, scenarios.deletable));
+        const { page } = o;
+        await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
+        const red = { color: BAD, border: BAD };
+        expect(await colours(page, "button.delete-now")).toEqual(red);
+        await page.locator("button.delete-now").hover();
+        expect(await colours(page, "button.delete-now")).toEqual(red);
+        await page.locator("button.delete-now").click();
+        expect(await colours(page, "button.confirm-delete")).toEqual(red);
+        await page.locator("button.confirm-delete").hover();
+        expect(await colours(page, "button.confirm-delete")).toEqual(red);
+        expect((await colours(page, "button.cancel-delete")).color).toBe(TEXT);
+        await expectClean(o);
+    });
+
+    it("asks Delete for everyone without moving anything below it", async () => {
+        for (const width of [768, 375]) {
+            const o = await open(browser, linkOf(route, scenarios.deletable), {
+                viewport: { width, height: 900 },
+            });
+            const { page } = o;
+            await page.locator(".map").waitFor({ state: "visible" });
+            const tops = () =>
+                page.evaluate(() =>
+                    [".session-meta", ".map", "table.commands"].map(
+                        (sel) => document.querySelector(sel)!.getBoundingClientRect().top,
+                    ),
+                );
+            const before = await tops();
+            await page.locator("button.delete-now").click();
+            await page.locator("button.confirm-delete").waitFor({ state: "visible" });
+            expect(await tops(), `at ${width} px`).toEqual(before);
+            await page.locator("button.cancel-delete").click();
+            expect(await tops(), `at ${width} px`).toEqual(before);
+            await expectClean(o);
+        }
+    });
+
+    it("leaves no accent on a tapped control once it has done its job", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-full"]), {
+            viewport: { width: 375, height: 812 },
+            isMobile: true,
+            hasTouch: true,
+        });
+        const { page } = o;
+        await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
+        expect(await page.evaluate(() => matchMedia("(hover: hover)").matches)).toBe(false);
+        const copyButton = page.locator("tr.cmd-detail:not([hidden]) .term-head .copy-button");
+        await copyButton.tap();
+        await page.waitForTimeout(AFTER_COPIED_MS);
+        expect(
+            (await colours(page, "tr.cmd-detail:not([hidden]) .term-head .copy-button")).color,
+        ).toBe(MUTED);
+        const toggle = page.locator('tr.cmd-row[data-seq="6"] .cmd-toggle');
+        await toggle.tap();
+        expect(await toggle.getAttribute("aria-expanded")).toBe("false");
+        expect((await colours(page, 'tr.cmd-row[data-seq="6"] .cmd-toggle')).color).toBe(TEXT);
+        await expectClean(o);
+    });
+
     // The bugnet.sh pages do not exist yet, so they are checked by shape and never fetched
     it("links only to Bugnet's own pages and to explorer transactions", async () => {
         const o = await open(browser, linkOf(route, scenarios["ended-full"]));
@@ -263,7 +390,7 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
         await collect();
         for (const id of ids) {
             // The bubble's own circle, since the middle of its box can fall between it and its label
-            await page.locator(`g.map-node[data-node-id="${id}"] circle`).click();
+            await page.locator(`g.map-node[data-node-id="${id}"] circle.map-bubble`).click();
             await page.locator(`.map-table .table-scroll[data-node-id="${id}"]`).waitFor();
             await collect();
         }

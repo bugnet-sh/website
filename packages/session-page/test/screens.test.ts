@@ -57,6 +57,7 @@ async function openRowDrawn(page: Page): Promise<void> {
     await page.locator("tr.cmd-detail:not([hidden]) .term-out .line").first().waitFor();
 }
 
+const status = "p.session-state";
 const times = "div.session-meta";
 
 const states: State[] = [
@@ -72,13 +73,15 @@ const states: State[] = [
     },
     {
         name: "ended-full",
-        edges: [times, "div.map", "table.commands"],
+        edges: [status, times, "div.map", "table.commands"],
         link: (s) => s["ended-full"],
         reach: async (page) => {
             await ended(page);
-            // The map below 768 px is a list of rows, so the payments node is whichever shows
+            // The bubble's circle from 768 px, since its box's middle can miss it, else the list row
             await page
-                .locator('[data-node-id="payments"]:is(g.map-node, button.map-row)')
+                .locator(
+                    'g.map-node[data-node-id="payments"] circle.map-bubble, button.map-row[data-node-id="payments"]',
+                )
                 .filter({ visible: true })
                 .click();
             await page.locator('.map-table .table-scroll[data-node-id="payments"]').waitFor();
@@ -87,7 +90,7 @@ const states: State[] = [
     },
     {
         name: "ended-crowded",
-        edges: [times, "div.map", "table.commands"],
+        edges: [status, times, "div.map", "table.commands"],
         link: (s) => s["ended-crowded"],
         reach: async (page) => {
             await ended(page);
@@ -96,7 +99,7 @@ const states: State[] = [
     },
     {
         name: "running",
-        edges: [times, "p.map-later", "table.commands"],
+        edges: [status, times, "p.map-later", "table.commands"],
         link: (s) => s.running,
         reach: async (page) => {
             await openRowDrawn(page);
@@ -105,7 +108,7 @@ const states: State[] = [
     },
     {
         name: "ended-pending",
-        edges: [times, "div.map"],
+        edges: [status, times, "div.map", "p.commands-note"],
         link: (s) => s["ended-pending"],
         reach: async (page) => {
             await page.locator(".commands-note", { hasText: copy.savingOutput }).waitFor();
@@ -125,7 +128,7 @@ const states: State[] = [
     },
     {
         name: "ended-hostile",
-        edges: [times, "div.map", "table.commands"],
+        edges: [status, times, "div.map", "table.commands"],
         link: (s) => s["ended-hostile"],
         // Every row open, so the escape codes, the long line and the flood are all on screen
         reach: async (page) => {
@@ -138,7 +141,10 @@ const states: State[] = [
 
 interface Measures {
     overflowX: number;
-    edges: { el: string; left: number }[];
+    // Every block marked as sharing the edge, measured where it starts a line of its own
+    edges: { el: string; left: number; startsLine: boolean }[];
+    // The children of the containers that start a line of their own
+    lines: { el: string; left: number }[];
     overflowing: string[];
     shortTargets: string[];
     fonts: Record<string, boolean>;
@@ -159,12 +165,33 @@ function measure(fontList: string[]): Measures {
         return r.width > 0 || r.height > 0 ? r.left : el.getBoundingClientRect().left;
     };
 
+    // Nothing drawn before it in its parent reaches down into its first line
+    const startsLine = (el: Element): boolean => {
+        const top = el.getBoundingClientRect().top;
+        const before: Element[] = [];
+        for (let s = el.previousElementSibling; s !== null; s = s.previousElementSibling) {
+            if (rendered(s)) before.push(s);
+        }
+        return before.every((s) => s.getBoundingClientRect().bottom <= top + 0.5);
+    };
+
+    const containers = "div.session-head, div.session-meta, footer.site, div.map";
     const scrollers = ".term-out, .term-cmd, .table-scroll";
     return {
         overflowX: document.documentElement.scrollWidth - window.innerWidth,
-        edges: [...document.querySelectorAll("[data-edge]")]
-            .filter(rendered)
-            .map((el) => ({ el: name(el), left: contentLeft(el) })),
+        edges: [...document.querySelectorAll("[data-edge]")].filter(rendered).map((el) => ({
+            el: name(el),
+            left: contentLeft(el),
+            startsLine: startsLine(el),
+        })),
+        lines: [...document.querySelectorAll(containers)].flatMap((box) =>
+            [...box.children]
+                .filter((el) => rendered(el) && startsLine(el))
+                .map((el) => ({
+                    el: `${name(box)} > ${name(el)}`,
+                    left: el.getBoundingClientRect().left,
+                })),
+        ),
         overflowing: [...document.querySelectorAll("*")]
             .filter((el) => el.closest(scrollers) === null)
             .filter((el) => el.scrollWidth > el.clientWidth + 1)
@@ -241,7 +268,9 @@ describe.runIf(launcher !== null)(`screenshots in ${launcher?.label ?? "no brows
                         "footer.site",
                     ]);
                     const left = m.edges[0]!.left;
-                    const off = m.edges.filter((e) => Math.abs(e.left - left) > 0.5);
+                    const starts = [...m.edges.filter((e) => e.startsLine), ...m.lines];
+                    expect(m.lines.length).toBeGreaterThan(0);
+                    const off = starts.filter((e) => Math.abs(e.left - left) > 0.5);
                     expect(off, `left edge ${left}`).toEqual([]);
                     expect(m.overflowing).toEqual([]);
                     expect(m.shortTargets).toEqual([]);
