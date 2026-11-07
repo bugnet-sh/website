@@ -4,13 +4,14 @@
  * The sandbox sits in the centre with its name and size inside. Every other bubble's area grows
  * with its count on one scale, whose largest radius is set first by the most crowded place. Left
  * and right nodes stack in a column each, with labels on the outer side starting at one edge, and
- * each column moves inward only as far as its longest label needs. Bottom nodes spread along one row under the centre, alternate their labels
- * between two rows when one row cannot hold them, and drop lower when their outer edges would cross
- * a column. The centre moves sideways only when an edge label needs the room, first for every
- * edge's shortest label, then for the amounts. Each edge label starts in its shortest form, then
- * takes the fullest form that clears every circle, label and other edge label. Label sizes are
- * estimated at 7.5 px per character on 16 px lines, wider than the page's fonts draw them, plus a
- * fixed gap between the parts of a line. The map is then cropped to what it draws.
+ * each column moves inward only as far as its longest label needs. Bottom nodes spread along one
+ * row under the centre, alternate their labels between two rows when one row cannot hold them, and
+ * drop lower when their outer edges would cross a column. The centre moves sideways only when an
+ * edge label needs the room, first for every edge's shortest label, then for the amounts. Each edge
+ * label starts in its shortest form, then takes the fullest form that clears every circle, label
+ * and other edge label. Label sizes are estimated at 7.5 px per character on 16 px lines, wider
+ * than the page's fonts draw them, plus a fixed gap between the parts of a line. The map is then
+ * cropped to what it draws.
  */
 import { copy } from "../copy.ts";
 import type { MapModel, MapNode, MetricPart } from "./model.ts";

@@ -644,7 +644,7 @@ describe("Delete now", () => {
         expect(srv.deletes()).toHaveLength(0);
     });
 
-    it("asks in the times' place with its buttons in Delete now's, so nothing below moves", async () => {
+    it("asks in place of the times and Delete now, so nothing below it moves", async () => {
         const srv = server([first(s)]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
         await settle();

@@ -139,7 +139,7 @@ describe("page.css", () => {
         expect(ruleFor(".is-hidden-tab .dot")).toContain("animation: none");
     });
 
-    it("keeps every hover style for a pointer that hovers, so a tap leaves no accent behind", () => {
+    it("keeps hover styles for a pointer that hovers, so a tap leaves no accent behind", () => {
         let rest = plain;
         for (;;) {
             const at = rest.indexOf("@media (hover: hover)");

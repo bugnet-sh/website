@@ -2,7 +2,8 @@
  * The session's own parts of the page: the heading row with its status, the times with Delete
  * now, the message lines and the map with its caption and event table.
  *
- * Every block that starts a line carries data-edge, so a test can check they share one left edge.
+ * Every block that can start a line carries data-edge, so a test can check they share one left
+ * edge.
  */
 import { copy } from "../copy.ts";
 import { layoutMap } from "../map/layout.ts";

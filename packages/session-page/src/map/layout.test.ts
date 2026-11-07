@@ -223,7 +223,7 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
             expect(layout.top + layout.height).toBeCloseTo(bottom, 6);
         });
 
-        it("sizes every bubble on one square-root scale, so a larger count is never smaller", () => {
+        it("sizes every bubble on one square-root scale, a larger count never smaller", () => {
             const others = layout.placed;
             if (others.length === 0) return;
             const cap = Math.max(...others.map((p) => p.r));
@@ -457,7 +457,7 @@ describe("layoutMap edges", () => {
         expect(drawn(busy.metricLines)).toEqual([["12.345678 USDC paid"]]);
     });
 
-    it("draws Payments with nothing paid and a refund as 0 USDC paid, never the refund alone", () => {
+    it("draws Payments with nothing paid and a refund as 0 USDC paid, not the refund", () => {
         const model = mapOf([
             { at, kind: "placement", phase: "placed", vcpu: 2, memoryMib: 2_048, minutes: 10 },
             {

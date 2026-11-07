@@ -112,8 +112,9 @@ function focusRing(page: Page): Promise<Ring> {
         const el = document.activeElement!;
         const cs = getComputedStyle(el);
         const id = el.getAttribute("data-node-id");
+        const tag = `${el.tagName.toLowerCase()}.${el.getAttribute("class")}`;
         return {
-            focused: `${el.tagName.toLowerCase()}.${el.getAttribute("class")}${id ? `[${id}]` : ""}`,
+            focused: id ? `${tag}[${id}]` : tag,
             style: cs.outlineStyle,
             color: cs.outlineColor,
         };
@@ -305,7 +306,8 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     });
 
     it("draws Delete now and Delete in the failure colour, hovered or not", async () => {
-        const o = await open(browser, linkOf(route, scenarios.deletable));
+        // Cancelled, never confirmed, since an earlier test deletes the deletable session
+        const o = await open(browser, linkOf(route, scenarios["ended-full"]));
         const { page } = o;
         await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
         const red = { color: BAD, border: BAD };
@@ -322,7 +324,7 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
 
     it("asks Delete for everyone without moving anything below it", async () => {
         for (const width of [768, 375]) {
-            const o = await open(browser, linkOf(route, scenarios.deletable), {
+            const o = await open(browser, linkOf(route, scenarios["ended-full"]), {
                 viewport: { width, height: 900 },
             });
             const { page } = o;

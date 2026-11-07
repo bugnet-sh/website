@@ -687,9 +687,11 @@ section.commands {
     justify-content: flex-end;
 }
 
+/* Its labels end at the right edge, the narrower one too */
 .expand-all {
     display: inline-grid;
     align-items: center;
+    justify-items: end;
     min-height: var(--row);
     padding: 0;
     border: 0;

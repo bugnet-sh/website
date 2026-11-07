@@ -189,7 +189,7 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             command: row.job.command,
             notices: () => notices(row),
             footer: () => copy.exitLine(exitOf(row).info, durationMs(row, opts.now()) ?? 0),
-            copy: copyOutput(row.seq),
+            control: copyOutput(row.seq),
             scheduler,
         });
         row.slot.replaceChildren(row.block.root);

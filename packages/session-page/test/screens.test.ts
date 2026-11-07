@@ -48,6 +48,16 @@ async function ended(page: Page): Promise<void> {
     await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
 }
 
+// The bubble's circle from 768 px, since its box's middle can miss it, or the list row
+async function openNode(page: Page, id: string): Promise<void> {
+    const node = `[data-node-id="${id}"]`;
+    await page
+        .locator(`g.map-node${node} circle.map-bubble, button.map-row${node}`)
+        .filter({ visible: true })
+        .click();
+    await page.locator(`.map-table .table-scroll${node}`).waitFor();
+}
+
 async function message(page: Page, text: string): Promise<void> {
     await page.locator("p.message", { hasText: text }).waitFor({ state: "visible" });
 }
@@ -77,14 +87,7 @@ const states: State[] = [
         link: (s) => s["ended-full"],
         reach: async (page) => {
             await ended(page);
-            // The bubble's circle from 768 px, since its box's middle can miss it, else the list row
-            await page
-                .locator(
-                    'g.map-node[data-node-id="payments"] circle.map-bubble, button.map-row[data-node-id="payments"]',
-                )
-                .filter({ visible: true })
-                .click();
-            await page.locator('.map-table .table-scroll[data-node-id="payments"]').waitFor();
+            await openNode(page, "payments");
             await openRowDrawn(page);
         },
     },
@@ -92,8 +95,10 @@ const states: State[] = [
         name: "ended-crowded",
         edges: [status, times, "div.map", "table.commands"],
         link: (s) => s["ended-crowded"],
+        // The fold's table, whose long hosts and paths once pushed its amounts out of view
         reach: async (page) => {
             await ended(page);
+            await openNode(page, "more-right");
             await openRowDrawn(page);
         },
     },
@@ -146,6 +151,8 @@ interface Measures {
     // The children of the containers that start a line of their own
     lines: { el: string; left: number }[];
     overflowing: string[];
+    // Event tables that scroll sideways, which would hide an amount or a transaction
+    sideways: string[];
     shortTargets: string[];
     fonts: Record<string, boolean>;
 }
@@ -194,6 +201,9 @@ function measure(fontList: string[]): Measures {
         ),
         overflowing: [...document.querySelectorAll("*")]
             .filter((el) => el.closest(scrollers) === null)
+            .filter((el) => el.scrollWidth > el.clientWidth + 1)
+            .map((el) => `${name(el)} ${el.scrollWidth} > ${el.clientWidth}`),
+        sideways: [...document.querySelectorAll(".table-scroll")]
             .filter((el) => el.scrollWidth > el.clientWidth + 1)
             .map((el) => `${name(el)} ${el.scrollWidth} > ${el.clientWidth}`),
         shortTargets: [...document.querySelectorAll("tr button, tr a[href]")]
@@ -273,6 +283,7 @@ describe.runIf(launcher !== null)(`screenshots in ${launcher?.label ?? "no brows
                     const off = starts.filter((e) => Math.abs(e.left - left) > 0.5);
                     expect(off, `left edge ${left}`).toEqual([]);
                     expect(m.overflowing).toEqual([]);
+                    expect(m.sideways).toEqual([]);
                     expect(m.shortTargets).toEqual([]);
                     expect(m.fonts).toEqual(Object.fromEntries(fonts.map((f) => [f, true])));
                     const violations = await page.evaluate(
