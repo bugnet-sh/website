@@ -130,12 +130,12 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         collapseLabel,
     ]);
     const bar = el(doc, "div", { class: "commands-bar" }, [expand]);
-    const note = el(doc, "p", { class: "commands-note" });
+    const note = el(doc, "p", { class: "commands-note", attrs: { "data-edge": "" } });
     const head = copy.commandsHead;
     const th = (text: string, cls?: string) =>
         el(doc, "th", { class: cls, text, attrs: { scope: "col" } });
     const tbody = el(doc, "tbody");
-    const table = el(doc, "table", { class: "commands" }, [
+    const table = el(doc, "table", { class: "commands", attrs: { "data-edge": "" } }, [
         el(doc, "thead", {}, [
             el(doc, "tr", {}, [
                 th(head.seq, "num"),

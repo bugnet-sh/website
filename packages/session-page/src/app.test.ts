@@ -2,6 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startPage, type PageEnv } from "./app.ts";
 import { copy } from "./copy.ts";
+import { formatLeft } from "./format.ts";
 import type { Scheduler } from "./schedule.ts";
 import { makeScenarios, type Scenario } from "./testing/fixtures.ts";
 
@@ -213,6 +214,62 @@ describe("the link", () => {
     });
 });
 
+describe("the session row", () => {
+    it("focuses the heading without scrolling on every change of state", async () => {
+        const srv = server([first(scenarios.running), first(scenarios["ended-full"])]);
+        const calls: unknown[] = [];
+        const focus = vi.spyOn(HTMLHeadingElement.prototype, "focus").mockImplementation(function (
+            this: HTMLElement,
+            opts?: FocusOptions,
+        ) {
+            calls.push(opts);
+        });
+        try {
+            open({ scenario: scenarios.running, fetch: srv.fetch });
+            await settle();
+            await advance(10_000);
+            await settle();
+            expect(calls).toEqual([{ preventScroll: true }, { preventScroll: true }]);
+        } finally {
+            focus.mockRestore();
+        }
+    });
+
+    it("refreshes the times once a minute while a view shows", async () => {
+        const s = scenarios["ended-full"];
+        const srv = server([first(s)]);
+        const { app } = open({ scenario: s, fetch: srv.fetch });
+        await settle();
+        const body = first(s) as { body: { record: { deletesAt: string } } };
+        const deletesAt = new Date(body.body.record.deletesAt);
+        const deletes = () => app.querySelectorAll(".session-times > span")[2]?.textContent;
+        expect(deletes()).toBe(copy.deletes(formatLeft(deletesAt, new Date())));
+        await advance(2 * HOUR);
+        expect(deletes()).toBe(copy.deletes(formatLeft(deletesAt, new Date())));
+        expect(deletes()).not.toBe(copy.deletes(formatLeft(deletesAt, NOW)));
+        expect(srv.gets()).toHaveLength(1);
+    });
+
+    it("stops every timer once the page reaches a final state", async () => {
+        const running = scenarios.running;
+        const srv = server([first(running), { status: 404, body: null }]);
+        const { app } = open({ scenario: running, fetch: srv.fetch });
+        await settle();
+        await advance(10_000);
+        expect(message(app)).toBe(copy.notFound);
+        await advance(1_000);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("marks the status line as sharing the page's left edge", async () => {
+        const srv = server([first(scenarios["ended-full"])]);
+        const { app } = open({ fetch: srv.fetch });
+        await settle();
+        expect(q(app, ".session-state")?.hasAttribute("data-edge")).toBe(true);
+        expect(q(app, ".commands-note")?.hasAttribute("data-edge")).toBe(true);
+    });
+});
+
 describe("an ended session", () => {
     it("shows the map, six commands and the map's caption", async () => {
         const srv = server([first(scenarios["ended-full"])]);
@@ -335,6 +392,36 @@ describe("an ended session", () => {
         expect(rows(app)).toBeGreaterThan(0);
         await advance(120_000);
         expect(srv.gets()).toHaveLength(3);
+    });
+
+    it("rebuilds the map from each later answer, keeping the open bubble", async () => {
+        type Body = { record: { output: string; events: unknown[] } };
+        const full = first(scenarios["ended-full"]) as { status: number; body: Body };
+        const saving = structuredClone(full);
+        saving.body.record.output = "pending";
+        const later = structuredClone(full);
+        const at = new Date(NOW.getTime() - 60_000).toISOString();
+        later.body.record.events.push({
+            at,
+            kind: "secret_host",
+            host: "late.example",
+            requests: 2,
+            bytes: 10,
+        });
+        const srv = server([saving, later]);
+        const { app } = open({ fetch: srv.fetch });
+        await settle();
+        const late = 'g.map-node[data-node-id="secret-host:late.example"]';
+        expect(q(app, late)).toBeNull();
+        const payments = () => q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!;
+        payments().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        await advance(5_000);
+        expect(srv.gets()).toHaveLength(2);
+        expect(q(app, late)).not.toBeNull();
+        expect(q(app, '.map-row[data-node-id="secret-host:late.example"]')).not.toBeNull();
+        expect(payments().classList.contains("is-selected")).toBe(true);
+        expect(q(app, '.map-table .table-scroll[data-node-id="payments"]')).not.toBeNull();
+        expect(app.querySelectorAll(".map")).toHaveLength(1);
     });
 
     it("asks every 5 s for two minutes, then every 30 s", async () => {
@@ -551,7 +638,36 @@ describe("Delete now", () => {
         button(app, "button.cancel-delete").click();
         expect(q(app, "button.delete-now")?.hidden).toBe(false);
         expect(q(app, ".confirm")?.hidden).toBe(true);
+        expect(q(app, ".session-times")?.hidden).toBe(false);
+        expect(q(app, ".confirm-text")?.hidden).toBe(true);
+        expect(document.activeElement).toBe(q(app, "button.delete-now"));
         expect(srv.deletes()).toHaveLength(0);
+    });
+
+    it("asks in the times' place with its buttons in Delete now's, so nothing below moves", async () => {
+        const srv = server([first(s)]);
+        const { app } = open({ scenario: s, fetch: srv.fetch });
+        await settle();
+        const meta = q(app, ".session-meta")!;
+        const shown = () =>
+            [...meta.querySelectorAll<HTMLElement>("*")]
+                .filter((e) => e.closest("[hidden]") === null)
+                .map((e) => e.className)
+                .filter((c) => c !== "" && c !== "time-part");
+        expect(shown()).toEqual(["session-times parts", "delete", "button delete-now danger"]);
+        button(app, "button.delete-now").click();
+        expect(shown()).toEqual([
+            "confirm-text",
+            "delete",
+            "confirm",
+            "button confirm-delete danger",
+            "button cancel-delete",
+        ]);
+        const prompt = q(app, ".confirm-text")!;
+        expect(prompt.textContent).toBe(copy.confirmDelete);
+        expect(prompt.getAttribute("aria-live")).toBe("polite");
+        expect(document.activeElement).toBe(prompt);
+        expect(meta.firstElementChild).toBe(q(app, ".session-times"));
     });
 
     it("says a failed delete failed, and lets the reader try again", async () => {

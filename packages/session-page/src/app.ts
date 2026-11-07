@@ -46,6 +46,8 @@ const SAVING_EVERY_MS = 5_000;
 const SAVING_FAST_ASKS = 24;
 const SAVING_SLOW_MS = 30_000;
 const FAILURES_BEFORE_NOTICE = 3;
+// The times row counts down in minutes and hours
+const CLOCK_MS = 60_000;
 // The route's per-IP limit on live streams
 const MAX_STREAMS = 4;
 const STREAM_RETRY_MS = 2_000;
@@ -86,6 +88,9 @@ export function startPage(env: PageEnv): { destroy(): void } {
     // Bumped on every stop, so an answer to an older ask is dropped
     let epoch = 0;
     let timer: number | null = null;
+    let clock: number | null = null;
+    // The times row's parts at a given time, from the last answer
+    let timesAt: ((now: Date) => string[]) | null = null;
     let destroyed = false;
     // The server clock minus the viewer's, so a wrong viewer clock never skews time left
     let offsetMs = 0;
@@ -108,6 +113,24 @@ export function startPage(env: PageEnv): { destroy(): void } {
     function clearAsk(): void {
         if (timer !== null) env.clearTimer(timer);
         timer = null;
+    }
+
+    function paintTimes(): void {
+        if (view !== null && timesAt !== null) view.meta.setTimes(timesAt(serverNow()));
+    }
+
+    function startClock(): void {
+        if (clock !== null) return;
+        clock = env.setTimer(() => {
+            clock = null;
+            paintTimes();
+            startClock();
+        }, CLOCK_MS);
+    }
+
+    function stopClock(): void {
+        if (clock !== null) env.clearTimer(clock);
+        clock = null;
     }
 
     function askIn(ms: number | null): void {
@@ -167,6 +190,7 @@ export function startPage(env: PageEnv): { destroy(): void } {
     function stop(): void {
         epoch++;
         clearAsk();
+        stopClock();
         stopLive();
     }
 
@@ -241,7 +265,10 @@ export function startPage(env: PageEnv): { destroy(): void } {
 
     // The heading row, the times and the commands stay across running and ended
     function enter(kind: "running" | "ended", record: SessionRecord | null): View {
-        if (view !== null && mode === kind) return view;
+        if (view !== null && mode === kind) {
+            if (record !== null) view.map?.update(record);
+            return view;
+        }
         const map =
             record === null
                 ? null
@@ -255,7 +282,6 @@ export function startPage(env: PageEnv): { destroy(): void } {
                 now: serverNow,
             });
             commands.onToggle(wantLive);
-            commands.root.querySelector("table")?.setAttribute("data-edge", "");
             view = { meta: createSessionMeta(doc, remove), middle, map, commands };
             root.replaceChildren(head.root, view.meta.root, middle, commands.root);
         } else {
@@ -265,7 +291,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
             view.map = map;
         }
         mode = kind;
-        head.heading.focus();
+        // The heading is where a screen reader starts, and a sighted reader keeps their place
+        head.heading.focus({ preventScroll: true });
         return view;
     }
 
@@ -275,10 +302,12 @@ export function startPage(env: PageEnv): { destroy(): void } {
         const v = enter("running", null);
         status = { text: copy.running, running: true };
         paintStatus();
-        v.meta.setTimes([
-            copy.started(formatClock(snapshot.startedAt, now)),
-            copy.ends(formatClock(snapshot.deadline, now), formatLeft(snapshot.deadline, now)),
-        ]);
+        timesAt = (at) => [
+            copy.started(formatClock(snapshot.startedAt, at)),
+            copy.ends(formatClock(snapshot.deadline, at), formatLeft(snapshot.deadline, at)),
+        ];
+        paintTimes();
+        startClock();
         v.commands.setOutput(null);
         v.commands.setJobs(snapshot.jobs, now);
         runningSeqs = snapshot.jobs
@@ -300,11 +329,13 @@ export function startPage(env: PageEnv): { destroy(): void } {
             running: false,
         };
         paintStatus();
-        v.meta.setTimes([
-            copy.started(formatClock(record.startedAt, now)),
-            copy.endedAt(formatClock(record.endedAt, now)),
-            copy.deletes(formatLeft(record.deletesAt, now)),
-        ]);
+        timesAt = (at) => [
+            copy.started(formatClock(record.startedAt, at)),
+            copy.endedAt(formatClock(record.endedAt, at)),
+            copy.deletes(formatLeft(record.deletesAt, at)),
+        ];
+        paintTimes();
+        startClock();
         v.commands.setOutput(record.output);
         v.commands.setJobs(record.jobs, now);
         saving = record.output === "pending";

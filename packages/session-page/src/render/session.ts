@@ -34,7 +34,10 @@ export function createSessionHead(doc: Document): SessionHead {
     const dot = el(doc, "span", { class: "dot", attrs: { "aria-hidden": "true" } });
     dot.hidden = true;
     const label = doc.createTextNode("");
-    const state = el(doc, "p", { class: "session-state", attrs: { role: "status" } }, [dot, label]);
+    const state = el(doc, "p", { class: "session-state", attrs: { ...EDGE, role: "status" } }, [
+        dot,
+        label,
+    ]);
     state.hidden = true;
     const root = el(doc, "div", { class: "session-head", attrs: EDGE }, [
         el(doc, "div", { class: "session-heading" }, [heading]),
@@ -98,31 +101,37 @@ export interface SessionMeta {
 // Resolves true once the page has moved on, false when the delete failed and may be tried again
 export type OnDelete = () => Promise<boolean>;
 
-function deleteControl(doc: Document, onDelete: OnDelete): HTMLElement {
-    const start = plainButton(doc, "delete-now", copy.deleteNow);
-    const prompt = el(doc, "span", {
+export function createSessionMeta(doc: Document, onDelete: OnDelete): SessionMeta {
+    const times = el(doc, "p", { class: "session-times parts" });
+    // Asked in the times' place, with its buttons in Delete now's, so nothing below moves
+    const prompt = el(doc, "p", {
         class: "confirm-text",
         text: copy.confirmDelete,
         attrs: { tabindex: "-1", "aria-live": "polite" },
     });
-    const yes = plainButton(doc, "confirm-delete", copy.confirm);
+    const start = plainButton(doc, "delete-now danger", copy.deleteNow);
+    const yes = plainButton(doc, "confirm-delete danger", copy.confirm);
     const no = plainButton(doc, "cancel-delete", copy.cancel);
-    const confirm = el(doc, "div", { class: "confirm" }, [prompt, yes, no]);
-    confirm.hidden = true;
+    const confirm = el(doc, "div", { class: "confirm" }, [yes, no]);
+    const asking = (on: boolean) => {
+        times.hidden = on;
+        start.hidden = on;
+        prompt.hidden = !on;
+        confirm.hidden = !on;
+    };
+    asking(false);
 
-    const settle = (asking: boolean) => {
-        yes.disabled = asking;
-        no.disabled = asking;
+    const settle = (busy: boolean) => {
+        yes.disabled = busy;
+        no.disabled = busy;
     };
     start.addEventListener("click", () => {
         prompt.textContent = copy.confirmDelete;
-        start.hidden = true;
-        confirm.hidden = false;
+        asking(true);
         prompt.focus();
     });
     no.addEventListener("click", () => {
-        confirm.hidden = true;
-        start.hidden = false;
+        asking(false);
         start.focus();
     });
     yes.addEventListener("click", () => {
@@ -138,14 +147,11 @@ function deleteControl(doc: Document, onDelete: OnDelete): HTMLElement {
             if (!done) failed();
         }, failed);
     });
-    return el(doc, "div", { class: "delete" }, [start, confirm]);
-}
 
-export function createSessionMeta(doc: Document, onDelete: OnDelete): SessionMeta {
-    const times = el(doc, "p", { class: "session-times parts" });
     const root = el(doc, "div", { class: "session-meta", attrs: EDGE }, [
         times,
-        deleteControl(doc, onDelete),
+        prompt,
+        el(doc, "div", { class: "delete" }, [start, confirm]),
     ]);
     let shown: string | null = null;
     return {
@@ -162,8 +168,13 @@ export function createSessionMeta(doc: Document, onDelete: OnDelete): SessionMet
 
 export interface MapSection {
     root: HTMLElement;
+    // Redraws from a later record, keeping the open bubble while it is still drawn
+    update(record: SessionRecord): void;
     destroy(): void;
 }
+
+// Events can still land after the end, and an unchanged record keeps the reader's place
+const recordKey = (record: SessionRecord) => JSON.stringify([record.events, record.eventsDropped]);
 
 function nodeElement(host: Element, selector: string, id: string): HTMLElement | SVGElement | null {
     for (const node of host.querySelectorAll<HTMLElement | SVGElement>(selector)) {
@@ -177,18 +188,12 @@ export function createMapSection(
     record: SessionRecord,
     opts: { now: () => Date; clipboard: Clipboard },
 ): MapSection {
-    const model = buildMap(record);
+    let model = buildMap(record);
+    let shownKey = recordKey(record);
     // Empty, so its size changes with the width only and a redraw never re-triggers the observer
     const ruler = el(doc, "div", { class: "map-ruler", attrs: { "aria-hidden": "true" } });
     const map = el(doc, "div", { class: "map", attrs: EDGE }, [ruler]);
-    const captions: string[] = [copy.notSeen];
-    if (model.eventsDropped > 0) captions.push(copy.eventsDropped(model.eventsDropped));
-    const caption = el(
-        doc,
-        "div",
-        { class: "map-caption" },
-        captions.map((text) => el(doc, "p", { text })),
-    );
+    const caption = el(doc, "div", { class: "map-caption" });
     const table = el(doc, "div", { class: "map-table" });
     const root = el(doc, "div", { class: "map-section" }, [map, caption, table]);
 
@@ -228,10 +233,13 @@ export function createMapSection(
         target?.focus();
     }
 
-    // A second click, or Escape, sends the open node's id again and closes its table
-    function onSelect(id: string): void {
-        selectedId = selectedId === id ? null : id;
-        redraw(true, true);
+    function showCaption(): void {
+        const captions: string[] = [copy.notSeen];
+        if (model.eventsDropped > 0) captions.push(copy.eventsDropped(model.eventsDropped));
+        caption.replaceChildren(...captions.map((text) => el(doc, "p", { text })));
+    }
+
+    function showTable(): void {
         const node = model.nodes.find((n) => n.id === selectedId);
         table.replaceChildren(
             ...(node === undefined
@@ -240,6 +248,14 @@ export function createMapSection(
         );
     }
 
+    // A second click, or Escape, sends the open node's id again and closes its table
+    function onSelect(id: string): void {
+        selectedId = selectedId === id ? null : id;
+        redraw(true, true);
+        showTable();
+    }
+
+    showCaption();
     redraw(true, true);
 
     const Observer = doc.defaultView?.ResizeObserver;
@@ -253,6 +269,16 @@ export function createMapSection(
 
     return {
         root,
+        update(next) {
+            const key = recordKey(next);
+            if (key === shownKey) return;
+            shownKey = key;
+            model = buildMap(next);
+            if (!model.nodes.some((n) => n.id === selectedId)) selectedId = null;
+            showCaption();
+            redraw(true, true);
+            showTable();
+        },
         destroy() {
             observer?.disconnect();
         },
