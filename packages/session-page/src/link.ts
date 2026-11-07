@@ -3,37 +3,51 @@ export const KEY_RE = /^bnk_[A-Za-z0-9_-]{43}$/;
 
 const PATH_RE = /^\/s\/([a-z2-7]{16})$/;
 
+// How a page ended for good, kept so a reload says so rather than ask for the full link again
+export type Gone = "deleted" | "expired" | "not-found";
+
+const GONE: readonly Gone[] = ["deleted", "expired", "not-found"];
+const GONE_PREFIX = "gone:";
+
 export interface KeyStore {
     get(id: string): string | null;
     set(id: string, key: string): void;
-    clear(id: string): void;
+    // Replaces the key, which KEY_RE never matches, so no key is kept
+    markGone(id: string, why: Gone): void;
+    gone(id: string): Gone | null;
 }
 
 // Private windows and blocked site data make storage throw, and the page must still open
 export function sessionKeyStore(storage: Storage | null): KeyStore {
     const name = (id: string) => `bugnet.session.${id}`;
+    const read = (id: string): string | null => {
+        try {
+            return storage?.getItem(name(id)) ?? null;
+        } catch {
+            return null;
+        }
+    };
+    const write = (id: string, value: string) => {
+        try {
+            storage?.setItem(name(id), value);
+        } catch {
+            // What was written still holds for this view, only a reload loses it
+        }
+    };
     return {
         get(id) {
-            try {
-                const key = storage?.getItem(name(id)) ?? null;
-                return key !== null && KEY_RE.test(key) ? key : null;
-            } catch {
-                return null;
-            }
+            const key = read(id);
+            return key !== null && KEY_RE.test(key) ? key : null;
         },
-        set(id, key) {
-            try {
-                storage?.setItem(name(id), key);
-            } catch {
-                // The key still works for this view, only a reload loses it
-            }
+        set: write,
+        markGone(id, why) {
+            write(id, `${GONE_PREFIX}${why}`);
         },
-        clear(id) {
-            try {
-                storage?.removeItem(name(id));
-            } catch {
-                // Nothing was stored to clear
-            }
+        gone(id) {
+            const value = read(id);
+            if (value === null || !value.startsWith(GONE_PREFIX)) return null;
+            const why = value.slice(GONE_PREFIX.length);
+            return GONE.find((g) => g === why) ?? null;
         },
     };
 }
@@ -41,6 +55,7 @@ export function sessionKeyStore(storage: Storage | null): KeyStore {
 export type LinkState =
     | { kind: "ok"; id: string; key: string }
     | { kind: "no-key"; id: string }
+    | { kind: "gone"; id: string; why: Gone }
     | { kind: "not-a-link" };
 
 function keyFromFragment(hash: string): string | null {
@@ -65,5 +80,7 @@ export function readLink(
     // Screen shares and copied addresses would otherwise show the key
     if (loc.hash !== "") replacePath(`/s/${id}`);
     const key = fromFragment ?? store.get(id);
-    return key === null ? { kind: "no-key", id } : { kind: "ok", id, key };
+    if (key !== null) return { kind: "ok", id, key };
+    const why = store.gone(id);
+    return why === null ? { kind: "no-key", id } : { kind: "gone", id, why };
 }

@@ -13,6 +13,7 @@ import type { Browser, BrowserContext, BrowserContextOptions, Page } from "playw
 import { buildPage } from "../src/build.ts";
 import { copy } from "../src/copy.ts";
 import { isSignature } from "../src/payload.ts";
+import { COPIED_MS } from "../src/render/controls.ts";
 import { findLauncher, findOtherLaunchers, type Launcher } from "../src/testing/browser.ts";
 import { makeScenarios, type Scenario } from "../src/testing/fixtures.ts";
 import { startFakeRoute, type FakeRoute } from "../src/testing/route.ts";
@@ -98,8 +99,8 @@ const ACCENT = "rgb(82, 255, 184)";
 const BAD = "rgb(255, 107, 107)";
 const TEXT = "rgb(237, 237, 237)";
 const MUTED = "rgb(161, 161, 161)";
-// copyButton's COPIED_MS and a margin
-const AFTER_COPIED_MS = 1_500 + 500;
+// The copy button's flash and a margin
+const AFTER_COPIED_MS = COPIED_MS + 500;
 
 interface Ring {
     focused: string;
@@ -230,7 +231,8 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
         expect(await page.evaluate(bars, block)).toBe(1);
 
         await page.locator(".map").waitFor({ state: "visible", timeout: 30_000 });
-        expect(await page.locator(".session-state").textContent()).toBe(copy.sandboxEnded);
+        // The route answers ended-full's record once the placement ends
+        expect(await page.locator(".session-state").textContent()).toBe(copy.ended("stopped"));
         await expectClean(o);
     }, 60_000);
 

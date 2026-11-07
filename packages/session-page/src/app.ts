@@ -10,15 +10,17 @@
 import { createApi, type GetResult } from "./api.ts";
 import { copy } from "./copy.ts";
 import { formatClock, formatLeft } from "./format.ts";
-import { readLink, sessionKeyStore } from "./link.ts";
+import { readLink, sessionKeyStore, type Gone } from "./link.ts";
 import { createLive, type Live } from "./live.ts";
 import type { SessionRecord, Snapshot } from "./payload.ts";
 import { createCommandsView, type CommandsView } from "./render/commands.ts";
 import type { Clipboard } from "./render/controls.ts";
+import { reportError } from "./report.ts";
 import {
     createMapSection,
     createSessionHead,
     createSessionMeta,
+    emptyMapSection,
     mapLaterLine,
     messageLine,
     retryButton,
@@ -54,6 +56,12 @@ const STREAM_RETRY_MS = 2_000;
 
 type Mode = "loading" | "message" | "running" | "ended";
 
+const goneLine: Record<Gone, string> = {
+    deleted: copy.deleted,
+    expired: copy.expired,
+    "not-found": copy.notFound,
+};
+
 interface View {
     meta: SessionMeta;
     middle: HTMLElement;
@@ -71,7 +79,12 @@ export function startPage(env: PageEnv): { destroy(): void } {
     const head = createSessionHead(doc);
 
     if (link.kind !== "ok") {
-        const text = link.kind === "no-key" ? copy.noKey : copy.notALink;
+        const text =
+            link.kind === "gone"
+                ? goneLine[link.why]
+                : link.kind === "no-key"
+                  ? copy.noKey
+                  : copy.notALink;
         root.replaceChildren(head.root, messageLine(doc, text));
         return { destroy() {} };
     }
@@ -152,20 +165,25 @@ export function startPage(env: PageEnv): { destroy(): void } {
         const at = epoch;
         const result = await api.get();
         if (destroyed || at !== epoch) return;
-        apply(result);
+        try {
+            apply(result);
+        } catch (err) {
+            // A drawing bug is not a network failure, so the view stays as it is
+            reportError(err);
+        }
     }
 
     function apply(result: GetResult): void {
         if (!result.ok) {
-            if (result.error === "not-found") finish(copy.notFound, true);
-            else if (result.error === "bad-payload") finish(copy.tooNew, false);
+            if (result.error === "not-found") finish(copy.notFound, "not-found");
+            else if (result.error === "bad-payload") finish(copy.tooNew, null);
             else if (view !== null) failed();
             else offerRetry(result.error === "rate-limited" ? copy.rateLimited : copy.offline);
             return;
         }
         const body = result.body;
-        if (body.state === "expired") finish(copy.expired, true);
-        else if (body.state === "too-new") finish(copy.tooNew, false);
+        if (body.state === "expired") finish(copy.expired, "expired");
+        else if (body.state === "too-new") finish(copy.tooNew, null);
         else {
             failures = 0;
             if (body.state === "running") showRunning(body.snapshot);
@@ -200,9 +218,10 @@ export function startPage(env: PageEnv): { destroy(): void } {
         view = null;
     }
 
-    function finish(text: string, forgetKey: boolean): void {
+    // A page that is gone for good keeps how it went in the key's place, for a reload
+    function finish(text: string, gone: Gone | null): void {
         stop();
-        if (forgetKey) store.clear(id);
+        if (gone !== null) store.markGone(id, gone);
         teardown();
         mode = "message";
         status = null;
@@ -238,9 +257,12 @@ export function startPage(env: PageEnv): { destroy(): void } {
                 liveSeqs.add(seq);
                 view?.commands.setLive(seq, state);
             },
-            onGone: () => finish(copy.notFound, true),
+            onGone: () => finish(copy.notFound, "not-found"),
             onSessionEnd: () => {
                 stop();
+                // Until the record comes with the reason
+                status = { text: copy.sandboxEnded, running: false };
+                paintStatus();
                 void ask();
             },
             setTimer: (cb, ms) => env.setTimer(cb, ms),
@@ -254,8 +276,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
         clearAsk();
         const result = await api.remove();
         if (destroyed) return true;
-        if (result.ok) finish(copy.deleted, true);
-        else if (result.error === "not-found") finish(copy.notFound, true);
+        if (result.ok) finish(copy.deleted, "deleted");
+        else if (result.error === "not-found") finish(copy.notFound, "not-found");
         else {
             askIn(nextAsk());
             return false;
@@ -263,17 +285,43 @@ export function startPage(env: PageEnv): { destroy(): void } {
         return true;
     }
 
+    // A map that fails to draw leaves its caption, and the rest of the page goes on
+    function drawMap(record: SessionRecord): MapSection | null {
+        try {
+            return createMapSection(doc, record, { now: serverNow, clipboard: env.clipboard });
+        } catch (err) {
+            reportError(err);
+            return null;
+        }
+    }
+
+    function swapMiddle(v: View, map: MapSection | null, middle: HTMLElement): void {
+        v.map?.destroy();
+        v.middle.replaceWith(middle);
+        v.middle = middle;
+        v.map = map;
+    }
+
     // The heading row, the times and the commands stay across running and ended
     function enter(kind: "running" | "ended", record: SessionRecord | null): View {
         if (view !== null && mode === kind) {
-            if (record !== null) view.map?.update(record);
+            if (record !== null && view.map !== null) {
+                try {
+                    view.map.update(record);
+                } catch (err) {
+                    reportError(err);
+                    swapMiddle(view, null, emptyMapSection(doc, record));
+                }
+            }
             return view;
         }
-        const map =
-            record === null
-                ? null
-                : createMapSection(doc, record, { now: serverNow, clipboard: env.clipboard });
-        const middle = map === null ? mapLaterLine(doc) : map.root;
+        const map = record === null ? null : drawMap(record);
+        const middle =
+            map !== null
+                ? map.root
+                : record === null
+                  ? mapLaterLine(doc)
+                  : emptyMapSection(doc, record);
         if (view === null) {
             const commands = createCommandsView({
                 doc,
@@ -285,10 +333,7 @@ export function startPage(env: PageEnv): { destroy(): void } {
             view = { meta: createSessionMeta(doc, remove), middle, map, commands };
             root.replaceChildren(head.root, view.meta.root, middle, commands.root);
         } else {
-            view.map?.destroy();
-            view.middle.replaceWith(middle);
-            view.middle = middle;
-            view.map = map;
+            swapMiddle(view, map, middle);
         }
         mode = kind;
         // The heading is where a screen reader starts, and a sighted reader keeps their place
@@ -320,19 +365,15 @@ export function startPage(env: PageEnv): { destroy(): void } {
     }
 
     function showEnded(record: SessionRecord): void {
-        const justEnded = mode === "running";
-        if (justEnded) stopLive();
+        if (mode === "running") stopLive();
         const now = serverNow();
         const v = enter("ended", record);
-        status = {
-            text: justEnded ? copy.sandboxEnded : copy.ended(record.endedBecause),
-            running: false,
-        };
+        status = { text: copy.ended(record.endedBecause), running: false };
         paintStatus();
         timesAt = (at) => [
             copy.started(formatClock(record.startedAt, at)),
             copy.endedAt(formatClock(record.endedAt, at)),
-            copy.deletes(formatLeft(record.deletesAt, at)),
+            copy.deletes(formatClock(record.deletesAt, at), formatLeft(record.deletesAt, at)),
         ];
         paintTimes();
         startClock();

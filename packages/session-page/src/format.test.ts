@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
     formatBytes,
     formatClock,
+    formatCount,
     formatDuration,
     formatLeft,
     formatUsdc,
@@ -48,6 +49,14 @@ describe("formatDuration", () => {
         expect(formatDuration(-5)).toBe(nb("0 s"));
     });
 
+    it("says a finished call under a tenth of a second took less, never 0 s", () => {
+        expect(formatDuration(40)).toBe(nb("<0.1 s"));
+        expect(formatDuration(1)).toBe(nb("<0.1 s"));
+        expect(formatDuration(99)).toBe(nb("<0.1 s"));
+        expect(formatDuration(100)).toBe(nb("0.1 s"));
+        expect(formatDuration(0)).toBe(nb("0 s"));
+    });
+
     it("never rounds up past the time that has passed", () => {
         expect(formatDuration(9_999)).toBe(nb("9.9 s"));
         expect(formatDuration(59_999)).toBe(nb("59 s"));
@@ -79,15 +88,22 @@ describe("formatLeft", () => {
 
     it("shows the largest whole unit", () => {
         expect(formatLeft(ahead(47 * 3_600_000), now)).toBe("47 h");
+        expect(formatLeft(ahead(2 * 3_600_000), now)).toBe("2 h");
         expect(formatLeft(ahead(23 * 60_000), now)).toBe("23 min");
         expect(formatLeft(ahead(40_000), now)).toBe("40 s");
     });
 
-    it("clamps at now", () => {
-        expect(formatLeft(now, now)).toBe("now");
-        expect(formatLeft(ahead(-1), now)).toBe("now");
-        expect(formatLeft(ahead(-5 * 3_600_000), now)).toBe("now");
-        expect(formatLeft(ahead(400), now)).toBe("now");
+    it("keeps the minutes below 2 h, as a duration does", () => {
+        expect(formatLeft(ahead(119 * 60_000), now)).toBe("1 h 59 min");
+        expect(formatLeft(ahead(60 * 60_000), now)).toBe("1 h 0 min");
+    });
+
+    it("gives nothing once less than a second is left, never a negative time", () => {
+        expect(formatLeft(now, now)).toBeNull();
+        expect(formatLeft(ahead(-1), now)).toBeNull();
+        expect(formatLeft(ahead(-5 * 3_600_000), now)).toBeNull();
+        expect(formatLeft(ahead(400), now)).toBeNull();
+        expect(formatLeft(ahead(1_000), now)).toBe("1 s");
     });
 });
 
@@ -98,6 +114,15 @@ describe("formatUsdc", () => {
         expect(formatUsdc(1_000_000)).toBe("1 USDC");
         expect(formatUsdc(0)).toBe("0 USDC");
         expect(formatUsdc(12_345_678)).toBe("12.345678 USDC");
+    });
+
+    it("pads the fraction with zeros to a given length, so decimal points line up", () => {
+        expect(formatUsdc(50_000, 3)).toBe("0.050 USDC");
+        expect(formatUsdc(25_000, 3)).toBe("0.025 USDC");
+        expect(formatUsdc(1_000_000, 3)).toBe("1.000 USDC");
+        expect(formatUsdc(123_456, 3)).toBe("0.123456 USDC");
+        expect(formatUsdc(1_000_000, 0)).toBe("1 USDC");
+        expect(formatUsdc(-50_000, 4)).toBe("-0.0500 USDC");
     });
 });
 
@@ -146,5 +171,11 @@ describe("plural", () => {
         expect(plural(1, "call", "calls")).toBe("1 call");
         expect(plural(0, "call", "calls")).toBe("0 calls");
         expect(plural(3, "tool call", "tool calls")).toBe("3 tool calls");
+    });
+
+    it("groups the digits of a large count", () => {
+        expect(plural(12_345, "request", "requests")).toBe("12,345 requests");
+        expect(formatCount(1_234_567)).toBe("1,234,567");
+        expect(formatCount(999)).toBe("999");
     });
 });

@@ -23,6 +23,8 @@ export function formatBytes(n: number): string {
 // Rounds down, so a ticking duration never shows more time than has passed
 export function formatDuration(ms: number): string {
     if (!Number.isFinite(ms) || ms <= 0) return `0${NB}s`;
+    // A call that did take time must not read as taking none
+    if (ms < 100) return `<0.1${NB}s`;
     if (ms < 10_000) return `${Math.floor(ms / 100) / 10}${NB}s`;
     const seconds = Math.floor(ms / 1000);
     if (seconds < 60) return `${seconds}${NB}s`;
@@ -71,27 +73,49 @@ export function formatClock(d: Date, now: Date, timeZone?: string): string {
     return `${formats.date.format(d)} ${time}`;
 }
 
-// A viewer clock that is off must never show a negative or growing time, so the past is "now"
-export function formatLeft(target: Date, now: Date): string {
+/*
+ * Null once less than a second is left, so a viewer clock that is off never shows a negative or
+ * growing time, and the caller says nothing rather than "now left"
+ */
+export function formatLeft(target: Date, now: Date): string | null {
     const ms = target.getTime() - now.getTime();
-    if (!Number.isFinite(ms) || ms < 1000) return "now";
+    if (!Number.isFinite(ms) || ms < 1000) return null;
     const seconds = Math.floor(ms / 1000);
     if (seconds < 60) return `${seconds} s`;
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes} min`;
+    // Under 2 h the hour alone would hide up to half the time left
+    if (minutes < 120) return `1 h ${minutes - 60} min`;
     return `${Math.floor(minutes / 60)} h`;
 }
 
-// Integer arithmetic, so an amount never prints float noise such as 0.30000000000000004
-export function formatUsdc(micros: number): string {
+const USDC_DIGITS = 6;
+
+/*
+ * Integer arithmetic, so an amount never prints float noise such as 0.30000000000000004. A column
+ * of amounts pads each fraction with zeros to its longest, so the decimal points line up
+ */
+export function formatUsdc(micros: number, minFraction = 0): string {
     const whole = Math.round(Math.abs(micros));
     const sign = micros < 0 && whole > 0 ? "-" : "";
     const units = Math.floor(whole / 1_000_000);
     const fraction = String(whole % 1_000_000)
-        .padStart(6, "0")
-        .replace(/0+$/, "");
+        .padStart(USDC_DIGITS, "0")
+        .replace(/0+$/, "")
+        .padEnd(Math.min(minFraction, USDC_DIGITS), "0");
     return `${sign}${units}${fraction ? `.${fraction}` : ""} USDC`;
 }
+
+// The digits of a fraction formatUsdc prints with no padding
+export function usdcFraction(micros: number): number {
+    return (
+        formatUsdc(micros)
+            .replace(/ USDC$/, "")
+            .split(".")[1]?.length ?? 0
+    );
+}
+
+export const formatCount = new Intl.NumberFormat("en-GB").format;
 
 export function shortSignature(tx: string): string {
     return tx.length <= 13 ? tx : `${tx.slice(0, 6)}…${tx.slice(-6)}`;
@@ -104,7 +128,7 @@ export function truncateLabel(s: string, max = 24): string {
     return `${points.slice(0, Math.max(0, max - 1)).join("")}…`;
 }
 
-// The count and the word, as in "1 call" or "3 calls"
+// The count and the word, as in "1 call" or "12,345 calls"
 export function plural(n: number, one: string, many: string): string {
-    return `${n} ${n === 1 ? one : many}`;
+    return `${formatCount(n)} ${n === 1 ? one : many}`;
 }

@@ -4,7 +4,8 @@ import { el } from "./dom.ts";
 
 export type Clipboard = { writeText(s: string): Promise<void> };
 
-const COPIED_MS = 1_500;
+// How long a copy button shows its outcome
+export const COPIED_MS = 1_500;
 
 let tips = 0;
 

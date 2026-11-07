@@ -128,7 +128,7 @@ describe("createCommandsView", () => {
         const wideHead = [...view.root.querySelectorAll("thead .col-wide")].map(
             (c) => c.textContent,
         );
-        expect(wideHead).toEqual(["Time", "Out", "Err"]);
+        expect(wideHead).toEqual(["Duration", "Out", "Err"]);
     });
 
     it("gives each exit cell its text and class", () => {

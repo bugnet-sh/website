@@ -94,6 +94,29 @@ describe("readLink", () => {
         expect(open(`/s/${id}`, "", store).state).toEqual({ kind: "no-key", id });
     });
 
+    it("says why the page went when only its end is stored", () => {
+        for (const why of ["deleted", "expired", "not-found"] as const) {
+            const store = sessionKeyStore(memoryStorage());
+            store.set(id, key);
+            store.markGone(id, why);
+            for (const hash of ["", "#", "#k=bnk_short"]) {
+                expect(open(`/s/${id}`, hash, store).state, `${why} ${hash}`).toEqual({
+                    kind: "gone",
+                    id,
+                    why,
+                });
+            }
+        }
+    });
+
+    it("takes a fresh key from the fragment over a stored end", () => {
+        const store = sessionKeyStore(memoryStorage());
+        store.markGone(id, "deleted");
+        expect(open(`/s/${id}`, `#k=${key}`, store).state).toEqual({ kind: "ok", id, key });
+        expect(store.gone(id)).toBeNull();
+        expect(open(`/s/${id}`, "", store).state).toEqual({ kind: "ok", id, key });
+    });
+
     it("refuses paths that are not a session link", () => {
         for (const pathname of [
             "/s/ABCDEFGHIJKLMNOP",
@@ -118,7 +141,8 @@ describe("readLink", () => {
         expect(state).toEqual({ kind: "ok", id, key });
         expect(replacePath).toHaveBeenCalledWith(`/s/${id}`);
         expect(store.get(id)).toBeNull();
-        expect(() => store.clear(id)).not.toThrow();
+        expect(() => store.markGone(id, "deleted")).not.toThrow();
+        expect(store.gone(id)).toBeNull();
     });
 
     it("works with no storage at all", () => {
@@ -135,9 +159,27 @@ describe("sessionKeyStore", () => {
         store.set(id, key);
         expect(storage.getItem(`bugnet.session.${id}`)).toBe(key);
         expect(store.get(id)).toBe(key);
-        store.clear(id);
+    });
+
+    it("replaces the key with the way the page ended, so no key is kept", () => {
+        const storage = memoryStorage();
+        const store = sessionKeyStore(storage);
+        store.set(id, key);
+        store.markGone(id, "expired");
+        expect(storage.getItem(`bugnet.session.${id}`)).toBe("gone:expired");
         expect(store.get(id)).toBeNull();
-        expect(storage.length).toBe(0);
+        expect(store.gone(id)).toBe("expired");
+        expect(storage.length).toBe(1);
+    });
+
+    it("ignores a stored end it does not know", () => {
+        const storage = memoryStorage();
+        storage.setItem(`bugnet.session.${id}`, "gone:later");
+        expect(sessionKeyStore(storage).gone(id)).toBeNull();
+        expect(open(`/s/${id}`, "", sessionKeyStore(storage)).state).toEqual({
+            kind: "no-key",
+            id,
+        });
     });
 
     it("ignores a stored value that is not a key", () => {

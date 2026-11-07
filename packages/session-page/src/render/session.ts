@@ -8,7 +8,7 @@
 import { copy } from "../copy.ts";
 import { layoutMap } from "../map/layout.ts";
 import { renderMapList } from "../map/list.ts";
-import { buildMap, type MapSelect } from "../map/model.ts";
+import { buildMap, type MapNode, type MapSelect } from "../map/model.ts";
 import { renderMapSvg } from "../map/svg.ts";
 import { renderEventTable } from "../map/table.ts";
 import type { SessionRecord } from "../payload.ts";
@@ -167,6 +167,23 @@ export function createSessionMeta(doc: Document, onDelete: OnDelete): SessionMet
     };
 }
 
+function captionLines(doc: Document, eventsDropped: number): HTMLParagraphElement[] {
+    const captions: string[] = [copy.notSeen];
+    if (eventsDropped > 0) captions.push(copy.eventsDropped(eventsDropped));
+    return captions.map((text) => el(doc, "p", { text }));
+}
+
+// What shows when the map fails to draw: its caption alone
+export function emptyMapSection(doc: Document, record: SessionRecord): HTMLElement {
+    const caption = el(
+        doc,
+        "div",
+        { class: "map-caption" },
+        captionLines(doc, record.eventsDropped),
+    );
+    return el(doc, "div", { class: "map-section" }, [caption]);
+}
+
 export interface MapSection {
     root: HTMLElement;
     // Redraws from a later record, keeping the open bubble while it is still drawn
@@ -176,6 +193,34 @@ export interface MapSection {
 
 // Events can still land after the end, and an unchanged record keeps the reader's place
 const recordKey = (record: SessionRecord) => JSON.stringify([record.events, record.eventsDropped]);
+
+const rowsKey = (node: MapNode | undefined) =>
+    node === undefined ? "" : JSON.stringify(node.rows);
+
+const FOCUSABLE = "a[href], button, [tabindex]";
+
+// Where focus sits in a table: its row's text, and its place among that row's controls
+interface TablePlace {
+    row: string | null;
+    index: number;
+}
+
+function placeOf(table: Element, active: Element): TablePlace {
+    const tr = active.closest("tr");
+    const scope = tr ?? table;
+    return {
+        row: tr?.textContent ?? null,
+        index: [...scope.querySelectorAll(FOCUSABLE)].indexOf(active),
+    };
+}
+
+// The same row by its text, else the same place in the whole table
+function findPlace(table: Element, place: TablePlace): HTMLElement | null {
+    const tr = [...table.querySelectorAll("tr")].find((r) => r.textContent === place.row);
+    const scope = tr ?? table;
+    const all = [...scope.querySelectorAll<HTMLElement>(FOCUSABLE)];
+    return all[Math.min(place.index, all.length - 1)] ?? null;
+}
 
 function nodeElement(host: Element, selector: string, id: string): HTMLElement | SVGElement | null {
     for (const node of host.querySelectorAll<HTMLElement | SVGElement>(selector)) {
@@ -235,13 +280,13 @@ export function createMapSection(
     }
 
     function showCaption(): void {
-        const captions: string[] = [copy.notSeen];
-        if (model.eventsDropped > 0) captions.push(copy.eventsDropped(model.eventsDropped));
-        caption.replaceChildren(...captions.map((text) => el(doc, "p", { text })));
+        caption.replaceChildren(...captionLines(doc, model.eventsDropped));
     }
 
+    const selected = () => model.nodes.find((n) => n.id === selectedId);
+
     function showTable(): void {
-        const node = model.nodes.find((n) => n.id === selectedId);
+        const node = selected();
         table.replaceChildren(
             ...(node === undefined
                 ? []
@@ -274,11 +319,17 @@ export function createMapSection(
             const key = recordKey(next);
             if (key === shownKey) return;
             shownKey = key;
+            const shownRows = rowsKey(selected());
+            const active = doc.activeElement;
+            const place = active !== null && table.contains(active) ? placeOf(table, active) : null;
             model = buildMap(next);
             if (!model.nodes.some((n) => n.id === selectedId)) selectedId = null;
             showCaption();
             redraw(true, true);
+            // An open table whose rows did not change keeps the reader's scroll and focus
+            if (selectedId !== null && rowsKey(selected()) === shownRows) return;
             showTable();
+            if (place !== null) findPlace(table, place)?.focus();
         },
         destroy() {
             observer?.disconnect();

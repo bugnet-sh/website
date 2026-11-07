@@ -30,14 +30,25 @@ describe("copy", () => {
         expect(copy.started("14:02")).toBe("Started 14:02");
         expect(copy.endedAt("6 Nov 14:12")).toBe("Ended 6 Nov 14:12");
         expect(copy.ends("14:12", "7 min")).toBe("Ends 14:12 (7 min left)");
-        expect(copy.deletes("47 h")).toBe("Deleted in 47 h");
+        expect(copy.deletes("10:00", "47 h")).toBe("Deleted at 10:00 (in 47 h)");
+        expect(copy.deletes("9 Nov 10:00", "47 h")).toBe("Deleted at 9 Nov 10:00 (in 47 h)");
+    });
+
+    it("leaves out the time left once none is left, so no line says now left", () => {
+        expect(copy.ends("14:12", null)).toBe("Ends 14:12");
+        expect(copy.deletes("10:00", null)).toBe("Deleted at 10:00");
     });
 
     it("formats the byte and count notices", () => {
         expect(copy.cut(1_258_291)).toBe("Earlier output not kept (1.2\u00a0MiB)");
-        expect(copy.dropped(1000)).toBe("Earlier lines dropped from this view: 1000");
+        expect(copy.dropped(1000)).toBe("Earlier lines not shown or copied: 1,000");
+        expect(copy.dropped(12_345)).toBe("Earlier lines not shown or copied: 12,345");
         expect(copy.skipped(12_345)).toBe("12\u00a0KiB earlier not shown");
         expect(copy.eventsDropped(120)).toBe("120 more events weren't recorded.");
+        expect(copy.eventsDropped(1)).toBe("1 more event wasn't recorded.");
+        expect(copy.eventsDropped(1_200)).toBe("1,200 more events weren't recorded.");
+        expect(copy.metrics.refused(12_345)).toBe("12,345 refused");
+        expect(copy.metrics.requests(12_345)).toBe("12,345 requests");
     });
 
     it("writes each job's last line as its parts", () => {
@@ -116,6 +127,12 @@ describe("copy", () => {
         expect(copy.logoLabel).toBe("Bugnet");
         expect(copy.noScript).toBe("This page needs JavaScript to show the session.");
         expect(copy.copyFailed).toBe("Copy failed");
+        expect(copy.copiedPartial).toBe("Copied, cut");
+        expect(copy.loading).toBe("Loading…");
+        expect(copy.copyCommand).toBe("Copy command");
+        expect(copy.confirmDelete).toBe(
+            "Delete this page and its output for everyone? This can't be undone.",
+        );
         expect(copy.tipMark).toBe("?");
         expect(copy.expired).toBe(
             "This page has expired. Session pages are deleted 48 hours after the sandbox ends.",
@@ -130,7 +147,7 @@ describe("copy", () => {
             "#",
             "Command",
             "Exit",
-            "Time",
+            "Duration",
             "Out",
             "Err",
         ]);

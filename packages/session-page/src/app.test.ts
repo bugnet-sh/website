@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startPage, type PageEnv } from "./app.ts";
 import { copy } from "./copy.ts";
-import { formatLeft } from "./format.ts";
+import { formatClock } from "./format.ts";
 import type { Scheduler } from "./schedule.ts";
 import { makeScenarios, type Scenario } from "./testing/fixtures.ts";
 
@@ -143,6 +143,12 @@ const rows = (app: HTMLElement) => app.querySelectorAll("tr.cmd-row").length;
 const button = (app: HTMLElement, sel: string) => q<HTMLButtonElement>(app, sel)!;
 const stored = (s: Scenario) => window.sessionStorage.getItem(`bugnet.session.${s.id}`);
 
+interface Ended {
+    deletesAt: string;
+    output: string;
+    events: unknown[];
+}
+
 beforeEach(() => {
     vi.useFakeTimers({ now: NOW, toFake: ["setTimeout", "clearTimeout", "Date"] });
     window.sessionStorage.clear();
@@ -235,18 +241,25 @@ describe("the session row", () => {
         }
     });
 
-    it("refreshes the times once a minute while a view shows", async () => {
-        const s = scenarios["ended-full"];
-        const srv = server([first(s)]);
-        const { app } = open({ scenario: s, fetch: srv.fetch });
+    it("repaints the times on each minute while a view shows, and not before", async () => {
+        const full = first(scenarios["ended-full"]) as {
+            status: number;
+            body: { record: { deletesAt: string } };
+        };
+        const soon = structuredClone(full);
+        // 1 h 30 min left at open, 1 h 29 min a minute later
+        const deletesAt = new Date(NOW.getTime() + 90 * 60_000);
+        soon.body.record.deletesAt = deletesAt.toISOString();
+        const srv = server([soon]);
+        const { app } = open({ fetch: srv.fetch });
         await settle();
-        const body = first(s) as { body: { record: { deletesAt: string } } };
-        const deletesAt = new Date(body.body.record.deletesAt);
         const deletes = () => app.querySelectorAll(".session-times > span")[2]?.textContent;
-        expect(deletes()).toBe(copy.deletes(formatLeft(deletesAt, new Date())));
-        await advance(2 * HOUR);
-        expect(deletes()).toBe(copy.deletes(formatLeft(deletesAt, new Date())));
-        expect(deletes()).not.toBe(copy.deletes(formatLeft(deletesAt, NOW)));
+        const at = formatClock(deletesAt, NOW);
+        expect(deletes()).toBe(copy.deletes(at, "1 h 30 min"));
+        await advance(59_999);
+        expect(deletes()).toBe(copy.deletes(at, "1 h 30 min"));
+        await advance(1);
+        expect(deletes()).toBe(copy.deletes(at, "1 h 29 min"));
         expect(srv.gets()).toHaveLength(1);
     });
 
@@ -284,7 +297,11 @@ describe("an ended session", () => {
         expect(times).toHaveLength(3);
         expect(times[0]).toMatch(/^Started /);
         expect(times[1]).toMatch(/^Ended /);
-        expect(times[2]).toMatch(/^Deleted in /);
+        const record = (first(scenarios["ended-full"]) as { body: { record: Ended } }).body.record;
+        const deletesAt = new Date(record.deletesAt);
+        // Two days after the start, so the deletion time carries its date
+        expect(times[2]).toBe(copy.deletes(formatClock(deletesAt, NOW), "47 h"));
+        expect(times[2]).toMatch(/^Deleted at \d+ [A-Z][a-z]{2} \d\d:\d\d \(in 47 h\)$/);
         expect(status(app)).toBe("Ended: stopped");
         expect(q(app, "table.commands")?.hasAttribute("data-edge")).toBe(true);
         expect(document.activeElement).toBe(q(app, "h1"));
@@ -415,13 +432,80 @@ describe("an ended session", () => {
         expect(q(app, late)).toBeNull();
         const payments = () => q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!;
         payments().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        const table = () => q(app, '.map-table .table-scroll[data-node-id="payments"]');
+        const opened = table();
         await advance(5_000);
         expect(srv.gets()).toHaveLength(2);
         expect(q(app, late)).not.toBeNull();
         expect(q(app, '.map-row[data-node-id="secret-host:late.example"]')).not.toBeNull();
         expect(payments().classList.contains("is-selected")).toBe(true);
-        expect(q(app, '.map-table .table-scroll[data-node-id="payments"]')).not.toBeNull();
+        // Its rows did not change, so the reader's place in the open table stays
+        expect(table()).toBe(opened);
         expect(app.querySelectorAll(".map")).toHaveLength(1);
+    });
+
+    it("keeps focus on the same control when the open table's rows change", async () => {
+        type Body = { record: { output: string; events: unknown[] } };
+        const full = first(scenarios["ended-full"]) as { status: number; body: Body };
+        const saving = structuredClone(full);
+        saving.body.record.output = "pending";
+        const later = structuredClone(full);
+        later.body.record.events.push({
+            at: new Date(NOW.getTime() - 60_000).toISOString(),
+            kind: "payment",
+            payKind: "extend",
+            amountMicros: 10_000,
+            tx: "not-a-signature",
+        });
+        const srv = server([saving, later]);
+        const { app } = open({ fetch: srv.fetch });
+        await settle();
+        q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!.dispatchEvent(
+            new MouseEvent("click", { bubbles: true }),
+        );
+        const table = () => q(app, '.map-table .table-scroll[data-node-id="payments"]')!;
+        const before = table();
+        const rowsBefore = before.querySelectorAll("tbody tr").length;
+        const focused = before.querySelectorAll<HTMLButtonElement>("button.copy-button")[1]!;
+        const rowText = focused.closest("tr")!.textContent;
+        focused.focus();
+        await advance(5_000);
+        expect(srv.gets()).toHaveLength(2);
+        expect(table()).not.toBe(before);
+        expect(table().querySelectorAll("tbody tr")).toHaveLength(rowsBefore + 1);
+        const now = document.activeElement as HTMLElement;
+        expect(table().contains(now)).toBe(true);
+        expect(now.matches("button.copy-button")).toBe(true);
+        expect(now.closest("tr")!.textContent).toBe(rowText);
+    });
+
+    it("still shows the status, the times and the commands when the map fails to draw", async () => {
+        class Broken {
+            observe() {
+                throw new Error("map failed");
+            }
+            disconnect() {}
+        }
+        const win = document.defaultView as unknown as Record<string, unknown>;
+        win.ResizeObserver = Broken;
+        const reported = vi.fn();
+        vi.stubGlobal("reportError", reported);
+        try {
+            const srv = server([first(scenarios["ended-full"])]);
+            const { app } = open({ fetch: srv.fetch });
+            await settle();
+            expect(reported).toHaveBeenCalledOnce();
+            expect((reported.mock.calls[0]![0] as Error).message).toBe("map failed");
+            expect(status(app)).toBe(copy.ended("stopped"));
+            expect(app.querySelectorAll(".session-times > span")).toHaveLength(3);
+            expect(rows(app)).toBe(6);
+            expect(q(app, ".map-section svg")).toBeNull();
+            expect(text(app, ".map-section .map-caption")).toBe(copy.notSeen);
+            expect(app.querySelectorAll(".map-section")).toHaveLength(1);
+        } finally {
+            delete win.ResizeObserver;
+            vi.unstubAllGlobals();
+        }
     });
 
     it("asks every 5 s for two minutes, then every 30 s", async () => {
@@ -496,7 +580,8 @@ describe("a running session", () => {
         await settle();
         expect(q(app, ".map svg.map-svg")).not.toBeNull();
         expect(q(app, ".map-later")).toBeNull();
-        expect(status(app)).toBe(copy.sandboxEnded);
+        // The record holds the reason, so the status says it once the record shows
+        expect(status(app)).toBe(copy.ended("stopped"));
         expect(rows(app)).toBe(6);
         expect(srv.lives().length).toBeGreaterThan(0);
         expect(srv.lives().every((c) => c.signal?.aborted)).toBe(true);
@@ -514,8 +599,29 @@ describe("a running session", () => {
         await settle();
         await settle();
         expect(srv.gets()).toHaveLength(2);
-        expect(status(app)).toBe(copy.sandboxEnded);
+        expect(status(app)).toBe(copy.ended("stopped"));
         expect(q(app, ".map svg.map-svg")).not.toBeNull();
+    });
+
+    it("says the sandbox ended while it loads the record, then gives the reason", async () => {
+        const srv = server([runningBody], { live: 'event: end\ndata: {"reason":"ended"}\n\n' });
+        let answerNow: (r: Response) => void = () => {};
+        let asks = 0;
+        const fetch = (async (url: string, init: RequestInit) => {
+            if (!url.endsWith("/live") && init.method === "POST" && ++asks === 2) {
+                return new Promise<Response>((resolve) => (answerNow = resolve));
+            }
+            return srv.fetch(url, init);
+        }) as unknown as typeof globalThis.fetch;
+        const { app } = open({ scenario: running, fetch });
+        await settle();
+        await settle();
+        expect(asks).toBe(2);
+        expect(status(app)).toBe(copy.sandboxEnded);
+        expect(q(app, ".session-state .dot")?.hidden).toBe(true);
+        answerNow(answer(first(scenarios["ended-full"])));
+        await settle();
+        expect(status(app)).toBe(copy.ended("stopped"));
     });
 
     it("says it is reconnecting after three failed asks, and keeps the view", async () => {
@@ -538,7 +644,7 @@ describe("a running session", () => {
         await advance(10_000);
         expect(message(app)).toBe(copy.notFound);
         expect(rows(app)).toBe(0);
-        expect(stored(running)).toBeNull();
+        expect(stored(running)).toBe("gone:not-found");
         expect(document.activeElement).toBe(q(app, ".message"));
         await advance(60_000);
         expect(srv.gets()).toHaveLength(2);
@@ -549,7 +655,7 @@ describe("a running session", () => {
         const { app } = open({ scenario: running, fetch: srv.fetch });
         await settle();
         expect(message(app)).toBe(copy.notFound);
-        expect(stored(running)).toBeNull();
+        expect(stored(running)).toBe("gone:not-found");
     });
 });
 
@@ -561,7 +667,7 @@ describe("the end states", () => {
         expect(stored(s)).toBe(s.key);
         await settle();
         expect(message(app)).toBe(copy.expired);
-        expect(stored(s)).toBeNull();
+        expect(stored(s)).toBe("gone:expired");
         expect(document.activeElement).toBe(q(app, ".message"));
     });
 
@@ -571,7 +677,25 @@ describe("the end states", () => {
         const { app } = open({ scenario: s, fetch: srv.fetch });
         await settle();
         expect(message(app)).toBe(copy.notFound);
-        expect(stored(s)).toBeNull();
+        expect(stored(s)).toBe("gone:not-found");
+    });
+
+    it("says how the page ended on a reload after it, never that the key is missing", async () => {
+        const cases: [Scenario, Answer, string][] = [
+            [scenarios.expired, first(scenarios.expired), copy.expired],
+            [scenarios["ended-full"], { status: 404, body: null }, copy.notFound],
+        ];
+        for (const [s, end, line] of cases) {
+            const srv = server([end]);
+            open({ scenario: s, fetch: srv.fetch });
+            await settle();
+            const again = server([first(scenarios["ended-full"])]);
+            const { app } = open({ scenario: s, hash: "", fetch: again.fetch });
+            await settle();
+            expect(message(app), s.kind).toBe(line);
+            expect(again.calls, s.kind).toEqual([]);
+            expect(document.body.textContent).not.toContain(copy.noKey);
+        }
     });
 
     it("offers a retry after a 429, and a retry asks again once", async () => {
@@ -625,8 +749,14 @@ describe("Delete now", () => {
         await settle();
         expect(srv.deletes()).toHaveLength(1);
         expect(message(app)).toBe(copy.deleted);
-        expect(stored(s)).toBeNull();
+        expect(stored(s)).toBe("gone:deleted");
         expect(document.activeElement).toBe(q(app, ".message"));
+
+        const again = server([first(s)]);
+        const reloaded = open({ scenario: s, hash: "", fetch: again.fetch });
+        await settle();
+        expect(message(reloaded.app)).toBe(copy.deleted);
+        expect(again.calls).toEqual([]);
     });
 
     it("goes back to Delete now on Cancel", async () => {

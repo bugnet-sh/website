@@ -1,4 +1,4 @@
-import { formatBytes, formatDuration, formatUsdc, plural } from "./format.ts";
+import { formatBytes, formatCount, formatDuration, formatUsdc, plural } from "./format.ts";
 import type { EndedBecause, JobState, X402Status } from "./payload.ts";
 
 const endedReason: Record<EndedBecause, string> = {
@@ -33,8 +33,11 @@ export const copy = {
         because === "other" ? "Ended" : `Ended: ${endedReason[because]}`,
     started: (time: string) => `Started ${time}`,
     endedAt: (time: string) => `Ended ${time}`,
-    ends: (time: string, left: string) => `Ends ${time} (${left} left)`,
-    deletes: (left: string) => `Deleted in ${left}`,
+    // No time left leaves the bracket out
+    ends: (time: string, left: string | null) =>
+        left === null ? `Ends ${time}` : `Ends ${time} (${left} left)`,
+    deletes: (time: string, left: string | null) =>
+        left === null ? `Deleted at ${time}` : `Deleted at ${time} (in ${left})`,
     mapLater: "The map appears when the sandbox ends.",
     sandboxEnded: "Sandbox ended",
 
@@ -52,14 +55,15 @@ export const copy = {
     tooNew: "This page needs a newer version. Reload it.",
 
     deleteNow: "Delete now",
-    confirmDelete: "Delete for everyone? This can't be undone.",
+    confirmDelete: "Delete this page and its output for everyone? This can't be undone.",
     confirm: "Delete",
     cancel: "Cancel",
     deleting: "Deleting…",
     deleteFailed: "Couldn't delete. Try again.",
 
     notSeen: "Other internet traffic from the sandbox is not seen by Bugnet.",
-    eventsDropped: (n: number) => `${n} more events weren't recorded.`,
+    eventsDropped: (n: number) =>
+        `${plural(n, "more event wasn't", "more events weren't")} recorded.`,
     noCalls: "No calls recorded.",
     mapLabel: "Map of calls in this session",
 
@@ -67,15 +71,20 @@ export const copy = {
         seq: "#",
         command: "Command",
         exit: "Exit",
-        time: "Time",
+        time: "Duration",
         out: "Out",
         err: "Err",
     },
     expandAll: "Expand all",
     collapseAll: "Collapse all",
     copyOutput: "Copy output",
+    copyCommand: "Copy command",
     copied: "Copied",
+    // What was copied is all the page holds, which is less than the command wrote
+    copiedPartial: "Copied, cut",
     copyFailed: "Copy failed",
+    // A copy clicked before the output has come; the click starts loading it
+    loading: "Loading…",
     tipMark: "?",
     noCommand: "(command not recorded)",
     // Ends the one line a multi-line command shows in its table cell
@@ -100,7 +109,7 @@ export const copy = {
     copySignature: "Copy signature",
 
     cut: (bytes: number) => `Earlier output not kept (${formatBytes(bytes)})`,
-    dropped: (n: number) => `Earlier lines dropped from this view: ${n}`,
+    dropped: (n: number) => `Earlier lines not shown or copied: ${formatCount(n)}`,
     skipped: (bytes: number) => `${formatBytes(bytes)} earlier not shown`,
     outputLabel: (seq: number) => `Output of command ${seq}`,
     // The parts of a job's last line, which the page shows side by side
@@ -137,7 +146,7 @@ export const copy = {
         usdc: (micros: number) => formatUsdc(micros),
         sessions: (n: number) => plural(n, "session", "sessions"),
         files: (n: number) => plural(n, "file", "files"),
-        refused: (n: number) => `${n} refused`,
+        refused: (n: number) => `${formatCount(n)} refused`,
     },
 
     spec: {
