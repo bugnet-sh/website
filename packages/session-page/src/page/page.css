@@ -453,8 +453,6 @@ h1 {
 .map-row-metric,
 .map-row-refused {
     min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .map-row-name {
@@ -656,7 +654,8 @@ td.cmd {
 }
 
 .cmd-toggle {
-    display: block;
+    display: flex;
+    align-items: center;
     width: 100%;
     min-height: var(--row);
     padding: 0;
@@ -666,9 +665,6 @@ td.cmd {
     font-family: var(--font-mono);
     font-size: var(--mono-size);
     text-align: start;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
     cursor: pointer;
 }
 
@@ -695,6 +691,7 @@ td.exit .dot {
 tr.cmd-detail > td {
     height: auto;
     padding: 0;
+    white-space: normal;
 }
 
 /* Terminal blocks */
@@ -754,6 +751,22 @@ tr.cmd-detail > td {
 .term-foot {
     margin-top: var(--space-2);
     color: var(--text-muted);
+}
+
+/*
+ * Cut to one line with an ellipsis by wrapping anywhere and showing the first line only, so the
+ * text never runs wider than its box the way a one-line text-overflow cut does
+ */
+.cmd-text,
+.map-row-name,
+.map-row-metric,
+.map-row-refused {
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 1;
+    overflow: hidden;
+    white-space: normal;
+    word-break: break-all;
 }
 
 /* Tones */

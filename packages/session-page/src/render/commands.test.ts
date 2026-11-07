@@ -378,6 +378,9 @@ describe("createCommandsView", () => {
         );
         expect(toggle(t.view.root, 1).textContent).toBe(`cat <<EOF${copy.moreLines}`);
         expect(toggle(t.view.root, 2).textContent).toBe(copy.noCommand);
+        // The stylesheet cuts this span to one line with an ellipsis
+        const text = toggle(t.view.root, 1).querySelector("span.cmd-text");
+        expect(text?.textContent).toBe(`cat <<EOF${copy.moreLines}`);
     });
 
     it("removes itself and stops ticking on destroy", () => {

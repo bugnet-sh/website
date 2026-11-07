@@ -275,11 +275,15 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
 
     function addRow(job: Job): Row {
         const id = `commands-${view}-${job.seq}`;
-        const toggle = el(doc, "button", {
-            class: "cmd-toggle",
-            text: oneLine(job.command),
-            attrs: { type: "button", "aria-expanded": "false", "aria-controls": id },
-        });
+        const toggle = el(
+            doc,
+            "button",
+            {
+                class: "cmd-toggle",
+                attrs: { type: "button", "aria-expanded": "false", "aria-controls": id },
+            },
+            [el(doc, "span", { class: "cmd-text", text: oneLine(job.command) })],
+        );
         const exitCell = el(doc, "td", { class: "exit" });
         const timeCell = el(doc, "td", { class: "num col-wide" });
         const outCell = el(doc, "td", { class: "num col-wide" });
