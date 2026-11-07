@@ -37,22 +37,18 @@ interface State {
     link(s: Scenarios): Pick<Scenario, "id" | "key">;
     // The blocks between the session row and the footer that share the left edge, in page order
     edges: string[];
-    // Brings the page from its gate to the state the screenshot shows
+    // Set up before the page opens, such as a held answer
+    before?(page: Page): Promise<void>;
+    // Brings the opened page to the state the screenshot shows
     reach(page: Page): Promise<void>;
 }
 
-async function showOutput(page: Page): Promise<void> {
-    await page.locator("button.show-output").click();
-}
-
 async function ended(page: Page): Promise<void> {
-    await showOutput(page);
     await page.locator(".map").waitFor({ state: "visible" });
     await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
 }
 
 async function message(page: Page, text: string): Promise<void> {
-    await showOutput(page);
     await page.locator("p.message", { hasText: text }).waitFor({ state: "visible" });
 }
 
@@ -65,10 +61,14 @@ const times = "div.session-meta";
 
 const states: State[] = [
     {
-        name: "gate",
+        name: "loading",
         edges: [],
         link: (s) => s["ended-full"],
-        reach: (page) => page.locator("button.show-output").waitFor({ state: "visible" }),
+        // The first answer never comes, so the page stays as it is while it waits
+        before: async (page) => {
+            await page.route("**/v1/**", () => undefined);
+        },
+        reach: (page) => page.locator("h1").waitFor({ state: "visible" }),
     },
     {
         name: "ended-full",
@@ -99,7 +99,6 @@ const states: State[] = [
         edges: [times, "p.map-later", "table.commands"],
         link: (s) => s.running,
         reach: async (page) => {
-            await showOutput(page);
             await openRowDrawn(page);
             await page.waitForTimeout(2_000);
         },
@@ -109,7 +108,6 @@ const states: State[] = [
         edges: [times, "div.map"],
         link: (s) => s["ended-pending"],
         reach: async (page) => {
-            await showOutput(page);
             await page.locator(".commands-note", { hasText: copy.savingOutput }).waitFor();
         },
     },
@@ -219,6 +217,7 @@ describe.runIf(launcher !== null)(`screenshots in ${launcher?.label ?? "no brows
                         });
                     });
                     const { id, key } = state.link(scenarios);
+                    await state.before?.(page);
                     await page.goto(`${route.origin}/s/${id}#k=${key}`);
                     await state.reach(page);
                     await page.evaluate(() => document.fonts.ready.then(() => undefined));

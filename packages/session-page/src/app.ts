@@ -1,6 +1,6 @@
 /**
- * The session page: reads the link, shows the gate, and after the click shows whatever the
- * sessions route answers (session-page-ui.md 4).
+ * The session page: reads the link, asks the sessions route at once, and shows whatever it
+ * answers (session-page-ui.md 4). Until the first answer comes, the page shows the heading alone.
  *
  * A running session is asked for again every 10 s and its commands stream live. An ended one is
  * asked for again only while its output is being saved. Every answer that reaches a final state
@@ -16,7 +16,6 @@ import type { SessionRecord, Snapshot } from "./payload.ts";
 import { createCommandsView, type CommandsView } from "./render/commands.ts";
 import type { Clipboard } from "./render/controls.ts";
 import {
-    createGate,
     createMapSection,
     createSessionHead,
     createSessionMeta,
@@ -51,7 +50,7 @@ const FAILURES_BEFORE_NOTICE = 3;
 const MAX_STREAMS = 4;
 const STREAM_RETRY_MS = 2_000;
 
-type Mode = "gate" | "message" | "running" | "ended";
+type Mode = "loading" | "message" | "running" | "ended";
 
 interface View {
     meta: SessionMeta;
@@ -78,7 +77,7 @@ export function startPage(env: PageEnv): { destroy(): void } {
     const { id } = link;
     const api = createApi({ fetch: env.fetch, id, key: link.key });
 
-    let mode: Mode = "gate";
+    let mode: Mode = "loading";
     let view: View | null = null;
     let live: Live | null = null;
     // Seqs whose stream state the commands view shows, reset when the streams stop
@@ -184,7 +183,6 @@ export function startPage(env: PageEnv): { destroy(): void } {
         mode = "message";
         status = null;
         head.setStatus(null);
-        head.setTip(false);
         const line = messageLine(doc, text);
         root.replaceChildren(head.root, line);
         line.focus();
@@ -313,11 +311,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
         askIn(nextAsk());
     }
 
-    head.setTip(true);
-    root.replaceChildren(
-        head.root,
-        createGate(doc, () => void ask()),
-    );
+    root.replaceChildren(head.root);
+    void ask();
 
     return {
         destroy() {

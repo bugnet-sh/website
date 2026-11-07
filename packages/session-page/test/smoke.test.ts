@@ -77,10 +77,6 @@ function opener(contexts: BrowserContext[]) {
 const linkOf = (route: FakeRoute, s: Pick<Scenario, "id" | "key">) =>
     `${route.origin}/s/${s.id}#k=${s.key}`;
 
-async function showOutput(page: Page): Promise<void> {
-    await page.locator("button.show-output").click();
-}
-
 async function endedView(page: Page): Promise<void> {
     await page.locator(".map").waitFor({ state: "visible" });
     await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
@@ -117,26 +113,23 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
         await route?.close();
     });
 
-    it("drops the key from the address and asks nothing before the click", async () => {
+    it("drops the key from the address and asks once at open", async () => {
         const s = scenarios["ended-full"];
         const o = await open(browser, linkOf(route, s));
-        await o.page.locator("button.show-output").waitFor({ state: "visible" });
+        await endedView(o.page);
         await o.page.waitForLoadState("networkidle");
         const href = await o.page.evaluate(() => location.href);
         expect(href).toBe(`${route.origin}/s/${s.id}`);
         expect(href).not.toContain("#");
-        expect(o.requests.filter((r) => r.includes("/v1/"))).toEqual([]);
-
-        await showOutput(o.page);
-        await endedView(o.page);
+        expect(href).not.toContain(s.key);
         expect(o.requests.filter((r) => r.includes("/v1/"))).toEqual([
             `POST ${route.origin}/v1/s/${s.id}`,
         ]);
+        await expectClean(o);
     });
 
     it("shows the map and six commands for ended-full, with nothing refused", async () => {
         const o = await open(browser, linkOf(route, scenarios["ended-full"]));
-        await showOutput(o.page);
         await endedView(o.page);
         expect(await o.page.locator(".map-svg").isVisible()).toBe(true);
         expect(await o.page.locator("tr.cmd-row").count()).toBe(6);
@@ -146,10 +139,9 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     it("works after a reload from the key kept in sessionStorage", async () => {
         const s = scenarios["ended-full"];
         const o = await open(browser, linkOf(route, s));
-        await o.page.locator("button.show-output").waitFor({ state: "visible" });
+        await endedView(o.page);
         await o.page.reload();
         expect(o.page.url()).toBe(`${route.origin}/s/${s.id}`);
-        await showOutput(o.page);
         await endedView(o.page);
         expect(await o.page.locator("tr.cmd-row").count()).toBe(6);
         const asked = route.requests.filter((r) => r.path === `/v1/s/${s.id}`).at(-1);
@@ -159,7 +151,6 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
 
     it("shows hostile output as text, with no image, link or dialog", async () => {
         const o = await open(browser, linkOf(route, scenarios["ended-hostile"]));
-        await showOutput(o.page);
         await endedView(o.page);
         await o.page.locator("button.expand-all").click();
         const line = o.page.locator(".term-out .line", { hasText: markup }).first();
@@ -174,7 +165,6 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     it("streams a running session, updates a progress line in place, then ends", async () => {
         const o = await open(browser, linkOf(route, scenarios.running));
         const { page } = o;
-        await showOutput(page);
         await page.locator("tr.cmd-detail:not([hidden]) .term-out .line").first().waitFor();
 
         // The build command draws its progress bar with cr frames
@@ -205,7 +195,6 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     it("deletes after the inline confirm, with one DELETE", async () => {
         const s = scenarios.deletable;
         const o = await open(browser, linkOf(route, s));
-        await showOutput(o.page);
         await o.page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
         await o.page.locator("button.delete-now").click();
         await o.page.locator("button.confirm-delete").click();
@@ -217,7 +206,6 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
 
     it("says the link doesn't work for an unknown id", async () => {
         const o = await open(browser, linkOf(route, { id: unknownId, key: unknownKey }));
-        await showOutput(o.page);
         await messageShows(o.page, copy.notFound);
         await expectClean(o);
     });
@@ -225,7 +213,6 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     it("opens a bubble's table from the keyboard, and Enter or Escape closes it", async () => {
         const o = await open(browser, linkOf(route, scenarios["ended-full"]));
         const { page } = o;
-        await showOutput(page);
         await endedView(page);
         const focusedNode = () =>
             page.evaluate(() =>
@@ -255,7 +242,6 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     it("links only to Bugnet's own pages and to explorer transactions", async () => {
         const o = await open(browser, linkOf(route, scenarios["ended-full"]));
         const { page } = o;
-        await showOutput(page);
         await endedView(page);
         await page.locator("button.expand-all").click();
         const ids = await page
@@ -325,7 +311,6 @@ describe.each(others.map((l) => [l.label, l] as const))(
         it("shows ended-full with the page's own Origin on its POST", async () => {
             const s = scenarios["ended-full"];
             const o = await open(browser, linkOf(route, s));
-            await showOutput(o.page);
             await endedView(o.page);
             expect(await o.page.locator("tr.cmd-row").count()).toBe(6);
             const post = route.requests.find((r) => r.path === `/v1/s/${s.id}`);
@@ -337,7 +322,6 @@ describe.each(others.map((l) => [l.label, l] as const))(
         it("deletes with the page's own Origin on its DELETE", async () => {
             const s = scenarios.deletable;
             const o = await open(browser, linkOf(route, s));
-            await showOutput(o.page);
             await o.page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
             await o.page.locator("button.delete-now").click();
             await o.page.locator("button.confirm-delete").click();

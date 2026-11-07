@@ -317,10 +317,6 @@ h1 {
     cursor: default;
 }
 
-.gate {
-    margin-top: var(--space-5);
-}
-
 .message {
     margin-top: var(--space-4);
 }

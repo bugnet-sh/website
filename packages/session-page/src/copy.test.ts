@@ -82,12 +82,8 @@ describe("copy", () => {
         expect(copy.title).toBe("Bugnet sandbox session");
         expect(copy.logoLabel).toBe("Bugnet");
         expect(copy.noScript).toBe("This page needs JavaScript to show the session.");
-        expect(copy.tipLabel).toBe("About this link");
         expect(copy.copyFailed).toBe("Copy failed");
         expect(copy.tipMark).toBe("?");
-        expect(copy.gateTip).toBe(
-            "Nothing loads until you click. Share this link only with people who may see its output.",
-        );
         expect(copy.expired).toBe(
             "This page has expired. Session pages are deleted 48 hours after the sandbox ends.",
         );

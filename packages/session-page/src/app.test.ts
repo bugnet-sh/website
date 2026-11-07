@@ -142,11 +142,6 @@ const rows = (app: HTMLElement) => app.querySelectorAll("tr.cmd-row").length;
 const button = (app: HTMLElement, sel: string) => q<HTMLButtonElement>(app, sel)!;
 const stored = (s: Scenario) => window.sessionStorage.getItem(`bugnet.session.${s.id}`);
 
-async function show(app: HTMLElement): Promise<void> {
-    button(app, "button.show-output").click();
-    await settle();
-}
-
 beforeEach(() => {
     vi.useFakeTimers({ now: NOW, toFake: ["setTimeout", "clearTimeout", "Date"] });
     window.sessionStorage.clear();
@@ -159,46 +154,53 @@ afterEach(() => {
 });
 
 describe("the link", () => {
-    it("shows the gate and fetches nothing until the click", async () => {
-        const srv = server([first(scenarios["ended-full"])]);
-        const { app, replaced } = open({ fetch: srv.fetch });
+    it("asks once at open, with the heading alone until the answer comes", async () => {
+        const s = scenarios["ended-full"];
+        let answerNow: (r: Response) => void = () => {};
+        const calls: string[] = [];
+        const held = (async (url: string) => {
+            calls.push(url);
+            return new Promise<Response>((resolve) => (answerNow = resolve));
+        }) as unknown as typeof fetch;
+        const { app, replaced } = open({ scenario: s, fetch: held });
+        expect(calls).toEqual([`/v1/s/${s.id}`]);
+        expect(replaced).toEqual([`/s/${s.id}`]);
+        const head = q(app, ".session-head");
+        expect([...app.children]).toEqual([head]);
         expect(text(app, "h1")).toBe(copy.heading);
-        expect(button(app, "button.show-output").textContent).toContain(copy.showOutput);
-        expect(q(app, ".tip-text")?.textContent).toBe(copy.gateTip);
-        expect(q(app, ".tip-button")?.getAttribute("aria-label")).toBe(copy.tipLabel);
-        expect(replaced).toEqual([`/s/${scenarios["ended-full"].id}`]);
+        expect(q(app, ".session-state")?.hidden).toBe(true);
+        expect(q(app, ".tip")).toBeNull();
+        expect(q(app, "button")).toBeNull();
+        await advance(60_000);
+        expect(calls).toHaveLength(1);
+        answerNow(answer(first(s)));
+        await settle();
+        expect(app.firstElementChild).toBe(head);
+        expect(rows(app)).toBe(6);
+    });
+
+    it("says a link without a key is missing it, and asks nothing", async () => {
+        const srv = server([first(scenarios["ended-full"])]);
+        const { app } = open({ hash: "", fetch: srv.fetch });
+        expect(message(app)).toBe(copy.noKey);
         await advance(60_000);
         expect(srv.calls).toEqual([]);
     });
 
-    it("says a link without a key is missing it", () => {
-        const { app } = open({ hash: "" });
-        expect(message(app)).toBe(copy.noKey);
-        expect(q(app, "button.show-output")).toBeNull();
-    });
-
-    it("says a path that is not a session link is not one", () => {
-        const { app } = open({ path: "/s/NOT-A-LINK" });
-        expect(message(app)).toBe(copy.notALink);
-        expect(q(app, "button.show-output")).toBeNull();
-    });
-
-    it("makes one call for a double click on Show output", async () => {
+    it("says a path that is not a session link is not one, and asks nothing", async () => {
         const srv = server([first(scenarios["ended-full"])]);
-        const { app } = open({ fetch: srv.fetch });
-        const show = button(app, "button.show-output");
-        show.click();
-        show.click();
-        expect(show.disabled).toBe(true);
-        await settle();
-        expect(srv.gets()).toHaveLength(1);
+        const { app } = open({ path: "/s/NOT-A-LINK", fetch: srv.fetch });
+        expect(message(app)).toBe(copy.notALink);
+        await advance(60_000);
+        expect(srv.calls).toEqual([]);
     });
 
     it("never puts the key in the page text or in a URL", async () => {
         const s = scenarios["ended-full"];
         const srv = server([first(s)]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
+        expect(srv.gets()).toHaveLength(1);
         for (const node of app.querySelectorAll<SVGGElement>("g.map-node")) {
             node.dispatchEvent(new MouseEvent("click", { bubbles: true }));
         }
@@ -215,7 +217,7 @@ describe("an ended session", () => {
     it("shows the map, six commands and the map's caption", async () => {
         const srv = server([first(scenarios["ended-full"])]);
         const { app } = open({ fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(q(app, ".map[data-edge] svg.map-svg")).not.toBeNull();
         expect(q(app, ".map[data-edge] ul.map-list")).not.toBeNull();
         expect(rows(app)).toBe(6);
@@ -229,7 +231,7 @@ describe("an ended session", () => {
     it("says how many events were not recorded", async () => {
         const srv = server([first(scenarios["ended-crowded"])]);
         const { app } = open({ scenario: scenarios["ended-crowded"], fetch: srv.fetch });
-        await show(app);
+        await settle();
         const caption = [...app.querySelectorAll(".map-caption p")].map((p) => p.textContent);
         expect(caption).toEqual([copy.notSeen, copy.eventsDropped(120)]);
     });
@@ -237,7 +239,7 @@ describe("an ended session", () => {
     it("opens a bubble's events, and closes them on a second click or Escape", async () => {
         const srv = server([first(scenarios["ended-full"])]);
         const { app } = open({ fetch: srv.fetch });
-        await show(app);
+        await settle();
         const bubble = () => q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!;
         const table = () => q(app, '.map-table .table-scroll[data-node-id="payments"]');
         bubble().dispatchEvent(new MouseEvent("click", { bubbles: true }));
@@ -276,7 +278,7 @@ describe("an ended session", () => {
         try {
             const srv = server([first(scenarios["ended-full"])]);
             const { app } = open({ fetch: srv.fetch });
-            await show(app);
+            await settle();
             const viewBox = () => q(app, "svg.map-svg")?.getAttribute("viewBox");
             expect(viewBox()).toBe("0 0 720 460");
             const [observer] = observers;
@@ -302,7 +304,7 @@ describe("an ended session", () => {
     it("opens the same events from the phone list", async () => {
         const srv = server([first(scenarios["ended-full"])]);
         const { app } = open({ fetch: srv.fetch });
-        await show(app);
+        await settle();
         const row = () => q<HTMLButtonElement>(app, 'button.map-row[data-node-id="mcp"]')!;
         row().click();
         expect(q(app, '.map-table .table-scroll[data-node-id="mcp"]')).not.toBeNull();
@@ -314,7 +316,7 @@ describe("an ended session", () => {
     it("asks again at 5 s and 10 s while output is saved, then shows the commands", async () => {
         const srv = server(answers(scenarios["ended-pending"]));
         const { app } = open({ scenario: scenarios["ended-pending"], fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(text(app, ".commands-note")).toBe(copy.savingOutput);
         expect(q(app, "table.commands")?.hidden).toBe(true);
         await advance(4_999);
@@ -332,8 +334,8 @@ describe("an ended session", () => {
 
     it("asks every 5 s for two minutes, then every 30 s", async () => {
         const srv = server([pendingBody]);
-        const { app } = open({ scenario: scenarios["ended-pending"], fetch: srv.fetch });
-        await show(app);
+        open({ scenario: scenarios["ended-pending"], fetch: srv.fetch });
+        await settle();
         for (let ask = 1; ask <= 24; ask++) {
             await advance(5_000);
             expect(srv.gets()).toHaveLength(1 + ask);
@@ -358,7 +360,7 @@ describe("a running session", () => {
             fetch: srv.fetch,
             now: () => new Date(Date.now() - 3 * HOUR),
         });
-        await show(app);
+        await settle();
         expect(status(app)).toBe(copy.running);
         expect(q(app, ".session-state .dot")).not.toBeNull();
         expect(text(app, ".session-times")).toContain("(7 min left)");
@@ -370,8 +372,8 @@ describe("a running session", () => {
 
     it("asks again every 10 s", async () => {
         const srv = server([runningBody]);
-        const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        open({ scenario: running, fetch: srv.fetch });
+        await settle();
         await advance(9_999);
         expect(srv.gets()).toHaveLength(1);
         await advance(1);
@@ -383,7 +385,7 @@ describe("a running session", () => {
     it("streams the open command and the running ones, newest first", async () => {
         const srv = server([runningBody]);
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(srv.lives().map((c) => c.url)).toEqual([
             `/v1/s/${running.id}/jobs/4/live`,
             `/v1/s/${running.id}/jobs/3/live`,
@@ -396,7 +398,7 @@ describe("a running session", () => {
     it("shows the record when a later answer says the sandbox ended", async () => {
         const srv = server([runningBody, first(scenarios["ended-full"])]);
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(q(app, ".map")).toBeNull();
         await advance(10_000);
         await settle();
@@ -417,7 +419,7 @@ describe("a running session", () => {
             live: 'event: end\ndata: {"reason":"ended"}\n\n',
         });
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         await settle();
         expect(srv.gets()).toHaveLength(2);
         expect(status(app)).toBe(copy.sandboxEnded);
@@ -427,7 +429,7 @@ describe("a running session", () => {
     it("says it is reconnecting after three failed asks, and keeps the view", async () => {
         const srv = server([runningBody, "network", "network", "network", runningBody]);
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         await advance(20_000);
         expect(status(app)).toBe(copy.running);
         await advance(10_000);
@@ -440,7 +442,7 @@ describe("a running session", () => {
     it("clears the view when a later answer says the link is gone", async () => {
         const srv = server([runningBody, { status: 404, body: null }]);
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         await advance(10_000);
         expect(message(app)).toBe(copy.notFound);
         expect(rows(app)).toBe(0);
@@ -453,7 +455,7 @@ describe("a running session", () => {
     it("shows the not-found line when a stream answers 404", async () => {
         const srv = server([runningBody], { live: { status: 404, body: null } });
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(message(app)).toBe(copy.notFound);
         expect(stored(running)).toBeNull();
     });
@@ -465,7 +467,7 @@ describe("the end states", () => {
         const srv = server([first(s)]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
         expect(stored(s)).toBe(s.key);
-        await show(app);
+        await settle();
         expect(message(app)).toBe(copy.expired);
         expect(stored(s)).toBeNull();
         expect(document.activeElement).toBe(q(app, ".message"));
@@ -475,7 +477,7 @@ describe("the end states", () => {
         const s = scenarios["ended-full"];
         const srv = server([{ status: 404, body: null }]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(message(app)).toBe(copy.notFound);
         expect(stored(s)).toBeNull();
     });
@@ -484,7 +486,7 @@ describe("the end states", () => {
         const s = scenarios["rate-limited"];
         const srv = server([{ status: 429, body: null }, first(scenarios["ended-full"])]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(message(app)).toBe(copy.rateLimited);
         const retry = button(app, "button.retry");
         expect(retry.textContent).toBe(copy.retry);
@@ -498,7 +500,7 @@ describe("the end states", () => {
     it("offers a retry when Bugnet cannot be reached", async () => {
         const srv = server(["network"]);
         const { app } = open({ fetch: srv.fetch });
-        await show(app);
+        await settle();
         expect(message(app)).toBe(copy.offline);
         expect(q(app, "button.retry")).not.toBeNull();
     });
@@ -506,12 +508,12 @@ describe("the end states", () => {
     it("asks for a reload when the payload is too new or unreadable", async () => {
         const tooNew = server([first(scenarios["too-new"])]);
         const a = open({ scenario: scenarios["too-new"], fetch: tooNew.fetch });
-        await show(a.app);
+        await settle();
         expect(message(a.app)).toBe(copy.tooNew);
 
         const broken = server([{ status: 200, body: { state: "ended", record: {} } }]);
         const b = open({ fetch: broken.fetch });
-        await show(b.app);
+        await settle();
         expect(message(b.app)).toBe(copy.tooNew);
     });
 });
@@ -522,7 +524,7 @@ describe("Delete now", () => {
     it("asks once, sends one DELETE for a double click, then says it is deleted", async () => {
         const srv = server([first(s)]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
         button(app, "button.delete-now").click();
         expect(text(app, ".confirm-text")).toBe(copy.confirmDelete);
         const confirm = button(app, "button.confirm-delete");
@@ -538,7 +540,7 @@ describe("Delete now", () => {
     it("goes back to Delete now on Cancel", async () => {
         const srv = server([first(s)]);
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
         button(app, "button.delete-now").click();
         expect(q(app, "button.delete-now")?.hidden).toBe(true);
         button(app, "button.cancel-delete").click();
@@ -555,7 +557,7 @@ describe("Delete now", () => {
             ],
         });
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
         button(app, "button.delete-now").click();
         const confirm = button(app, "button.confirm-delete");
         confirm.click();
@@ -571,7 +573,7 @@ describe("Delete now", () => {
     it("shows the not-found line when the session was already gone", async () => {
         const srv = server([first(s)], { deletes: [{ status: 404, body: null }] });
         const { app } = open({ scenario: s, fetch: srv.fetch });
-        await show(app);
+        await settle();
         button(app, "button.delete-now").click();
         button(app, "button.confirm-delete").click();
         await settle();
@@ -582,7 +584,7 @@ describe("Delete now", () => {
         const running = scenarios.running;
         const srv = server([first(running)]);
         const { app } = open({ scenario: running, fetch: srv.fetch });
-        await show(app);
+        await settle();
         button(app, "button.delete-now").click();
         button(app, "button.confirm-delete").click();
         await settle();

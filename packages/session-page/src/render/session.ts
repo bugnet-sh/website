@@ -1,6 +1,6 @@
 /**
  * The session's own parts of the page: the heading row with its status, the times with Delete
- * now, the gate, the message lines and the map with its caption and event table.
+ * now, the message lines and the map with its caption and event table.
  *
  * Every block that starts a line carries data-edge, so a test can check they share one left edge.
  */
@@ -11,7 +11,7 @@ import { buildMap, type MapSelect } from "../map/model.ts";
 import { renderMapSvg } from "../map/svg.ts";
 import { renderEventTable } from "../map/table.ts";
 import type { SessionRecord } from "../payload.ts";
-import { tip, type Clipboard } from "./controls.ts";
+import type { Clipboard } from "./controls.ts";
 import { el } from "./dom.ts";
 
 const EDGE = { "data-edge": "" };
@@ -23,7 +23,6 @@ export interface SessionHead {
     root: HTMLElement;
     heading: HTMLHeadingElement;
     setStatus(text: string | null, running?: boolean): void;
-    setTip(shown: boolean): void;
 }
 
 export function createSessionHead(doc: Document): SessionHead {
@@ -32,15 +31,13 @@ export function createSessionHead(doc: Document): SessionHead {
         text: copy.heading,
         attrs: { tabindex: "-1" },
     });
-    const help = tip(doc, copy.gateTip, copy.tipLabel);
-    help.hidden = true;
     const dot = el(doc, "span", { class: "dot", attrs: { "aria-hidden": "true" } });
     dot.hidden = true;
     const label = doc.createTextNode("");
     const state = el(doc, "p", { class: "session-state", attrs: { role: "status" } }, [dot, label]);
     state.hidden = true;
     const root = el(doc, "div", { class: "session-head", attrs: EDGE }, [
-        el(doc, "div", { class: "session-heading" }, [heading, help]),
+        el(doc, "div", { class: "session-heading" }, [heading]),
         state,
     ]);
     return {
@@ -52,9 +49,6 @@ export function createSessionHead(doc: Document): SessionHead {
             if (dot.hidden === running) dot.hidden = !running;
             state.hidden = text === null;
         },
-        setTip(shown) {
-            help.hidden = !shown;
-        },
     };
 }
 
@@ -64,27 +58,16 @@ function actionButton(
     cls: string,
     label: string,
     onClick: () => void,
-    busyLabel?: string,
 ): HTMLButtonElement {
-    const idle = el(doc, "span", { text: label });
-    const busy =
-        busyLabel === undefined
-            ? null
-            : el(doc, "span", { text: busyLabel, attrs: { "aria-hidden": "true" } });
-    const button = el(
-        doc,
-        "button",
-        { class: `button ${cls}`, attrs: { type: "button" } },
-        busy === null ? [idle] : [idle, busy],
-    );
+    const button = el(doc, "button", {
+        class: `button ${cls}`,
+        text: label,
+        attrs: { type: "button" },
+    });
     button.addEventListener("click", () => {
         if (button.disabled) return;
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
-        if (busy !== null) {
-            idle.setAttribute("aria-hidden", "true");
-            busy.removeAttribute("aria-hidden");
-        }
         onClick();
     });
     return button;
@@ -92,12 +75,6 @@ function actionButton(
 
 function plainButton(doc: Document, cls: string, label: string): HTMLButtonElement {
     return el(doc, "button", { class: `button ${cls}`, text: label, attrs: { type: "button" } });
-}
-
-export function createGate(doc: Document, onShow: () => void): HTMLElement {
-    return el(doc, "div", { class: "gate" }, [
-        actionButton(doc, "show-output", copy.showOutput, onShow, copy.loading),
-    ]);
 }
 
 export function retryButton(doc: Document, onRetry: () => void): HTMLButtonElement {
