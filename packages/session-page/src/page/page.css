@@ -31,8 +31,8 @@
     --col-time: 112px;
     --col-bytes: 96px;
     --col-copy: 104px;
-    --col-event: 152px;
-    --col-amount: 120px;
+    /* Room for an amount of 15 characters, such as 123.456789 USDC */
+    --col-amount: 144px;
     --col-tx: 224px;
     --pulse: 1.6s;
     --gap-inline: var(--space-4);
@@ -620,23 +620,6 @@ table.events td {
     white-space: nowrap;
 }
 
-table.events th:nth-child(4) {
-    text-align: end;
-}
-
-/* Time, amount and transaction keep their place as the reader moves between bubbles */
-table.events th:nth-child(1) {
-    width: var(--col-time);
-}
-
-table.events th:nth-child(4) {
-    width: var(--col-amount);
-}
-
-table.events th:nth-child(5) {
-    width: var(--col-tx);
-}
-
 .tx-link {
     display: inline-flex;
     align-items: center;
@@ -942,16 +925,31 @@ tr.cmd-detail > td {
         align-self: center;
     }
 
-    /* Event and detail wrap, so an amount or a transaction is never pushed out of the box */
-    table.events td:nth-child(2),
-    table.events td:nth-child(3) {
+    /*
+     * Time, amount and transaction keep their widths, which leave event and detail 240 px at
+     * 720 px, and those two wrap whole, so an amount or a transaction never leaves the table
+     */
+    table.events {
+        table-layout: fixed;
+    }
+
+    table.events th.ev-time {
+        width: var(--col-time);
+    }
+
+    table.events th.ev-amount {
+        width: var(--col-amount);
+    }
+
+    table.events th.ev-tx {
+        width: var(--col-tx);
+    }
+
+    table.events td.ev-event,
+    table.events td.ev-detail {
         white-space: normal;
         overflow-wrap: anywhere;
         line-height: var(--small-line);
-    }
-
-    table.events th:nth-child(2) {
-        min-width: var(--col-event);
     }
 }
 
@@ -1005,28 +1003,28 @@ tr.cmd-detail > td {
         box-shadow: none;
     }
 
-    table.events td:nth-child(1) {
+    table.events td.ev-time {
         grid-area: 1 / 1;
     }
 
-    table.events td:nth-child(2) {
+    table.events td.ev-event {
         grid-area: 1 / 2;
         white-space: normal;
         overflow-wrap: anywhere;
     }
 
-    table.events td:nth-child(4) {
+    table.events td.ev-amount {
         grid-area: 1 / 3;
         justify-content: flex-end;
     }
 
-    table.events td:nth-child(3) {
+    table.events td.ev-detail {
         grid-area: 2 / 1 / auto / -1;
         white-space: normal;
         overflow-wrap: anywhere;
     }
 
-    table.events td:nth-child(5) {
+    table.events td.ev-tx {
         grid-area: 3 / 1 / auto / -1;
     }
 

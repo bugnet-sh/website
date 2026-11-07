@@ -379,17 +379,21 @@ describe("renderMapList", () => {
 });
 
 describe("renderEventTable", () => {
-    const heads = () => Object.values(copy.eventsHead);
+    const headsOf = (root: Element) =>
+        [...root.querySelectorAll("thead th")].map((h) => [h.textContent, h.className]);
 
-    it("has a head with the five headings and one row per event", () => {
+    it("has a head and one row per event, leaving out columns no row fills", () => {
         const node = nodeOf(modelOf("ended-full"), "mcp");
         const root = renderEventTable(document, node, { now, clipboard: clipboard() });
-        const th = [...root.querySelectorAll("thead th")].map((h) => h.textContent);
-        expect(th).toEqual(heads());
-        expect(th).toEqual(["Time", "Event", "Detail", "Amount", "Transaction"]);
+        expect(headsOf(root)).toEqual([
+            ["Time", "ev-time"],
+            ["Event", "ev-event"],
+            ["Detail", "ev-detail"],
+        ]);
         const rows = [...root.querySelectorAll("tbody tr")];
         expect(rows).toHaveLength(node.rows.length);
         const cells = [...rows[0]!.querySelectorAll("td")];
+        expect(cells.map((c) => c.classList[0])).toEqual(["ev-time", "ev-event", "ev-detail"]);
         expect(cells.slice(0, 2).map((c) => c.textContent)).toEqual([
             formatClock(node.rows[0]!.at, now),
             node.rows[0]!.event,
@@ -397,6 +401,43 @@ describe("renderEventTable", () => {
         const detail = [...cells[2]!.querySelectorAll(".parts > span")].map((p) => p.textContent);
         expect(detail).toEqual(node.rows[0]!.detail);
         expect(detail.length).toBeGreaterThan(1);
+    });
+
+    it("keeps the five headings in order when every column has a value", () => {
+        const model = modelOf("ended-full");
+        const payments = renderEventTable(document, nodeOf(model, "payments"), {
+            now,
+            clipboard: clipboard(),
+        });
+        expect(headsOf(payments)).toEqual([
+            ["Time", "ev-time"],
+            ["Event", "ev-event"],
+            ["Amount", "ev-amount num"],
+            ["Transaction", "ev-tx"],
+        ]);
+        const search = renderEventTable(document, nodeOf(model, "x402-host:search-api.example"), {
+            now,
+            clipboard: clipboard(),
+        });
+        const all = Object.values(copy.eventsHead);
+        expect(headsOf(search).map(([text]) => text)).toEqual(all);
+        expect(all).toEqual(["Time", "Event", "Detail", "Amount", "Transaction"]);
+        for (const root of [payments, search]) {
+            const shown = headsOf(root).map(([text]) => text);
+            expect(shown).toEqual(all.filter((h) => shown.includes(h)));
+            for (const tr of root.querySelectorAll("tbody tr")) {
+                expect(tr.children).toHaveLength(shown.length);
+            }
+        }
+    });
+
+    it("pads each amount to the longest fraction in the table, so the points line up", () => {
+        const node = nodeOf(modelOf("ended-full"), "payments");
+        const root = renderEventTable(document, node, { now, clipboard: clipboard() });
+        const amounts = [...root.querySelectorAll("tbody td.ev-amount")].map(
+            (td) => td.textContent,
+        );
+        expect(amounts).toEqual(["0.050 USDC", "0.050 USDC", "0.025 USDC", "0.020 USDC"]);
     });
 
     it("names its table roles, so the phone's grid layout keeps the table's meaning", () => {
@@ -436,9 +477,9 @@ describe("renderEventTable", () => {
         const node = nodeOf(modelOf("ended-hostile"), "payments");
         const root = renderEventTable(document, node, { now, clipboard: clipboard() });
         const row = [...root.querySelectorAll("tbody tr")].find(
-            (tr) => tr.querySelector("td:nth-child(2)")!.textContent === "Start payment",
+            (tr) => tr.querySelector("td.ev-event")!.textContent === "Start payment",
         )!;
-        const cell = row.querySelector("td:last-child")!;
+        const cell = row.querySelector("td.ev-tx")!;
         expect(cell.querySelector("a")).toBeNull();
         expect(cell.querySelector("button")).toBeNull();
         expect(cell.textContent).toBe(shortSignature("javascript:alert(document.cookie)"));
@@ -455,12 +496,12 @@ describe("renderEventTable", () => {
     it("marks amounts as money and colours a row's detail by its tone", () => {
         const node = nodeOf(modelOf("ended-full"), "x402-host:search-api.example");
         const root = renderEventTable(document, node, { now, clipboard: clipboard() });
-        const amounts = [...root.querySelectorAll("tbody td:nth-child(4)")];
+        const amounts = [...root.querySelectorAll("tbody td.ev-amount")];
         const paid = amounts.filter((td) => td.textContent !== "");
         expect(paid.map((td) => td.textContent)).toEqual([formatUsdc(12_000), formatUsdc(12_000)]);
         expect(paid.every((td) => td.classList.contains("money"))).toBe(true);
         expect(amounts.filter((td) => td.classList.contains("money"))).toHaveLength(2);
-        const tones = [...root.querySelectorAll("tbody td:nth-child(3)")].map((td) =>
+        const tones = [...root.querySelectorAll("tbody td.ev-detail")].map((td) =>
             td.classList.contains("warn") ? "warn" : td.classList.contains("bad") ? "bad" : "",
         );
         expect(tones).toEqual(["", "", "warn", "warn", "bad"]);
