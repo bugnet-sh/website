@@ -380,6 +380,36 @@ describe("an ended session", () => {
         }
     });
 
+    it("cuts a map name the fonts draw too wide when drawn, and again once the fonts are in", async () => {
+        let fontsIn: () => void = () => {};
+        const ready = new Promise<void>((resolve) => (fontsIn = resolve));
+        Object.defineProperty(document, "fonts", { configurable: true, value: { ready } });
+        let perChar = 7;
+        const proto = window.SVGElement.prototype as unknown as Record<string, unknown>;
+        proto.getComputedTextLength = function (this: Element) {
+            return Array.from(this.textContent ?? "").length * perChar;
+        };
+        try {
+            const srv = server([first(scenarios["ended-full"])]);
+            const { app } = open({ fetch: srv.fetch });
+            await settle();
+            const name = () => q(app, 'g.map-node[data-node-id="mcp"] tspan.map-name')!;
+            expect(name().textContent).toBe("Bugnet MCP");
+            perChar = 30;
+            fontsIn();
+            await settle();
+            expect(name().textContent).toMatch(/^Bu.*…$/);
+            perChar = 7;
+            q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!.dispatchEvent(
+                new MouseEvent("click", { bubbles: true }),
+            );
+            expect(name().textContent).toBe("Bugnet MCP");
+        } finally {
+            delete proto.getComputedTextLength;
+            delete (document as unknown as Record<string, unknown>).fonts;
+        }
+    });
+
     it("opens the same events from the phone list", async () => {
         const srv = server([first(scenarios["ended-full"])]);
         const { app } = open({ fetch: srv.fetch });

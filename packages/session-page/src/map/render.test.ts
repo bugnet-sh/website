@@ -7,7 +7,7 @@ import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
 import { layoutMap } from "./layout.ts";
 import { renderMapList } from "./list.ts";
 import { accessibleName, buildMap, type MapModel, type MapNode } from "./model.ts";
-import { renderMapSvg } from "./svg.ts";
+import { fitLabels, renderMapSvg } from "./svg.ts";
 import { renderEventTable } from "./table.ts";
 
 const now = new Date("2026-11-06T12:00:00Z");
@@ -154,6 +154,51 @@ describe("renderMapSvg", () => {
         expect(payments.getAttribute("aria-label")).toBe(
             "Payments, 0.125 USDC paid, 0.02 USDC refunded",
         );
+    });
+
+    it("cuts a name the fonts draw wider than the layout reserved, ending it in an ellipsis", () => {
+        const record = recordOf("ended-full");
+        const host = "wallet-mwmwmwmwmwmwmwmwmwmwmw.example";
+        const model = buildMap({
+            ...record,
+            events: [
+                ...record.events,
+                { at: now, kind: "secret_host", host, requests: 1, bytes: 1 },
+            ],
+        });
+        const id = `secret-host:${host}`;
+        const layout = layoutMap(model, 900);
+        const svg = renderMapSvg(document, layout, { selectedId: null, onSelect: vi.fn() });
+        // m and w draw wider than the layout's 7.5 px a character, as they do in Manrope
+        const measure = (span: Element) =>
+            Array.from(span.textContent ?? "").reduce((w, c) => w + ("mw".includes(c) ? 12 : 7), 0);
+        for (const span of svg.querySelectorAll("tspan")) {
+            Object.assign(span, { getComputedTextLength: () => measure(span) });
+        }
+        const name = () => bubble(svg, id).querySelector("tspan.map-name")!;
+        expect(name().textContent).toBe(nodeOf(model, id).label);
+        const before = [...svg.querySelectorAll("tspan")].map((t) => t.textContent);
+        fitLabels(svg);
+        const cut = name().textContent!;
+        expect(cut.endsWith("…")).toBe(true);
+        // Its room is its label's, the 24 characters of its name
+        expect(measure(name())).toBeLessThanOrEqual(24 * 7.5);
+        expect(cut.slice(0, -1)).toBe(nodeOf(model, id).label.slice(0, cut.length - 1));
+        // Short names such as Payments, inside the room their metric line reserves, stay whole
+        const after = [...svg.querySelectorAll("tspan")].map((t) => t.textContent);
+        expect(after.filter((t, i) => t !== before[i])).toEqual([cut]);
+        expect(bubble(svg, id).getAttribute("aria-label")).toBe(accessibleName(nodeOf(model, id)));
+        expect(bubble(svg, id).querySelector("title")!.textContent).toBe(host);
+        // A second pass starts again from the whole name, so it cuts no further
+        fitLabels(svg);
+        expect(name().textContent).toBe(cut);
+    });
+
+    it("leaves every name whole where the page cannot measure text", () => {
+        const { svg } = svgOf(modelOf("ended-hostile"));
+        const before = svg.textContent;
+        fitLabels(svg);
+        expect(svg.textContent).toBe(before);
     });
 
     it("gives each bubble a hit circle of at least 20 px radius behind it", () => {

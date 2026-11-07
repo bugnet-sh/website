@@ -9,7 +9,7 @@ import { copy } from "../copy.ts";
 import { layoutMap } from "../map/layout.ts";
 import { renderMapList } from "../map/list.ts";
 import { buildMap, type MapNode, type MapSelect } from "../map/model.ts";
-import { renderMapSvg } from "../map/svg.ts";
+import { fitLabels, renderMapSvg } from "../map/svg.ts";
 import { renderEventTable } from "../map/table.ts";
 import type { SessionRecord } from "../payload.ts";
 import type { Clipboard } from "./controls.ts";
@@ -265,6 +265,8 @@ export function createMapSection(
             if (svg === null) map.append(next);
             else svg.replaceWith(next);
             svg = next;
+            // Measured once attached, since a detached text has no drawn length
+            fitLabels(next);
         }
         if (drawList) {
             const next = renderMapList(doc, model, select);
@@ -304,12 +306,19 @@ export function createMapSection(
     showCaption();
     redraw(true, true);
 
+    // The faces may load after the first draw, and they change what each name measures
+    void doc.fonts?.ready.then(() => {
+        if (svg !== null) fitLabels(svg);
+    });
+
     const Observer = doc.defaultView?.ResizeObserver;
     const observer =
         Observer === undefined
             ? null
             : new Observer(() => {
                   if (widthNow() !== width) redraw(true, false);
+                  // A map hidden on a phone measures nothing, so it fits again once it shows
+                  else if (svg !== null) fitLabels(svg);
               });
     observer?.observe(ruler);
 

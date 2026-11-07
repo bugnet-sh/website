@@ -1,6 +1,14 @@
 import { copy } from "../copy.ts";
 import { svgEl } from "../render/dom.ts";
-import { ASCENT, GAP, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
+import {
+    ASCENT,
+    GAP,
+    LINE_HEIGHT,
+    labelRoom,
+    type MapEdge,
+    type MapLayout,
+    type Placed,
+} from "./layout.ts";
 import { accessibleName, type MapSelect } from "./model.ts";
 
 // One decimal keeps the markup short
@@ -52,6 +60,9 @@ function lineTexts(doc: Document, lines: Span[][], at: LineAt): SVGTextElement[]
     );
 }
 
+// Each name the fit pass may cut, with the room the layout kept for it
+const rooms = new WeakMap<Element, { whole: string; room: number }>();
+
 function labelTexts(doc: Document, p: Placed): SVGTextElement[] {
     const metric = p.metricLines.map((line) =>
         line.map((part) => ({
@@ -59,12 +70,17 @@ function labelTexts(doc: Document, p: Placed): SVGTextElement[] {
             class: part.money ? "map-metric money" : "map-metric muted",
         })),
     );
-    return lineTexts(doc, [[{ text: p.node.label, class: "map-name" }], ...metric], {
+    const texts = lineTexts(doc, [[{ text: p.node.label, class: "map-name" }], ...metric], {
         class: "map-label",
         x: p.labelX,
         y: p.labelY,
         anchor: p.labelAnchor,
     });
+    // The sandbox's own name sits inside its circle and never comes from the sandbox side
+    const name = texts[0]?.firstElementChild;
+    if (p.node.side !== "center" && name)
+        rooms.set(name, { whole: p.node.label, room: labelRoom(p) });
+    return texts;
 }
 
 function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
@@ -145,6 +161,27 @@ function edgeLabel(doc: Document, e: MapEdge): SVGGElement {
         }),
         ...edgeTexts(doc, e),
     ]);
+}
+
+/*
+ * The layout reserves 7.5 px a character, and the fonts draw some names wider, such as one full
+ * of m and w. Each name that runs past its label's room loses characters from its end and takes
+ * an ellipsis, so it never crosses a neighbour or the map's edge. Each pass starts again from the
+ * whole name, since the fonts may have changed since the last. The whole name stays in the
+ * bubble's title and accessible name. A page that cannot measure text leaves every name whole.
+ */
+export function fitLabels(svg: SVGSVGElement): void {
+    for (const span of svg.querySelectorAll<SVGTSpanElement>("tspan.map-name")) {
+        const fit = rooms.get(span);
+        if (fit === undefined) continue;
+        if (typeof span.getComputedTextLength !== "function") return;
+        span.textContent = fit.whole;
+        const points = Array.from(fit.whole);
+        for (let keep = points.length - 1; keep > 0; keep--) {
+            if (span.getComputedTextLength() <= fit.room) break;
+            span.textContent = `${points.slice(0, keep).join("")}…`;
+        }
+    }
 }
 
 export function renderMapSvg(doc: Document, layout: MapLayout, opts: MapSelect): SVGSVGElement {

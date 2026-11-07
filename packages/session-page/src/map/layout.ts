@@ -10,8 +10,8 @@
  * bubble, so an edge carries a label only for refused calls, and the centre moves sideways only
  * when such a label needs the room. Label sizes are estimated at 7.5 px per character on 16 px
  * lines, plus a fixed gap between the parts of a line. The fonts draw some characters wider than
- * that, so the drawing cuts any line that runs past its estimate (svg.ts). The map is then cropped
- * to what it draws.
+ * that, so the drawing cuts any name that runs past its label's room (svg.ts). The map is then
+ * cropped to what it draws.
  */
 import { copy } from "../copy.ts";
 import type { MapModel, MapNode, MetricPart } from "./model.ts";
@@ -115,6 +115,9 @@ function metricLines(node: MapNode): MetricPart[][] {
 function labelWidth(node: MapNode, metricLines: MetricPart[][]): number {
     return Math.max(chars(node.label) * CHAR_WIDTH, ...metricLines.map(partsWidth));
 }
+
+// The width the layout keeps clear for a bubble's label, its widest line
+export const labelRoom = (p: Placed) => labelWidth(p.node, p.metricLines);
 
 const blockHeight = (metricLines: MetricPart[][]) => (1 + metricLines.length) * LINE_HEIGHT;
 
