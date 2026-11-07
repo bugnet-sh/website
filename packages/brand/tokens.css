@@ -84,6 +84,17 @@
     --chart-phone: 240px;
     --tip-button: 24px;
     --tip-width: 320px;
+    --panel-chart: 200px;
+    /* A table's header and 13 rows, so a page of 50 scrolls inside its band */
+    --table: 560px;
+    /* The width under which a wide table scrolls sideways inside its band */
+    --table-min: 880px;
+    /* The least a data box keeps while it waits or shows that it is unavailable */
+    --box: 160px;
+    /* A feed string's widest cell, past which CSS cuts it with an ellipsis */
+    --cell-max: 200px;
+    --share-bar: 96px;
+    --share-line: 4px;
 
     --max: 1200px;
     --inset: 24px;

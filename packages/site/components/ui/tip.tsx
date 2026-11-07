@@ -4,6 +4,7 @@ import { useEffect, useId, useRef, useState } from "react";
 
 // Long enough for the pointer to cross the gap between the ? and its text
 const HIDE_MS = 300;
+const TIP_OPEN = "bugnet:tip-open";
 
 /**
  * The ? that explains on demand. Its text is placed absolutely against the nearest positioned
@@ -13,6 +14,7 @@ const HIDE_MS = 300;
 export function Tip({ text, label }: { text: string; label: string }) {
     const id = useId();
     const [open, setOpen] = useState(false);
+    const root = useRef<HTMLSpanElement>(null);
     const button = useRef<HTMLButtonElement>(null);
     const timer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
@@ -31,14 +33,30 @@ export function Tip({ text, label }: { text: string; label: string }) {
         const onKey = (e: KeyboardEvent) => {
             if (e.key === "Escape") hide();
         };
+        // A tap does not focus a button in every mobile browser, so blur alone cannot close it
+        const onPointer = (e: PointerEvent) => {
+            if (!root.current?.contains(e.target as Node)) hide();
+        };
+        // One tip at a time: a tip opening tells the others to close
+        const onOther = (e: Event) => {
+            if ((e as CustomEvent<string>).detail !== id) hide();
+        };
         document.addEventListener("keydown", onKey);
-        return () => document.removeEventListener("keydown", onKey);
-    }, [open]);
+        document.addEventListener("pointerdown", onPointer);
+        document.addEventListener(TIP_OPEN, onOther);
+        document.dispatchEvent(new CustomEvent(TIP_OPEN, { detail: id }));
+        return () => {
+            document.removeEventListener("keydown", onKey);
+            document.removeEventListener("pointerdown", onPointer);
+            document.removeEventListener(TIP_OPEN, onOther);
+        };
+    }, [open, id]);
 
     useEffect(() => () => clearTimeout(timer.current), []);
 
     return (
         <span
+            ref={root}
             className="inline-flex"
             onMouseEnter={show}
             onMouseLeave={() => {
