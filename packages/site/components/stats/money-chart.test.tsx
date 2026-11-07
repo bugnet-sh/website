@@ -1,10 +1,10 @@
 import { act, cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { formatUsdc } from "../../lib/stats/format";
 import { parseSummary } from "../../lib/stats/parse";
 import { fakeSummary, type Scenario } from "../../lib/stats/testing/fake-data";
 import type { StatsSummary } from "../../lib/stats/types";
-import { MoneyChart } from "./money-chart";
+import { MoneyChart, scaleOf } from "./money-chart";
 import { StatsState } from "./stats-provider";
 
 // jsdom lays nothing out, so the chart is given a size to draw into
@@ -68,4 +68,18 @@ it("labels each line's last point with its value", () => {
         (t) => t.textContent,
     );
     expect(labels).toEqual([formatUsdc(today.spentMicros), formatUsdc(today.earnedMicros)]);
+});
+
+describe("scaleOf", () => {
+    it("widens the y range to round steps with zero as a tick", () => {
+        const { domain, ticks } = scaleOf([
+            { day: "a", earned: 5.25, spent: 2.78, profit: -3.22 },
+        ] as Parameters<typeof scaleOf>[0]);
+        expect(domain).toEqual([-5, 7.5]);
+        expect(ticks).toEqual([-5, -2.5, 0, 2.5, 5, 7.5]);
+    });
+
+    it("draws an empty history as 0 to 1", () => {
+        expect(scaleOf([]).domain).toEqual([0, 1]);
+    });
 });

@@ -57,11 +57,28 @@ export function toPoints(daily: readonly DayRow[]): Point[] {
  * Zero is always on the axis, so a bar grows from it. All-zero days still get a span, so a new
  * deployment's axis reads 0 to 1 rather than one value repeated.
  */
-export function domainOf(points: readonly Point[]): [number, number] {
+/** Round steps (1, 2, 2.5 or 5 times a power of ten), so ticks read 0, 2.5, 5 rather than 2.78. */
+function niceStep(span: number): number {
+    const raw = span / 4;
+    const power = 10 ** Math.floor(Math.log10(raw));
+    const step = [1, 2, 2.5, 5, 10].find((m) => m * power >= raw) ?? 10;
+    return step * power;
+}
+
+/** The y range widened to whole steps, and its ticks; zero is always a tick. */
+export function scaleOf(points: readonly Point[]): { domain: [number, number]; ticks: number[] } {
     const values = points.flatMap((p) => [p.earned, p.spent, p.profit]);
     const low = Math.min(0, ...values);
     const high = Math.max(0, ...values);
-    return low === high ? [0, 1] : [low, high];
+    if (low === high) return { domain: [0, 1], ticks: [0, 1] };
+    const step = niceStep(high - low);
+    const from = Math.floor(low / step) * step;
+    const to = Math.ceil(high / step) * step;
+    const ticks: number[] = [];
+    for (let i = 0; from + i * step <= to + step / 1e6; i++) {
+        ticks.push(Number((from + i * step).toFixed(6)));
+    }
+    return { domain: [from, to], ticks };
 }
 
 const tick = (value: number) =>
@@ -103,6 +120,7 @@ function ProfitBar(props: BarShapeProps) {
 export function MoneyChart() {
     const stats = useStats();
     const points = stats.data ? toPoints(rangeDays(stats.data.daily, stats.range)) : [];
+    const scale = scaleOf(points);
     const last = points.length - 1;
     const endLabel = (props: LabelProps) => <EndLabel {...props} last={last} />;
     return (
@@ -135,7 +153,8 @@ export function MoneyChart() {
                                     minTickGap={24}
                                 />
                                 <YAxis
-                                    domain={domainOf(points)}
+                                    domain={scale.domain}
+                                    ticks={scale.ticks}
                                     width="auto"
                                     tickFormatter={tick}
                                     tickLine={false}
