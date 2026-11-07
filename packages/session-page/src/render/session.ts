@@ -265,7 +265,8 @@ export function createMapSection(
             if (svg === null) map.append(next);
             else svg.replaceWith(next);
             svg = next;
-            // Measured once attached, since a detached text has no drawn length
+            // A detached text measures nothing, so the first draw fits again once the fonts are
+            // ready and the observer first fires, both after the section is on the page
             fitLabels(next);
         }
         if (drawList) {
