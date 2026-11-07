@@ -95,7 +95,16 @@ const models: [string, () => MapModel][] = [
     ["ended-empty", () => buildMap(recordOf("ended-empty"))],
     ["busiest", busiest],
 ];
-const widths = [720, 900, 1152];
+const widths = [720, 900, 1152] as const;
+
+// Pinned apart from the layout's own sums, so a label that grows past the map fails here
+const heights: Record<string, Record<(typeof widths)[number], number>> = {
+    "ended-full": { 720: 460, 900: 460, 1152: 460 },
+    "ended-crowded": { 720: 484, 900: 460, 1152: 460 },
+    "ended-hostile": { 720: 460, 900: 460, 1152: 460 },
+    "ended-empty": { 720: 460, 900: 460, 1152: 460 },
+    busiest: { 720: 616, 900: 516, 1152: 460 },
+};
 
 /* Boxes, estimated apart from the layout's own sums */
 
@@ -278,9 +287,10 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
             }
         });
 
-        it("is 460 tall unless the bottom row needs more room", () => {
-            const lowest = Math.max(0, ...labels.map((b) => b.y1));
-            expect(layout.height).toBe(Math.max(460, lowest));
+        it("is 460 tall unless the bottom row needs more room, every label inside", () => {
+            const height = heights[name]![width];
+            expect(layout.height).toBe(height);
+            for (const b of [...labels, ...edges]) expect(b.y1, b.what).toBeLessThanOrEqual(height);
         });
 
         it("gives the same layout for the same input", () => {
