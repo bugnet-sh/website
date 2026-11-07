@@ -3,9 +3,10 @@ const MINIMUM = 4.5;
 
 const surfaces = ["--bg", "--surface", "--surface-hover"] as const;
 const inks = ["--text", "--text-muted", "--accent", "--accent-2", "--bad", "--warn"] as const;
+const fills = ["--chart-profit", "--chart-loss"] as const;
 
 export const contrastPairs: readonly (readonly [string, string])[] = [
-    ...inks.flatMap((fg) => surfaces.map((bg) => [fg, bg] as const)),
+    ...[...inks, ...fills].flatMap((fg) => surfaces.map((bg) => [fg, bg] as const)),
     ["--accent-ink", "--accent"],
 ];
 
@@ -40,6 +41,36 @@ export function readTokens(css: string): Record<string, string> {
     return tokens;
 }
 
+const HEX = /^#[0-9a-f]{6}$/i;
+const ALIAS = /^var\((--[a-z0-9-]+)\)$/i;
+const WASH = /^color-mix\(in srgb,\s*var\((--[a-z0-9-]+)\)\s+(\d+(?:\.\d+)?)%,\s*transparent\)$/i;
+
+/**
+ * The opaque #RRGGBB a token paints over the token `under`. A color-mix wash with transparent is
+ * the colour at that alpha, which the browser blends with what lies beneath in sRGB.
+ */
+export function resolveColour(tokens: Record<string, string>, name: string, under: string): string {
+    const value = tokens[name];
+    if (value === undefined) throw new Error(`no colour token ${name}`);
+    if (HEX.test(value)) return value.toUpperCase();
+    const alias = ALIAS.exec(value);
+    if (alias?.[1]) return resolveColour(tokens, alias[1], under);
+    const wash = WASH.exec(value);
+    if (wash?.[1] && wash[2]) {
+        const alpha = Number(wash[2]) / 100;
+        const top = parseInt(resolveColour(tokens, wash[1], under).slice(1), 16);
+        const bottom = parseInt(resolveColour(tokens, under, under).slice(1), 16);
+        let hex = "#";
+        for (const shift of [16, 8, 0]) {
+            const blended =
+                ((top >> shift) & 255) * alpha + ((bottom >> shift) & 255) * (1 - alpha);
+            hex += Math.round(blended).toString(16).padStart(2, "0");
+        }
+        return hex.toUpperCase();
+    }
+    throw new Error(`cannot measure ${name}: ${value}`);
+}
+
 export function checkContrast(
     tokens: Record<string, string>,
 ): { fg: string; bg: string; ratio: number }[] {
@@ -47,7 +78,7 @@ export function checkContrast(
         .map(([fg, bg]) => ({
             fg,
             bg,
-            ratio: contrastRatio(tokens[fg] ?? "", tokens[bg] ?? ""),
+            ratio: contrastRatio(resolveColour(tokens, fg, bg), resolveColour(tokens, bg, bg)),
         }))
         .filter((pair) => pair.ratio < MINIMUM);
 }

@@ -1,6 +1,12 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { checkContrast, contrastPairs, contrastRatio, readTokens } from "./contrast.ts";
+import {
+    checkContrast,
+    contrastPairs,
+    contrastRatio,
+    readTokens,
+    resolveColour,
+} from "./contrast.ts";
 
 const css = readFileSync(new URL("../tokens.css", import.meta.url), "utf8");
 
@@ -31,6 +37,14 @@ describe("checkContrast", () => {
         expect(checkContrast(readTokens(css))).toEqual([]);
     });
 
+    it("reports a chart wash too faint to read on the background", () => {
+        const faint = "color-mix(in srgb, var(--accent-2) 28%, transparent)";
+        const failing = checkContrast({ ...readTokens(css), "--chart-profit": faint });
+        expect(failing).toContainEqual(
+            expect.objectContaining({ fg: "--chart-profit", bg: "--bg" }),
+        );
+    });
+
     it("reports a pair below 4.5", () => {
         const failing = checkContrast({ ...readTokens(css), "--text-muted": "#333333" });
         expect(failing.map((pair) => pair.fg)).toContain("--text-muted");
@@ -47,7 +61,43 @@ describe("contrastPairs", () => {
         }
     });
 
+    it("covers every chart fill on every surface", () => {
+        for (const fg of ["--chart-profit", "--chart-loss"]) {
+            for (const bg of ["--bg", "--surface", "--surface-hover"]) {
+                expect(contrastPairs).toContainEqual([fg, bg]);
+            }
+        }
+    });
+
     it("covers the accent ink on the accent", () => {
         expect(contrastPairs).toContainEqual(["--accent-ink", "--accent"]);
+    });
+});
+
+describe("resolveColour", () => {
+    const tokens = {
+        "--white": "#FFFFFF",
+        "--black": "#000000",
+        "--alias": "var(--white)",
+        "--half": "color-mix(in srgb, var(--white) 50%, transparent)",
+        "--odd": "rgb(1 2 3)",
+    };
+
+    it("returns a hex token as it is", () => {
+        expect(resolveColour(tokens, "--white", "--black")).toBe("#FFFFFF");
+    });
+
+    it("follows a var() alias", () => {
+        expect(resolveColour(tokens, "--alias", "--black")).toBe("#FFFFFF");
+    });
+
+    it("composites a color-mix wash over the surface it sits on", () => {
+        expect(resolveColour(tokens, "--half", "--black")).toBe("#808080");
+        expect(resolveColour(tokens, "--half", "--white")).toBe("#FFFFFF");
+    });
+
+    it("refuses a colour form it cannot measure", () => {
+        expect(() => resolveColour(tokens, "--odd", "--black")).toThrow(/--odd/);
+        expect(() => resolveColour(tokens, "--missing", "--black")).toThrow(/--missing/);
     });
 });

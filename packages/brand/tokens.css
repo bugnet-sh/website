@@ -41,9 +41,10 @@
     --bad: #ff6b6b;
     --warn: #f5c451;
 
-    /* Profit bars sit behind the earnings and spending lines, so they are washes, not ink */
-    --chart-profit: color-mix(in srgb, var(--accent-2) 28%, transparent);
-    --chart-loss: color-mix(in srgb, var(--bad) 28%, transparent);
+    /* Profit bars are washes of the money colours, not full ink: each is the lightest whole
+       percentage that keeps a bar at 4.5:1 on every surface, which pnpm contrast checks */
+    --chart-profit: color-mix(in srgb, var(--accent-2) 60%, transparent);
+    --chart-loss: color-mix(in srgb, var(--bad) 80%, transparent);
 
     /* The site's frame, measured from rewall.me: content width, inline padding, band top
        padding and header height */
