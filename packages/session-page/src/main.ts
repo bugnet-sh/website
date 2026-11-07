@@ -12,11 +12,17 @@ function sessionStore(): Storage | null {
     }
 }
 
-// A preload only fetches a font file, so a face the gate does not use would hide its text for a
-// moment when a later view first needs it
-document.fonts?.forEach((face) => {
-    face.load().catch(() => {});
-});
+// A preload only fetches a file, so a face the first view does not use would blank a later view
+function loadFaces(): void {
+    document.fonts?.forEach((face) => {
+        // A face that fails to load falls back to the next family in its stack
+        face.load().catch(() => {});
+    });
+}
+
+loadFaces();
+// Chromium unloads the faces nothing on screen uses once the page crosses a breakpoint
+window.matchMedia?.("(max-width: 767.98px)").addEventListener("change", loadFaces);
 
 try {
     startPage({
