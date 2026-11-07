@@ -555,6 +555,37 @@ describe("an ended session", () => {
         expect(now.closest("tr")!.textContent).toBe(rowText);
     });
 
+    it("falls back to the table's first control when focus sat on one the page does not track", async () => {
+        type Body = { record: { output: string; events: unknown[] } };
+        const full = first(scenarios["ended-full"]) as { status: number; body: Body };
+        const saving = structuredClone(full);
+        saving.body.record.output = "pending";
+        const later = structuredClone(full);
+        later.body.record.events.push({
+            at: new Date(NOW.getTime() - 60_000).toISOString(),
+            kind: "payment",
+            payKind: "extend",
+            amountMicros: 10_000,
+            tx: "not-a-signature",
+        });
+        const srv = server([saving, later]);
+        const { app } = open({ fetch: srv.fetch });
+        await settle();
+        q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!.dispatchEvent(
+            new MouseEvent("click", { bubbles: true }),
+        );
+        const table = () => q(app, '.map-table .table-scroll[data-node-id="payments"]')!;
+        const stray = document.createElement("input");
+        table().querySelector("tbody td")!.append(stray);
+        stray.focus();
+        expect(document.activeElement).toBe(stray);
+        await advance(5_000);
+        expect(srv.gets()).toHaveLength(2);
+        expect(table().contains(stray)).toBe(false);
+        expect(document.activeElement).toBe(table().querySelector("button, a[href], [tabindex]"));
+        expect(table().contains(document.activeElement)).toBe(true);
+    });
+
     it("still shows the status, the times and the commands when the map fails to draw", async () => {
         class Broken {
             observe() {

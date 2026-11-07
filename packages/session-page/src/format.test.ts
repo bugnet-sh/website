@@ -95,7 +95,7 @@ describe("formatLeft", () => {
 
     it("keeps the minutes below 2 h, as a duration does", () => {
         expect(formatLeft(ahead(119 * 60_000), now)).toBe("1 h 59 min");
-        expect(formatLeft(ahead(60 * 60_000), now)).toBe("1 h 0 min");
+        expect(formatLeft(ahead(60 * 60_000), now)).toBe("1 h");
     });
 
     it("gives nothing once less than a second is left, never a negative time", () => {

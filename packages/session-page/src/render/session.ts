@@ -230,6 +230,14 @@ function placeOf(table: Element, active: Element): TablePlace {
 
 // The same row by its text, else the same place in the whole table
 function findPlace(table: Element, place: TablePlace): HTMLElement | null {
+    // Focus sat on something the page does not track, so the table's start is the nearest place
+    if (place.index < 0) {
+        const first = table.querySelector<HTMLElement>(FOCUSABLE);
+        if (first !== null) return first;
+        const box = table.querySelector<HTMLElement>(".table-scroll");
+        if (box !== null) box.tabIndex = -1;
+        return box;
+    }
     const tr = [...table.querySelectorAll("tr")].find((r) => r.textContent === place.row);
     const scope = tr ?? table;
     const all = [...scope.querySelectorAll<HTMLElement>(FOCUSABLE)];

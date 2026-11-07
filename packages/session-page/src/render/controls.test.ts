@@ -65,6 +65,16 @@ describe("tip", () => {
         expect(bubble.hidden).toBe(false);
     });
 
+    it("keeps the tip when keyboard focus arrives while a hide is pending", () => {
+        const { root, button, bubble } = mount();
+        root.dispatchEvent(new MouseEvent("mouseenter"));
+        root.dispatchEvent(new MouseEvent("mouseleave"));
+        vi.advanceTimersByTime(TIP_HIDE_MS - 100);
+        button.focus();
+        vi.advanceTimersByTime(TIP_HIDE_MS);
+        expect(bubble.hidden).toBe(false);
+    });
+
     it("closes on Escape anywhere while shown by hover", () => {
         const { root, bubble } = mount();
         root.dispatchEvent(new MouseEvent("mouseenter"));
@@ -263,6 +273,23 @@ describe("copyButton", () => {
         await vi.advanceTimersByTimeAsync(1_499);
         expect(announcer.textContent).toBe(copy.copied);
         await vi.advanceTimersByTimeAsync(1);
+        expect(announcer.textContent).toBe("");
+    });
+
+    it("leaves a later button's identical message alone when an earlier one times out", async () => {
+        const announcer = document.createElement("p");
+        announcer.id = ANNOUNCER_ID;
+        const first = copyButton(document, copy.copyOutput, () => "x", board());
+        const second = copyButton(document, copy.copyCommand, () => "y", board());
+        document.body.replaceChildren(announcer, first, second);
+        first.click();
+        await vi.advanceTimersByTimeAsync(1_000);
+        second.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(announcer.textContent).toBe(copy.copied);
+        await vi.advanceTimersByTimeAsync(500);
+        expect(announcer.textContent).toBe(copy.copied);
+        await vi.advanceTimersByTimeAsync(1_000);
         expect(announcer.textContent).toBe("");
     });
 

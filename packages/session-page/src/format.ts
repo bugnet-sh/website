@@ -85,7 +85,7 @@ export function formatLeft(target: Date, now: Date): string | null {
     const minutes = Math.floor(seconds / 60);
     if (minutes < 60) return `${minutes} min`;
     // Under 2 h the hour alone would hide up to half the time left
-    if (minutes < 120) return `1 h ${minutes - 60} min`;
+    if (minutes < 120) return minutes === 60 ? "1 h" : `1 h ${minutes - 60} min`;
     return `${Math.floor(minutes / 60)} h`;
 }
 

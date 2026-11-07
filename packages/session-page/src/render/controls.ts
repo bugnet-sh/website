@@ -32,12 +32,14 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
         // A re-render can drop a shown tip, which would otherwise keep this listener forever
         if (e.key === "Escape" || !button.isConnected) hide();
     };
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const show = () => {
+        // A pending hide from the pointer leaving must not close a tip that focus just opened
+        clearTimeout(hideTimer);
         if (!bubble.hidden) return;
         bubble.hidden = false;
         doc.addEventListener("keydown", onKey);
     };
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const hide = () => {
         clearTimeout(hideTimer);
         if (bubble.hidden) return;
@@ -48,10 +50,7 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
     button.addEventListener("click", show);
     button.addEventListener("blur", hide);
     // The text is inside the tip, so the pointer reaching it enters the tip again in time
-    root.addEventListener("mouseenter", () => {
-        clearTimeout(hideTimer);
-        show();
-    });
+    root.addEventListener("mouseenter", show);
     root.addEventListener("mouseleave", () => {
         if (doc.activeElement !== button) hideTimer = setTimeout(hide, TIP_HIDE_MS);
     });
@@ -60,12 +59,19 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
 
 type CopyState = "idle" | "copied" | "partial" | "failed" | "loading";
 
-// Clears only its own message, so a later button's message is never cut short
-function announce(doc: Document, text: string, replacing?: string): void {
+// The latest message's owner; a text match would let an earlier button clear a later identical one
+let announced = 0;
+
+function announce(doc: Document, text: string): number {
+    const owner = ++announced;
     const line = doc.getElementById(ANNOUNCER_ID);
-    if (line === null) return;
-    if (replacing !== undefined && line.textContent !== replacing) return;
-    line.textContent = text;
+    if (line !== null) line.textContent = text;
+    return owner;
+}
+
+function clearAnnouncement(doc: Document, owner: number): void {
+    const line = doc.getElementById(ANNOUNCER_ID);
+    if (line !== null && owner === announced) line.textContent = "";
 }
 
 export interface CopyChecks {
@@ -121,11 +127,11 @@ export function copyButton(
     const flash = (state: CopyState) => {
         show(state);
         const said = labels.find(([shows]) => shows === state)![1].textContent ?? "";
-        announce(doc, said);
+        const owner = announce(doc, said);
         clearTimeout(timer);
         timer = setTimeout(() => {
             show("idle");
-            announce(doc, "", said);
+            clearAnnouncement(doc, owner);
         }, COPIED_MS);
     };
     button.addEventListener("click", () => {
