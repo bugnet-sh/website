@@ -16,7 +16,8 @@ export default tseslint.config(
     },
     {
         files: ["packages/*/src/**/*.ts"],
-        ignores: ["**/*.test.ts", "packages/*/src/testing/**"],
+        // dev.ts is a local tool that never ships, and it serves the page with the fake route
+        ignores: ["**/*.test.ts", "packages/*/src/testing/**", "packages/session-page/src/dev.ts"],
         rules: {
             "no-restricted-imports": [
                 "error",
