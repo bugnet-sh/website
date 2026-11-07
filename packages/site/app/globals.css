@@ -66,3 +66,18 @@ body {
 :focus:not(:focus-visible) {
     outline: none;
 }
+
+/* Recharts makes its wrapper and surface focusable for keyboard reading: a click on a chart draws
+   no outline, while Tab still shows the ring */
+.recharts-wrapper:focus:not(:focus-visible),
+.recharts-surface:focus:not(:focus-visible),
+.recharts-wrapper *:focus:not(:focus-visible) {
+    outline: none;
+}
+
+.recharts-wrapper:focus-visible,
+.recharts-surface:focus-visible,
+.recharts-wrapper *:focus-visible {
+    outline: var(--ring) solid var(--accent);
+    outline-offset: 2px;
+}
