@@ -100,7 +100,9 @@ describe("copy", () => {
         expect(copy.metrics.toolCalls(1)).toBe("1 tool call");
         expect(copy.metrics.toolCalls(7)).toBe("7 tool calls");
         expect(copy.metrics.paid(75_000)).toBe("0.075 USDC paid");
-        expect(copy.metrics.refunded(20_000)).toBe("0.02 USDC refunded");
+        expect(copy.metrics.paidIn).toBe("paid in");
+        expect(copy.metrics.settling(1)).toBe("1 settling");
+        expect(copy.metrics.settling(12_345)).toBe("12,345 settling");
         expect(copy.metrics.requests(2)).toBe("2 requests");
         expect(copy.metrics.calls(1)).toBe("1 call");
         expect(copy.metrics.usdc(3_000)).toBe("0.003 USDC");

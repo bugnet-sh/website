@@ -93,9 +93,9 @@ describe("renderMapSvg", () => {
         const { svg } = svgOf(modelOf("ended-full"));
         const name = (id: string) => bubble(svg, id).getAttribute("aria-label");
         expect(name("x402-host:search-api.example")).toBe(
-            "search-api.example, 5 calls, 0.024 USDC, 2 refused",
+            "search-api.example, 5 calls, 0.024 USDC, 3 refused",
         );
-        expect(name("x402-host:unregistered.example")).toBe(
+        expect(name("refused-host:unregistered.example")).toBe(
             "unregistered.example, 1 call, 1 refused",
         );
         expect(name("x402-host:weather-api.example")).toBe(
@@ -116,7 +116,11 @@ describe("renderMapSvg", () => {
             ["19 tool calls", "map-metric muted"],
         ]);
         expect(parts(bubble(svg, "payments"), ".map-metric")).toEqual([
-            ["0.125 USDC paid", "map-metric money"],
+            ["0.075 USDC paid", "map-metric money"],
+        ]);
+        expect(parts(bubble(svg, "allowance"), ".map-metric")).toEqual([
+            ["0.05 USDC", "map-metric money"],
+            ["paid in", "map-metric muted"],
         ]);
     });
 
@@ -154,10 +158,8 @@ describe("renderMapSvg", () => {
             ["15 min"],
         ]);
         const payments = bubble(svg, "payments");
-        expect(labelLines(payments)).toEqual([["Payments"], ["0.125 USDC paid"]]);
-        expect(payments.getAttribute("aria-label")).toBe(
-            "Payments, 0.125 USDC paid, 0.02 USDC refunded",
-        );
+        expect(labelLines(payments)).toEqual([["Payments"], ["0.075 USDC paid"]]);
+        expect(payments.getAttribute("aria-label")).toBe("Payments, 0.075 USDC paid");
     });
 
     it("cuts a name the fonts draw wider than the layout reserved, ending it in an ellipsis", () => {
@@ -298,14 +300,16 @@ describe("renderMapSvg", () => {
         const line = (id: string) =>
             [...svg.querySelectorAll("line")].find((l) => l.dataset.nodeId === id)!;
         expect(line("payments").classList.contains("money")).toBe(true);
-        expect(line("x402-host:unregistered.example").classList.contains("warn")).toBe(true);
+        expect(line("refused-host:unregistered.example").classList.contains("warn")).toBe(true);
         // The dash is the stylesheet's, so it lives with the other sizes
-        expect(line("x402-host:unregistered.example").getAttribute("stroke-dasharray")).toBeNull();
+        expect(
+            line("refused-host:unregistered.example").getAttribute("stroke-dasharray"),
+        ).toBeNull();
         expect(line("mcp").classList.contains("muted")).toBe(true);
         const labels = [...svg.querySelectorAll<SVGGElement>(".map-edge-label")];
         expect(labels.map((g) => [g.dataset.nodeId, g.textContent])).toEqual([
-            ["x402-host:search-api.example", "2 refused"],
-            ["x402-host:unregistered.example", "1 refused"],
+            ["x402-host:search-api.example", "3 refused"],
+            ["refused-host:unregistered.example", "1 refused"],
         ]);
         for (const g of labels) {
             expect([...g.querySelectorAll("tspan")].map((t) => t.getAttribute("class"))).toEqual([
@@ -371,15 +375,13 @@ describe("renderMapList", () => {
         const { list } = listOf();
         const payments = rowOf(list, "payments");
         expect(payments.querySelector(".map-row-name")!.textContent).toBe("Payments");
-        expect(payments.querySelector(".map-row-metric")!.textContent).toBe("0.125 USDC paid");
-        expect(payments.getAttribute("aria-label")).toBe(
-            "Payments, 0.125 USDC paid, 0.02 USDC refunded",
-        );
+        expect(payments.querySelector(".map-row-metric")!.textContent).toBe("0.075 USDC paid");
+        expect(payments.getAttribute("aria-label")).toBe("Payments, 0.075 USDC paid");
         const search = rowOf(list, "x402-host:search-api.example");
         const metric = [...search.querySelectorAll(".map-row-metric > span")];
         expect(metric.map((s) => s.textContent)).toEqual(["5 calls", "0.024 USDC"]);
         expect(search.getAttribute("aria-label")).toBe(
-            "search-api.example, 5 calls, 0.024 USDC, 2 refused",
+            "search-api.example, 5 calls, 0.024 USDC, 3 refused",
         );
     });
 
@@ -392,7 +394,7 @@ describe("renderMapList", () => {
         expect(search.querySelector(".map-row-refused")!.hasAttribute("translate")).toBe(false);
     });
 
-    it("shows Payments with nothing paid and a refund as 0 USDC paid alone", () => {
+    it("shows an Allowance with only a refund as 0 USDC paid in, never the refund", () => {
         const record = recordOf("ended-full");
         const money = (e: SessionRecord["events"][number]) =>
             e.kind === "payment" || e.kind === "allowance";
@@ -405,8 +407,9 @@ describe("renderMapList", () => {
             events: [...record.events.filter((e) => !money(e)), ...refund],
         });
         const list = renderMapList(document, model, { selectedId: null, onSelect: vi.fn() });
-        const row = list.querySelector('[data-node-id="payments"]')!;
-        expect(parts(row, ".map-row-metric span")).toEqual([["0 USDC paid", "muted"]]);
+        expect(list.querySelector('[data-node-id="payments"]')).toBeNull();
+        const row = list.querySelector('[data-node-id="allowance"]')!;
+        expect(parts(row, ".map-row-metric span")[0]).toEqual(["0 USDC", "muted"]);
     });
 
     it("draws only the amounts of a row in the money colour", () => {
@@ -434,7 +437,7 @@ describe("renderMapList", () => {
     it("marks refusals, and says when nothing was recorded", () => {
         const { list } = listOf();
         const row = rowOf(list, "x402-host:search-api.example");
-        expect(row.querySelector(".warn")!.textContent).toBe("2 refused");
+        expect(row.querySelector(".warn")!.textContent).toBe("3 refused");
         const empty = renderMapList(document, modelOf("ended-empty"), {
             selectedId: null,
             onSelect: vi.fn(),
@@ -502,7 +505,7 @@ describe("renderEventTable", () => {
         const amounts = [...root.querySelectorAll("tbody td.ev-amount")].map(
             (td) => td.textContent,
         );
-        expect(amounts).toEqual(["0.050 USDC", "0.050 USDC", "0.025 USDC", "0.020 USDC"]);
+        expect(amounts).toEqual(["0.050 USDC", "0.025 USDC"]);
     });
 
     it("names its table roles, so the phone's grid layout keeps the table's meaning", () => {
@@ -539,7 +542,7 @@ describe("renderEventTable", () => {
             await Promise.resolve();
             expect(board.writeText).toHaveBeenLastCalledWith(tx);
         }
-        expect(new Set(links.map((a) => a.textContent)).size).toBe(4);
+        expect(new Set(links.map((a) => a.textContent)).size).toBe(2);
     });
 
     it("keeps a translator off the detail and the transaction, and on the event", () => {
@@ -585,6 +588,7 @@ describe("renderEventTable", () => {
         const tones = [...root.querySelectorAll("tbody td.ev-detail")].map((td) =>
             td.classList.contains("warn") ? "warn" : td.classList.contains("bad") ? "bad" : "",
         );
-        expect(tones).toEqual(["", "", "warn", "warn", "bad"]);
+        // Every refusal reads in the warning colour, a seller out of reach included
+        expect(tones).toEqual(["", "", "warn", "warn", "warn"]);
     });
 });

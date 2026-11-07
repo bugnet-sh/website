@@ -213,7 +213,9 @@ export const copy = {
     metrics: {
         toolCalls: (n: number) => plural(n, "tool call", "tool calls"),
         paid: (micros: number) => `${formatUsdc(micros)} paid`,
-        refunded: (micros: number) => `${formatUsdc(micros)} refunded`,
+        // Follows the Allowance's amount, a part of its own
+        paidIn: "paid in",
+        settling: (n: number) => `${formatCount(n)} settling`,
         requests: (n: number) => plural(n, "request", "requests"),
         calls: (n: number) => plural(n, "call", "calls"),
         usdc: (micros: number) => formatUsdc(micros),
@@ -258,14 +260,6 @@ export const copy = {
             `${formatBytes(bytesIn)} in`,
             `${formatBytes(bytesOut)} out`,
         ],
-        x402: {
-            paid: "paid",
-            free: "free",
-            refused_cap: "refused: allowance used up",
-            refused_price: "refused: price above the cap",
-            refused_host: "refused: host not registered",
-            upstream_error: "upstream error",
-        } satisfies Partial<Record<X402Status, string>>,
     },
 
     x402: {

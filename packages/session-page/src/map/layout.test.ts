@@ -49,6 +49,15 @@ function busiest(paidMicros = 12_345_678): MapModel {
             network: "n",
             tx: "x",
         },
+        {
+            at,
+            kind: "allowance",
+            phase: "paid",
+            amountMicros: 2_000_000,
+            asset: "USDC",
+            network: "n",
+            tx: "x",
+        },
         ...[900, 800, 700].map((requests, i): SessionEvent => ({
             at,
             kind: "secret_host",
@@ -360,10 +369,10 @@ describe("layoutMap edges", () => {
         expect(edge("x402-host:search-api.example")).toMatchObject({
             money: true,
             dashed: false,
-            refusedLabel: "2 refused",
-            lines: [[{ text: "2 refused", tone: "warn" }]],
+            refusedLabel: "3 refused",
+            lines: [[{ text: "3 refused", tone: "warn" }]],
         });
-        expect(edge("x402-host:unregistered.example")).toMatchObject({
+        expect(edge("refused-host:unregistered.example")).toMatchObject({
             money: false,
             dashed: true,
             refusedLabel: "1 refused",
@@ -413,18 +422,18 @@ describe("layoutMap edges", () => {
         expect(layoutMap(buildMap(recordOf("ended-full")), 900).note).toBeNull();
     });
 
-    it("draws a Payments metric over 24 characters as its total paid", () => {
+    it("draws Payments as its total paid, and the Allowance's paid in whole", () => {
         const payments = layout.placed.find((p) => p.node.id === "payments")!;
-        expect(payments.node.metricParts.map((p) => p.text)).toEqual([
-            "0.125 USDC paid",
-            "0.02 USDC refunded",
-        ]);
-        expect(drawn(payments.metricLines)).toEqual([["0.125 USDC paid"]]);
-        const busy = layoutMap(busiest(), 720).placed.find((p) => p.node.kind === "payments")!;
-        expect(drawn(busy.metricLines)).toEqual([["12.345678 USDC paid"]]);
+        expect(drawn(payments.metricLines)).toEqual([["0.075 USDC paid"]]);
+        const allowance = layout.placed.find((p) => p.node.id === "allowance")!;
+        expect(drawn(allowance.metricLines)).toEqual([["0.05 USDC", "paid in"]]);
+        const busy = layoutMap(busiest(), 720).placed;
+        const of = (kind: string) => drawn(busy.find((p) => p.node.kind === kind)!.metricLines);
+        expect(of("payments")).toEqual([["12.345678 USDC paid"]]);
+        expect(of("allowance")).toEqual([["2 USDC", "paid in"]]);
     });
 
-    it("draws Payments with nothing paid and a refund as 0 USDC paid, not the refund", () => {
+    it("draws an Allowance with only a refund as 0 USDC paid in, not the refund", () => {
         const model = mapOf([
             { at, kind: "placement", phase: "placed", vcpu: 2, memoryMib: 2_048, minutes: 10 },
             {
@@ -437,13 +446,13 @@ describe("layoutMap edges", () => {
                 tx: "x",
             },
         ]);
-        const payments = layoutMap(model, 720).placed.find((p) => p.node.kind === "payments")!;
-        expect(payments.node.metricParts.map((p) => p.text)).toEqual([
-            "0 USDC paid",
-            "0.02 USDC refunded",
-        ]);
-        expect(payments.metricLines).toEqual([
-            [{ text: "0 USDC paid", amount: true, money: false }],
+        const placed = layoutMap(model, 720).placed;
+        expect(placed.map((p) => p.node.kind)).toEqual(["allowance"]);
+        expect(placed[0]!.metricLines).toEqual([
+            [
+                { text: "0 USDC", amount: true, money: false },
+                { text: "paid in", amount: false, money: false },
+            ],
         ]);
     });
 
