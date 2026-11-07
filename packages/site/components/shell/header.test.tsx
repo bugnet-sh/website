@@ -46,15 +46,28 @@ describe("SiteHeader", () => {
         expect(document.querySelectorAll("[aria-current]")).toHaveLength(0);
     });
 
-    it("is a sticky band whose row is the header height, with the hairline below the row", () => {
+    it("is one sticky band, --nav tall with its hairline drawn inside that height", () => {
         render(<SiteHeader />);
         const banner = screen.getByRole("banner");
         const classes = banner.className.split(" ");
         expect(classes).toEqual(
-            expect.arrayContaining(["sticky", "top-0", "bg-bg", "border-b-(length:--hairline)"]),
+            expect.arrayContaining([
+                "sticky",
+                "top-0",
+                "bg-bg",
+                "shadow-[inset_0_calc(var(--hairline)*-1)_0_var(--line)]",
+            ]),
         );
-        // The row, not the band, is --nav tall, so everything centred in it lands on whole pixels
+        // A border would add a pixel below the row and make the band 63 px
+        expect(classes.some((c) => c.startsWith("border"))).toBe(false);
         expect(banner.firstElementChild?.className.split(" ")).toContain("h-(--nav)");
+    });
+
+    it("hangs the phone menu straight under the band, which already holds the hairline", () => {
+        render(<SiteHeader />);
+        const classes = panelOf(menuButton()).className.split(" ");
+        expect(classes).toEqual(expect.arrayContaining(["absolute", "top-full"]));
+        expect(classes).not.toContain("mt-(--hairline)");
     });
 
     it("folds the links away on phones, where the Menu button shows instead", () => {

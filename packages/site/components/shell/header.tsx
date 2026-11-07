@@ -1,14 +1,15 @@
 import { Logo } from "../brand/logo";
-import { Band, Frame } from "./frame";
+import { Frame } from "./frame";
 import { headerLinks, linkText, ShellAnchor, type Page } from "./links";
 import { Menu } from "./menu";
 
 /** The site's top band: the logo, the page links and Get Started, folded into a menu on phones. */
 export function SiteHeader({ current }: { current?: Page }) {
     return (
-        <Band as="header" rail={false} className="sticky top-0 z-10 bg-bg">
-            {/* The row, not the band, is --nav tall, so every item centred in it sits on a whole
-                pixel; the hairline adds one below */}
+        // Not a Band: a border would sit below the row and make the band one pixel taller than
+        // --nav, while an inset shadow draws the hairline inside the row, so the band stays --nav
+        // tall and every item centred in the row still sits on a whole pixel
+        <header className="sticky top-0 z-10 bg-bg shadow-[inset_0_calc(var(--hairline)*-1)_0_var(--line)]">
             <Frame className="flex h-(--nav) items-center">
                 <a href="/" className="flex shrink-0">
                     <Logo />
@@ -36,6 +37,6 @@ export function SiteHeader({ current }: { current?: Page }) {
                     </a>
                 </div>
             </Frame>
-        </Band>
+        </header>
     );
 }

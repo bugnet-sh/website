@@ -59,15 +59,15 @@ export function Menu({ current }: { current?: Page }) {
             >
                 {open ? <CloseIcon /> : <MenuIcon />}
             </button>
-            {/* Positioned against the sticky header, so it hangs just under the header's hairline
-                and covers the page instead of pushing it down */}
+            {/* Positioned against the sticky header, so it hangs just under the header's hairline,
+                which is inside the header, and covers the page instead of pushing it down */}
             <nav
                 ref={panel}
                 id={panelId}
                 aria-label="Main"
                 hidden={!open}
                 onBlur={onBlur}
-                className="absolute inset-x-0 top-full mt-(--hairline) hidden bg-bg phone:block"
+                className="absolute inset-x-0 top-full hidden bg-bg phone:block"
             >
                 <ul>
                     {headerLinks.map((link) => (

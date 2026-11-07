@@ -195,6 +195,19 @@ describe("next build", () => {
         }
     });
 
+    it("marks Home as the current page on the home page, and nothing on the stats page", async () => {
+        const home = await page("index.html");
+        const current = [...home.querySelectorAll('header [aria-current="page"]')];
+        expect(current.length).toBeGreaterThan(0);
+        for (const link of current) {
+            expect(link.textContent).toBe("Home");
+            expect(link.getAttribute("href")).toBe("/");
+        }
+        const stats = await page("stats/index.html");
+        expect(stats.querySelector("header")).not.toBeNull();
+        expect(stats.querySelectorAll("[aria-current]")).toHaveLength(0);
+    });
+
     it("has inline scripts on the stats page for the policy to hash", async () => {
         const doc = await page("stats/index.html");
         expect(doc.querySelectorAll("script:not([src])").length).toBeGreaterThan(0);

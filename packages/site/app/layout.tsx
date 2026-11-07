@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import { preload } from "react-dom";
 import { SiteFooter } from "../components/shell/footer";
-import { SiteHeader } from "../components/shell/header";
 import "./globals.css";
 
 // The same files tokens.css names, so each preload is the request the stylesheet then makes
@@ -24,7 +23,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     return (
         <html lang="en">
             <body>
-                <SiteHeader />
+                {/* Each route group's layout puts the header above its page */}
                 {children}
                 <SiteFooter />
             </body>
