@@ -167,7 +167,6 @@ export function MoneyChart() {
                                 <Bar
                                     dataKey="profit"
                                     fill="var(--color-profit)"
-                                    maxBarSize={48}
                                     shape={ProfitBar}
                                     isAnimationActive={false}
                                 />

@@ -55,7 +55,7 @@ export function Tip({ text, label }: { text: string; label: string }) {
                 onFocus={show}
                 onClick={show}
                 onBlur={hide}
-                className="relative grid size-(--tip-button) cursor-pointer place-items-center rounded-full border-(length:--hairline) border-line text-(length:--fine-size) leading-none font-semibold text-text-muted before:absolute before:-inset-(--space-2) before:content-[''] hover:border-accent hover:text-accent"
+                className="relative grid size-(--tip-button) cursor-pointer place-items-center border-(length:--hairline) border-line text-(length:--fine-size) leading-none font-semibold text-text-muted before:absolute before:-inset-(--space-2) before:content-[''] hover:border-accent hover:text-accent"
             >
                 ?
             </button>
