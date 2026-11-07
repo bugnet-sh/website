@@ -47,6 +47,12 @@ describe("copy", () => {
         expect(copy.exitLine(job({ state: "running", exitCode: null }), 1_000)).toBeNull();
     });
 
+    it("leaves the exit part out of an exited job's line when it has no code", () => {
+        const job: ExitInfo = { state: "exited", exitCode: null, oom: false, peakMib: 512 };
+        expect(copy.exitLine(job, 9_200)).toBe("9.2 s · peak 512 MiB");
+        expect(copy.exitLine({ ...job, peakMib: 0 }, 9_200)).toBe("9.2 s");
+    });
+
     it("names the map's nodes and metrics", () => {
         expect(copy.nodes.preview(3000)).toBe("Preview :3000");
         expect(copy.nodes.moreHosts(15)).toBe("+15 more hosts");

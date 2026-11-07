@@ -111,7 +111,8 @@ export const copy = {
         if (job.state === "cancelled") return `cancelled · ${took}`;
         if (job.state === "running") return null;
         const peak = job.peakMib > 0 ? ` · peak ${job.peakMib} MiB` : "";
-        return `exit ${job.exitCode ?? "?"} · ${took}${peak}`;
+        if (job.exitCode === null) return `${took}${peak}`;
+        return `exit ${job.exitCode} · ${took}${peak}`;
     },
     waiting: "Waiting for a free stream…",
     limit: "Live output limit reached for this sandbox.",
