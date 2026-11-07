@@ -223,6 +223,15 @@ describe("scenario answers", () => {
         expect(outputs).toEqual(["pending", "pending", "complete", "complete"]);
     });
 
+    it("answers ended-x402-settling's settling record first, then the settled one", async () => {
+        const r = await start();
+        const sc = s("ended-x402-settling");
+        const got = [];
+        for (let i = 0; i < 3; i++) got.push(await (await ask(r, sc)).json());
+        expect(got).toEqual([sc.gets[0]?.body, sc.gets[1]?.body, sc.gets[1]?.body]);
+        expect(sc.gets[0]?.body).not.toEqual(sc.gets[1]?.body);
+    });
+
     it("answers 429 for rate-limited", async () => {
         const r = await start();
         const res = await ask(r, s("rate-limited"));

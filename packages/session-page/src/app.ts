@@ -3,15 +3,16 @@
  * answers (session-page-ui.md 4). Until the first answer comes, the page shows the heading alone.
  *
  * A running session is asked for again every 10 s and its commands stream live. An ended one is
- * asked for again only while its output is being saved. Every answer that reaches a final state
- * (expired, not found, deleted, too new) stops the timers and the streams for good, and answers
- * still in flight from before that are dropped.
+ * asked for again only while its output is being saved or an x402 payment settles. Every answer
+ * that reaches a final state (expired, not found, deleted, too new) stops the timers and the
+ * streams for good, and answers still in flight from before that are dropped.
  */
 import { createApi, type GetResult } from "./api.ts";
 import { copy } from "./copy.ts";
 import { formatClock, formatLeft } from "./format.ts";
 import { readLink, sessionKeyStore, type Gone } from "./link.ts";
 import { createLive, type Live } from "./live.ts";
+import { settlingCalls } from "./map/model.ts";
 import type { SessionRecord, Snapshot } from "./payload.ts";
 import { createCommandsView, type CommandsView } from "./render/commands.ts";
 import type { Clipboard } from "./render/controls.ts";
@@ -47,6 +48,9 @@ const SAVING_EVERY_MS = 5_000;
 // Two minutes of asking every 5 s, then every 30 s
 const SAVING_FAST_ASKS = 24;
 const SAVING_SLOW_MS = 30_000;
+const SETTLING_EVERY_MS = 30_000;
+// A settling call is confirmed within minutes, so one still settling past this waits for a reload
+const SETTLING_FOR_MS = 30 * 60_000;
 const FAILURES_BEFORE_NOTICE = 3;
 // The times row counts down in minutes and hours
 const CLOCK_MS = 60_000;
@@ -112,6 +116,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
     let failures = 0;
     let saving = false;
     let savingAsks = 0;
+    // Asks for settling payments end before this server time; null when nothing settles
+    let settlingUntil: number | null = null;
     let status: { text: string; running: boolean } | null = null;
 
     const serverNow = () => new Date(env.now().getTime() + offsetMs);
@@ -157,10 +163,15 @@ export function startPage(env: PageEnv): { destroy(): void } {
         }, ms);
     }
 
+    // Saving output and settling payments share the one timer, so no answer is asked for twice
     function nextAsk(): number | null {
         if (mode === "running") return RUNNING_EVERY_MS;
-        if (mode !== "ended" || !saving) return null;
-        return savingAsks++ < SAVING_FAST_ASKS ? SAVING_EVERY_MS : SAVING_SLOW_MS;
+        if (mode !== "ended") return null;
+        const waits: number[] = [];
+        if (saving) waits.push(savingAsks++ < SAVING_FAST_ASKS ? SAVING_EVERY_MS : SAVING_SLOW_MS);
+        const settleAt = serverNow().getTime() + SETTLING_EVERY_MS;
+        if (settlingUntil !== null && settleAt < settlingUntil) waits.push(SETTLING_EVERY_MS);
+        return waits.length === 0 ? null : Math.min(...waits);
     }
 
     // A drawing bug is not a network failure, so the view stays as it is
@@ -392,6 +403,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
         const now = serverNow();
         // Set before any drawing, so the catch in applySafely still knows whether to ask again
         saving = record.output === "pending";
+        settlingUntil =
+            settlingCalls(record.events) > 0 ? record.endedAt.getTime() + SETTLING_FOR_MS : null;
         const v = enter("ended", record);
         status = { text: copy.ended(record.endedBecause), running: false };
         paintStatus();

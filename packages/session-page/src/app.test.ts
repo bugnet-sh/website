@@ -693,6 +693,104 @@ describe("an ended session", () => {
     });
 });
 
+describe("an ended session with payments settling", () => {
+    const MIN = 60_000;
+    const settling = scenarios["ended-x402-settling"];
+    const [settlingBody, settledBody] = answers(settling) as [Answer, Answer];
+    const searchId = "x402-host:search-api.example";
+    const search = `g.map-node[data-node-id="${searchId}"]`;
+    // Each amount shown in the search host's open table, with its tone
+    const searchAmounts = (app: HTMLElement) =>
+        [
+            ...app.querySelectorAll(
+                `.map-table .table-scroll[data-node-id="${searchId}"] td.ev-amount`,
+            ),
+        ]
+            .filter((td) => td.textContent !== "")
+            .map((td) => [td.textContent, td.classList.contains("money") ? "money" : "muted"]);
+
+    it("asks again at 30 s", async () => {
+        const srv = server([settlingBody]);
+        open({ scenario: settling, fetch: srv.fetch });
+        await settle();
+        expect(srv.gets()).toHaveLength(1);
+        await advance(29_999);
+        expect(srv.gets()).toHaveLength(1);
+        await advance(1);
+        expect(srv.gets()).toHaveLength(2);
+        await advance(30_000);
+        expect(srv.gets()).toHaveLength(3);
+    });
+
+    it("shows the settled amounts as money from the next answer, then asks no more", async () => {
+        const srv = server([settlingBody, settledBody]);
+        const { app } = open({ scenario: settling, fetch: srv.fetch });
+        await settle();
+        q<SVGGElement>(app, search)!.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        expect(searchAmounts(app)).toEqual([
+            ["0.012 USDC", "money"],
+            ["0.012 USDC", "muted"],
+        ]);
+        await advance(30_000);
+        expect(srv.gets()).toHaveLength(2);
+        expect(searchAmounts(app)).toEqual([
+            ["0.012 USDC", "money"],
+            ["0.012 USDC", "money"],
+        ]);
+        await advance(30 * MIN);
+        expect(srv.gets()).toHaveLength(2);
+    });
+
+    it("asks nothing more for a record that ended 31 minutes ago", async () => {
+        const old = makeScenarios(new Date(NOW.getTime() - 29 * MIN))["ended-x402-settling"];
+        const srv = server([first(old)]);
+        open({ scenario: old, fetch: srv.fetch });
+        await settle();
+        await advance(30 * MIN);
+        expect(srv.gets()).toHaveLength(1);
+    });
+
+    it("stops asking 30 minutes after the end while rows still settle", async () => {
+        // The record ended 2 minutes ago, so the last ask may come before 28 minutes from now
+        const srv = server([settlingBody]);
+        open({ scenario: settling, fetch: srv.fetch });
+        await settle();
+        await advance(27 * MIN + 30_000);
+        expect(srv.gets()).toHaveLength(56);
+        await advance(10 * MIN);
+        expect(srv.gets()).toHaveLength(56);
+    });
+
+    it("stops asking once a later answer is final", async () => {
+        const srv = server([settlingBody, { status: 200, body: { state: "expired" } }]);
+        const { app } = open({ scenario: settling, fetch: srv.fetch });
+        await settle();
+        await advance(30_000);
+        expect(message(app)).toBe(copy.expired);
+        expect(vi.getTimerCount()).toBe(0);
+    });
+
+    it("asks every 5 s while output is also saved, never twice at once", async () => {
+        type Body = { record: { output: string } };
+        const body = structuredClone(settlingBody) as { status: number; body: Body };
+        body.body.record.output = "pending";
+        const srv = server([body]);
+        open({ scenario: settling, fetch: srv.fetch });
+        await settle();
+        for (let ask = 1; ask <= 6; ask++) {
+            await advance(5_000);
+            expect(srv.gets()).toHaveLength(1 + ask);
+        }
+        // Past the two fast minutes both ask every 30 s, still through the one timer
+        await advance(90_000);
+        expect(srv.gets()).toHaveLength(25);
+        await advance(30_000);
+        expect(srv.gets()).toHaveLength(26);
+        await advance(30_000);
+        expect(srv.gets()).toHaveLength(27);
+    });
+});
+
 describe("a running session", () => {
     const running = scenarios.running;
     const runningBody = first(running);
