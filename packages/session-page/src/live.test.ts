@@ -313,6 +313,61 @@ describe("createLive", () => {
         expect(t.streams).toHaveLength(1);
     });
 
+    it("doubles the wait after each failed open, up to 30 s", async () => {
+        const t = setup();
+        const failures: ApiError[] = ["offline", "offline", "offline", "offline", "offline"];
+        t.answers.set(1, [...failures, "offline"]);
+        const asked = () => failures.length + 1 - t.answers.get(1)!.length;
+        t.live.setWanted([1]);
+        await settle();
+        expect(asked()).toBe(1);
+        for (const wait of [2_000, 4_000, 8_000, 16_000, 30_000, 30_000]) {
+            t.clock.advance(wait - 1);
+            await settle();
+            const before = asked() + t.streams.length;
+            t.clock.advance(1);
+            await settle();
+            expect(asked() + t.streams.length).toBe(before + 1);
+        }
+    });
+
+    it("waits 2,000 ms again once a frame arrives after failed opens", async () => {
+        const t = setup();
+        t.answers.set(1, ["offline", "offline", "offline"]);
+        t.live.setWanted([1]);
+        await settle();
+        for (const wait of [2_000, 4_000, 8_000]) {
+            t.clock.advance(wait);
+            await settle();
+        }
+        expect(t.streams).toHaveLength(1);
+        t.streams[0]!.send(sse.out("a\n", "c1"));
+        t.streams[0]!.close();
+        await settle();
+        t.clock.advance(2_000);
+        await settle();
+        expect(t.streams).toHaveLength(2);
+    });
+
+    it("keeps the longer wait across a stream that drops before any frame", async () => {
+        const t = setup();
+        t.answers.set(1, ["offline", "offline"]);
+        t.live.setWanted([1]);
+        await settle();
+        for (const wait of [2_000, 4_000]) {
+            t.clock.advance(wait);
+            await settle();
+        }
+        t.streams[0]!.close();
+        await settle();
+        t.clock.advance(7_999);
+        await settle();
+        expect(t.streams).toHaveLength(1);
+        t.clock.advance(1);
+        await settle();
+        expect(t.streams).toHaveLength(2);
+    });
+
     it("calls onSessionEnd on end{ended} and stops every stream", async () => {
         const t = setup();
         t.live.setWanted([1, 2]);

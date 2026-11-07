@@ -24,6 +24,8 @@ export interface LiveOpts {
 
 // A 429 means the route is already limiting this viewer, so asking again soon only adds load
 const RATE_LIMITED_FACTOR = 5;
+// Four streams retrying a lasting failure every 2 s would pass the route's 60 a minute per IP
+const MAX_RETRY_MS = 30_000;
 
 // App callbacks go through here, so a render bug cannot drop a stream, resend text or hold a slot
 function guard(cb: () => void): void {
@@ -47,6 +49,8 @@ interface Track {
     timer: unknown;
     held: Held[];
     exited: boolean;
+    // The wait before the next open after a refused one; a frame brings it back to retryMs
+    backoff: number;
 }
 
 /**
@@ -74,6 +78,7 @@ export function createLive(opts: LiveOpts): Live {
                 timer: undefined,
                 held: [],
                 exited: false,
+                backoff: opts.retryMs,
             };
             tracks.set(seq, t);
         }
@@ -135,7 +140,7 @@ export function createLive(opts: LiveOpts): Live {
     }
 
     async function read(t: Track, conn: AbortController): Promise<void> {
-        let wait = opts.retryMs;
+        let wait: number | null = null;
         try {
             const res = await opts.api.live(t.seq, t.cursor, conn.signal);
             if (t.conn !== conn) {
@@ -147,13 +152,18 @@ export function createLive(opts: LiveOpts): Live {
                 guard(() => opts.onGone());
                 return;
             }
-            if (res === "rate-limited") wait = opts.retryMs * RATE_LIMITED_FACTOR;
-            else if (typeof res !== "string") {
+            if (typeof res === "string") {
+                const floor = res === "rate-limited" ? opts.retryMs * RATE_LIMITED_FACTOR : 0;
+                wait = Math.max(t.backoff, floor);
+                t.backoff = Math.min(t.backoff * 2, MAX_RETRY_MS);
+            } else {
                 await readSse(res, (f) => receive(t, conn, f), conn.signal);
             }
         } catch {
             // Anything unexpected ends this stream like a network drop does
         }
+        // Being let in proves little, since the stream may drop at once; only a frame resets it
+        wait ??= t.backoff;
         if (t.conn !== conn) return;
         t.conn = null;
         t.held = [];
@@ -170,6 +180,7 @@ export function createLive(opts: LiveOpts): Live {
 
     function receive(t: Track, conn: AbortController, f: LiveFrame): void {
         if (t.conn !== conn) return;
+        t.backoff = opts.retryMs;
         if ((f.type === "out" || f.type === "skip") && f.cursor === null) {
             t.held.push(f);
             return;
