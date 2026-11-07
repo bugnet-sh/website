@@ -71,6 +71,20 @@
     /* The footer's closing band, as tall as rewall's */
     --waves: clamp(140px, 15vw, 240px);
 
+    /* The stats page's type and box sizes */
+    --title-size: clamp(32px, 4vw, 48px);
+    --title-line: 1.25;
+    --lead-size: 15px;
+    --lead-line: 24px;
+    --stat-size: 32px;
+    --stat-line: 40px;
+    --tick-size: 11px;
+    --segment: 28px;
+    --chart: 320px;
+    --chart-phone: 240px;
+    --tip-button: 24px;
+    --tip-width: 320px;
+
     --max: 1200px;
     --inset: 24px;
     --row: 40px;
