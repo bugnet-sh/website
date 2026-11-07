@@ -23,13 +23,17 @@
     --dot: 8px;
     --tip-button: 24px;
     --tip-width: 320px;
-    --term-max: 480px;
-    --events-max: 480px;
+    /* At most 480 px, and short of a landscape phone's height, so the page itself still scrolls */
+    --term-max: min(480px, 60svh);
+    --events-max: min(480px, 60svh);
     --col-seq: 40px;
     --col-exit: 96px;
     --col-time: 112px;
     --col-bytes: 96px;
     --col-copy: 104px;
+    --col-event: 152px;
+    --col-amount: 120px;
+    --col-tx: 224px;
     --pulse: 1.6s;
     --gap-inline: var(--space-4);
     /* Full-bleed blocks pad to the centred column, so hairlines run edge to edge */
@@ -70,8 +74,10 @@ a {
     text-underline-offset: var(--space-1);
 }
 
-a:hover {
-    color: var(--accent);
+@media (hover: hover) {
+    a:hover {
+        color: var(--accent);
+    }
 }
 
 button {
@@ -84,8 +90,12 @@ button {
     outline-offset: var(--ring);
 }
 
+/* A click or a tap never draws an outline, the browser's own ring on SVG and buttons included */
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
 /* Headings and lines take focus only so a screen reader starts there */
-[tabindex="-1"]:focus,
 [tabindex="-1"]:focus-visible {
     outline: none;
 }
@@ -108,12 +118,15 @@ header.site {
 .logo {
     display: inline-flex;
     align-items: center;
+    min-width: var(--row);
     min-height: var(--row);
     color: var(--text);
 }
 
-.logo:hover {
-    color: var(--accent);
+@media (hover: hover) {
+    .logo:hover {
+        color: var(--accent);
+    }
 }
 
 .logo svg {
@@ -149,13 +162,16 @@ footer.site {
 footer.site a {
     display: inline-flex;
     align-items: center;
+    min-width: var(--row);
     min-height: var(--row);
     text-decoration: none;
 }
 
-footer.site a:hover {
-    color: var(--accent);
-    text-decoration: underline;
+@media (hover: hover) {
+    footer.site a:hover {
+        color: var(--accent);
+        text-decoration: underline;
+    }
 }
 
 /* Session row */
@@ -253,6 +269,7 @@ h1 {
 }
 
 .tip-button {
+    position: relative;
     display: inline-grid;
     place-items: center;
     width: var(--tip-button);
@@ -268,9 +285,18 @@ h1 {
     cursor: pointer;
 }
 
-.tip-button:hover {
-    border-color: var(--accent);
-    color: var(--accent);
+/* A row-sized target around the small round button, with nothing moved */
+.tip-button::before {
+    content: "";
+    position: absolute;
+    inset: calc((var(--tip-button) - var(--row)) / 2);
+}
+
+@media (hover: hover) {
+    .tip-button:hover {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
 }
 
 .tip-text {
@@ -317,9 +343,11 @@ h1 {
     visibility: hidden;
 }
 
-.button:hover:not(:disabled) {
-    border-color: var(--accent);
-    color: var(--accent);
+@media (hover: hover) {
+    .button:hover:not(:disabled) {
+        border-color: var(--accent);
+        color: var(--accent);
+    }
 }
 
 .button:disabled {
@@ -333,10 +361,12 @@ h1 {
     color: var(--bad);
 }
 
-.button.danger:hover:not(:disabled) {
-    border-color: var(--bad);
-    background: var(--surface-hover);
-    color: var(--bad);
+@media (hover: hover) {
+    .button.danger:hover:not(:disabled) {
+        border-color: var(--bad);
+        background: var(--surface-hover);
+        color: var(--bad);
+    }
 }
 
 .button.danger:disabled {
@@ -409,9 +439,11 @@ h1 {
     cursor: pointer;
 }
 
-.map-node:hover .map-bubble {
-    fill: var(--surface-hover);
-    stroke: var(--accent);
+@media (hover: hover) {
+    .map-node:hover .map-bubble {
+        fill: var(--surface-hover);
+        stroke: var(--accent);
+    }
 }
 
 .map-node.is-selected .map-bubble {
@@ -468,8 +500,10 @@ h1 {
     cursor: pointer;
 }
 
-.map-row:hover {
-    background: var(--surface-hover);
+@media (hover: hover) {
+    .map-row:hover {
+        background: var(--surface-hover);
+    }
 }
 
 .map-row.is-selected {
@@ -484,8 +518,9 @@ h1 {
     min-width: 0;
 }
 
+/* The name takes the cut, so a count, an amount or a refusal stays whole */
 .map-row-name {
-    flex: 1 1 auto;
+    flex: 1 1 0;
     font-weight: 600;
 }
 
@@ -525,23 +560,21 @@ table {
     border-spacing: 0;
 }
 
+/* Each hairline is an inset shadow, so a row is 40 px and a sticky head keeps its line */
 th,
 td {
     height: var(--row);
     padding: 0 var(--space-3);
-    border-bottom: var(--hairline) solid var(--line);
+    box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--line);
     text-align: start;
     vertical-align: middle;
 }
 
-/* A border on a sticky cell stays behind when it sticks, so the hairline is a shadow */
 thead th,
 thead td {
     position: sticky;
     top: 0;
     z-index: 1;
-    border-bottom: 0;
-    box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--line);
     background: var(--bg);
     color: var(--text-muted);
     font-size: var(--small-size);
@@ -591,6 +624,19 @@ table.events th:nth-child(4) {
     text-align: end;
 }
 
+/* Time, amount and transaction keep their place as the reader moves between bubbles */
+table.events th:nth-child(1) {
+    width: var(--col-time);
+}
+
+table.events th:nth-child(4) {
+    width: var(--col-amount);
+}
+
+table.events th:nth-child(5) {
+    width: var(--col-tx);
+}
+
 .tx-link {
     display: inline-flex;
     align-items: center;
@@ -616,7 +662,12 @@ table.events th:nth-child(4) {
     cursor: pointer;
 }
 
-.copy-button:hover,
+@media (hover: hover) {
+    .copy-button:hover {
+        color: var(--accent);
+    }
+}
+
 .copy-button.is-copied {
     color: var(--accent);
 }
@@ -648,8 +699,10 @@ section.commands {
     cursor: pointer;
 }
 
-.expand-all:hover {
-    color: var(--accent);
+@media (hover: hover) {
+    .expand-all:hover {
+        color: var(--accent);
+    }
 }
 
 .commands-note {
@@ -709,12 +762,14 @@ td.cmd {
     cursor: pointer;
 }
 
-.cmd-toggle:hover {
-    color: var(--accent);
-}
+@media (hover: hover) {
+    .cmd-toggle:hover {
+        color: var(--accent);
+    }
 
-tr.cmd-row:hover > td {
-    background: var(--surface-hover);
+    tr.cmd-row:hover > td {
+        background: var(--surface-hover);
+    }
 }
 
 tr.cmd-row:has(.cmd-toggle[aria-expanded="true"]) > td {
@@ -729,9 +784,11 @@ td.exit .dot {
     margin-inline-end: var(--space-2);
 }
 
+/* The terminal block draws the line under an open row */
 tr.cmd-detail > td {
     height: auto;
     padding: 0;
+    box-shadow: none;
     white-space: normal;
 }
 
@@ -856,6 +913,32 @@ tr.cmd-detail > td {
     .term-head > .copy-button {
         display: none;
     }
+
+    /* The heading and the status share a baseline, the dot centred on the status */
+    .session-head {
+        align-items: baseline;
+    }
+
+    .session-state {
+        min-height: 0;
+        align-items: baseline;
+    }
+
+    .session-state .dot {
+        align-self: center;
+    }
+
+    /* Event and detail wrap, so an amount or a transaction is never pushed out of the box */
+    table.events td:nth-child(2),
+    table.events td:nth-child(3) {
+        white-space: normal;
+        overflow-wrap: anywhere;
+        line-height: var(--small-line);
+    }
+
+    table.events th:nth-child(2) {
+        min-width: var(--col-event);
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -880,5 +963,60 @@ tr.cmd-detail > td {
     /* Hidden columns would otherwise keep their share of the width as empty tracks */
     table.commands thead th:nth-child(2) {
         width: 100%;
+    }
+
+    /* Each event is a small grid, time, event and amount, then its detail and transaction */
+    table.events thead {
+        position: absolute;
+        width: var(--hairline);
+        height: var(--hairline);
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
+    }
+
+    table.events tbody tr {
+        display: grid;
+        grid-template-columns: auto 1fr auto;
+        column-gap: var(--space-3);
+        box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--line);
+    }
+
+    table.events td {
+        display: flex;
+        align-items: center;
+        height: auto;
+        min-height: var(--row);
+        padding: 0;
+        box-shadow: none;
+    }
+
+    table.events td:nth-child(1) {
+        grid-area: 1 / 1;
+    }
+
+    table.events td:nth-child(2) {
+        grid-area: 1 / 2;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    table.events td:nth-child(4) {
+        grid-area: 1 / 3;
+        justify-content: flex-end;
+    }
+
+    table.events td:nth-child(3) {
+        grid-area: 2 / 1 / auto / -1;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    table.events td:nth-child(5) {
+        grid-area: 3 / 1 / auto / -1;
+    }
+
+    table.events td:empty {
+        display: none;
     }
 }

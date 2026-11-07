@@ -117,7 +117,10 @@ describe("page.css", () => {
             expect(block).toContain(d);
         }
         expect(block).toContain("max-height: var(--term-max)");
-        expect(css).toMatch(/--term-max:\s*480px/);
+        // At most 480 px, and short of a landscape phone's height, so the page can still scroll
+        expect(css).toMatch(/--term-max:\s*min\(480px, 60svh\);/);
+        expect(css).toMatch(/--events-max:\s*min\(480px, 60svh\);/);
+        expect(ruleFor(".table-scroll")).toContain("max-height: var(--events-max)");
         expect(ruleFor(".line")).toContain("overflow: hidden");
         expect(ruleFor(".line-err")).toContain("color: var(--text-muted)");
         expect(ruleFor(".line-err")).toContain("border-left: var(--hairline) solid var(--line)");
@@ -126,9 +129,33 @@ describe("page.css", () => {
     it("shows focus in the accent, and stops the dot for reduced motion and hidden tabs", () => {
         expect(ruleFor(":focus-visible")).toContain("outline: var(--ring) solid var(--accent)");
         expect(ruleFor(":focus-visible")).toContain("outline-offset: var(--ring)");
+        // A click or a tap draws no outline, the browser's own ring included
+        expect(ruleFor(":focus:not(:focus-visible)").trim()).toBe("outline: none;");
+        for (const rule of rules.filter((r) => /:focus(?!-visible)/.test(r.selector))) {
+            expect(rule.body.trim(), rule.selector).toBe("outline: none;");
+        }
         expect(css).toMatch(/--ring:\s*2px/);
         expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.dot\s*\{/);
         expect(ruleFor(".is-hidden-tab .dot")).toContain("animation: none");
+    });
+
+    it("keeps every hover style for a pointer that hovers, so a tap leaves no accent behind", () => {
+        let rest = plain;
+        for (;;) {
+            const at = rest.indexOf("@media (hover: hover)");
+            if (at < 0) break;
+            let depth = 0;
+            let end = rest.indexOf("{", at);
+            for (; end < rest.length; end++) {
+                if (rest[end] === "{") depth++;
+                else if (rest[end] === "}" && --depth === 0) break;
+            }
+            expect(rest.slice(at, end)).toContain(":hover");
+            rest = rest.slice(0, at) + rest.slice(end + 1);
+        }
+        expect(plain).toContain("@media (hover: hover)");
+        expect(rest).not.toContain(":hover");
+        expect(ruleFor(".copy-button.is-copied")).toContain("color: var(--accent)");
     });
 
     it("turns the map into a list and drops the wide columns below 768 px", () => {

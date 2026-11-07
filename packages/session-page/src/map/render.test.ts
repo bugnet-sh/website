@@ -399,6 +399,18 @@ describe("renderEventTable", () => {
         expect(detail.length).toBeGreaterThan(1);
     });
 
+    it("names its table roles, so the phone's grid layout keeps the table's meaning", () => {
+        const node = nodeOf(modelOf("ended-full"), "payments");
+        const root = renderEventTable(document, node, { now, clipboard: clipboard() });
+        const role = (sel: string) =>
+            [...root.querySelectorAll(sel)].map((e) => e.getAttribute("role"));
+        expect(role("table")).toEqual(["table"]);
+        expect(role("thead, tbody")).toEqual(["rowgroup", "rowgroup"]);
+        expect(new Set(role("tr"))).toEqual(new Set(["row"]));
+        expect(new Set(role("th"))).toEqual(new Set(["columnheader"]));
+        expect(new Set(role("td"))).toEqual(new Set(["cell"]));
+    });
+
     it("links a valid transaction to the explorer, with a copy button", async () => {
         const node = nodeOf(modelOf("ended-full"), "payments");
         const board = clipboard();
