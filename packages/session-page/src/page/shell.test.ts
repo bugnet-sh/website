@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { copy } from "../copy.ts";
+import { GAP } from "../map/layout.ts";
 
 const read = (name: string) => readFileSync(new URL(name, import.meta.url), "utf8");
 const html = read("./index.html");
 const css = read("./page.css");
+const tokensCss = read("../../../brand/tokens.css");
 const doc = new JSDOM(html).window.document;
 const squash = (s: string | null | undefined) => (s ?? "").replace(/\s+/g, " ").trim();
 
@@ -134,7 +136,7 @@ describe("page.css", () => {
         for (const rule of rules.filter((r) => /:focus(?!-visible)/.test(r.selector))) {
             expect(rule.body.trim(), rule.selector).toBe("outline: none;");
         }
-        expect(css).toMatch(/--ring:\s*2px/);
+        expect(tokensCss).toMatch(/--ring:\s*2px;/);
         expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)\s*\{\s*\.dot\s*\{/);
         expect(ruleFor(".is-hidden-tab .dot")).toContain("animation: none");
     });
@@ -156,6 +158,40 @@ describe("page.css", () => {
         expect(plain).toContain("@media (hover: hover)");
         expect(rest).not.toContain(":hover");
         expect(ruleFor(".copy-button.is-copied")).toContain("color: var(--accent)");
+    });
+
+    it("takes the hairline, the ring and the dot from the brand tokens, defined once", () => {
+        for (const [token, value] of [
+            ["--hairline", "1px"],
+            ["--ring", "2px"],
+            ["--dot", "8px"],
+        ]) {
+            expect(tokensCss).toContain(`${token}: ${value};`);
+            expect(plain, token).not.toMatch(new RegExp(`${token}\\s*:`));
+        }
+    });
+
+    it("dashes a refused edge from a token, not from the drawing code", () => {
+        expect(ruleFor(".map-edge.warn")).toContain("stroke-dasharray: var(--dash)");
+        expect(css).toMatch(/--dash:\s*6px 4px;/);
+    });
+
+    it("sizes the phone list's empty line like the rest of its small text", () => {
+        expect(ruleFor(".map-edge-label text,\n.map-metric,\n.map-svg .map-empty")).toContain(
+            "font-size: var(--map-metric-size)",
+        );
+        const list = ruleFor(".map-list .map-empty");
+        expect(list).toContain("font-size: var(--small-size)");
+        expect(list).toContain("line-height: var(--small-line)");
+    });
+
+    it("sets the map's gap between parts to the page's own inline gap", () => {
+        const tokenOf = (source: string, name: string) =>
+            new RegExp(`${name}:\\s*([^;]+);`).exec(source)?.[1]?.trim();
+        const gap = tokenOf(css, "--gap-inline");
+        const space = /^var\((--[\w-]+)\)$/.exec(gap ?? "")?.[1];
+        const value = space === undefined ? gap : tokenOf(tokensCss, space);
+        expect(value).toBe(`${GAP}px`);
     });
 
     it("turns the map into a list and drops the wide columns below 768 px", () => {

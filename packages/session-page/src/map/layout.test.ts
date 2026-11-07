@@ -1,8 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
-import { formatUsdc } from "../format.ts";
-import { layoutMap, type MapLayout, type Placed } from "./layout.ts";
+import { GAP, layoutMap, type MapLayout, type Placed } from "./layout.ts";
 import { buildMap, type MapModel } from "./model.ts";
 
 const scenarios = makeScenarios(new Date("2026-11-06T12:00:00Z"));
@@ -95,13 +94,12 @@ const models: [string, () => MapModel][] = [
     ["ended-empty", () => buildMap(recordOf("ended-empty"))],
     ["busiest", busiest],
 ];
-const widths = [720, 900, 1152] as const;
+const widths = [720, 900, 1152, 1200] as const;
 
 /* Boxes, estimated apart from the layout's own sums */
 
 const CHAR = 7.5;
 const LINE = 16;
-const GAP = 16;
 
 interface Box {
     what: string;
@@ -229,9 +227,11 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
             const cap = Math.max(...others.map((p) => p.r));
             const most = Math.max(1, ...others.map((p) => p.node.count));
             for (const p of others) {
-                const r = Math.max(Math.min(8, cap), cap * Math.sqrt(p.node.count / most));
+                const r = Math.max(Math.min(12, cap), cap * Math.sqrt(p.node.count / most));
                 expect(p.r, p.node.id).toBeCloseTo(r, 6);
-                expect(p.r, p.node.id).toBeLessThanOrEqual(40);
+                // A one-event bubble still reads as a bubble, and the busiest one never swamps
+                expect(p.r, p.node.id).toBeGreaterThanOrEqual(12);
+                expect(p.r, p.node.id).toBeLessThanOrEqual(36);
             }
             for (const a of others) {
                 for (const b of others) {
@@ -319,26 +319,13 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
             }
         });
 
-        it("colours only amounts as money, and counts muted or warn", () => {
+        it("labels an edge only with its refusals, in the warning colour", () => {
             for (const e of layout.edges) {
-                for (const part of e.lines.flat()) {
-                    const amount = part.text.endsWith(" USDC");
-                    expect(part.tone === "money", `${e.to.node.id} ${part.text}`).toBe(
-                        amount && e.to.node.paidMicros > 0,
-                    );
-                }
-            }
-        });
-
-        it("draws every refusal, and the total paid or nothing on the Payments edge", () => {
-            for (const e of layout.edges) {
-                const texts = drawn(e.lines).flat();
                 const { node } = e.to;
-                if (e.refusedLabel) expect(texts, node.id).toContain(e.refusedLabel);
-                if (node.kind !== "payments") continue;
-                const sample = name !== "busiest";
-                const total = [formatUsdc(node.paidMicros)];
-                expect([total, ...(sample ? [] : [[]])]).toContainEqual(texts);
+                const want = node.refused > 0 ? [[`${node.refused} refused`]] : [];
+                expect(drawn(e.lines), node.id).toEqual(want);
+                expect(e.refusedLabel, node.id).toBe(node.refused > 0 ? want[0]![0] : null);
+                for (const part of e.lines.flat()) expect(part.tone, node.id).toBe("warn");
             }
         });
 
@@ -352,78 +339,53 @@ describe("layoutMap edges", () => {
     const layout = layoutMap(buildMap(recordOf("ended-full")), 900);
     const edge = (id: string) => layout.edges.find((e) => e.to.node.id === id)!;
 
-    it("labels each edge as the spec's table says, marking money and refusals", () => {
+    it("keeps counts and amounts under the bubbles, and refusals on the edges", () => {
         expect(edge("payments")).toMatchObject({
-            label: [{ text: "0.125 USDC", tone: "money" }],
             money: true,
             dashed: false,
             refusedLabel: null,
-            lines: [[{ text: "0.125 USDC", tone: "money" }]],
+            lines: [],
         });
         expect(edge("x402-host:weather-api.example")).toMatchObject({
-            label: [
-                { text: "3", tone: "muted" },
-                { text: "0.006 USDC", tone: "money" },
-            ],
             money: true,
             dashed: false,
             refusedLabel: null,
+            lines: [],
         });
         expect(edge("x402-host:search-api.example")).toMatchObject({
-            label: [
-                { text: "5", tone: "muted" },
-                { text: "0.024 USDC", tone: "money" },
-            ],
             money: true,
             dashed: false,
             refusedLabel: "2 refused",
+            lines: [[{ text: "2 refused", tone: "warn" }]],
         });
         expect(edge("x402-host:unregistered.example")).toMatchObject({
-            label: [{ text: "1", tone: "warn" }],
             money: false,
             dashed: true,
-            refusedLabel: null,
-            lines: [[{ text: "1", tone: "warn" }]],
+            refusedLabel: "1 refused",
+            lines: [[{ text: "1 refused", tone: "warn" }]],
         });
-        expect(edge("mcp")).toMatchObject({
-            label: [{ text: "19", tone: "muted" }],
-            money: false,
-            dashed: false,
-            lines: [[{ text: "19", tone: "muted" }]],
-        });
-        expect(edge("secret-host:api.github.com").lines).toEqual([[{ text: "6", tone: "muted" }]]);
+        expect(edge("mcp")).toMatchObject({ money: false, dashed: false, lines: [] });
+        expect(edge("secret-host:api.github.com").lines).toEqual([]);
     });
 
-    it("draws calls, total paid and refusals together where they fit", () => {
-        const wide = layoutMap(buildMap(recordOf("ended-full")), 1152);
-        const at = (id: string) => drawn(wide.edges.find((e) => e.to.node.id === id)!.lines);
-        expect(at("x402-host:search-api.example")).toEqual([["5", "0.024 USDC", "2 refused"]]);
-        expect(at("x402-host:weather-api.example")).toEqual([["3", "0.006 USDC"]]);
-        const search = edge("x402-host:search-api.example").lines;
-        expect(search.flat().map((p) => [p.text, p.tone])).toEqual([
-            ["5", "muted"],
-            ["0.024 USDC", "money"],
-            ["2 refused", "warn"],
-        ]);
-    });
-
-    it("leaves the Payments edge bare when its total has no room, rather than show a count", () => {
-        const payments = (width: number) =>
-            layoutMap(busiest(123_456_789_012_345), width).edges.find(
-                (e) => e.to.node.kind === "payments",
-            )!;
-        const total = "123456789.012345 USDC";
-        expect(payments(720).label).toEqual([{ text: total, tone: "money" }]);
-        expect(payments(720).lines).toEqual([]);
-        expect(drawn(payments(1152).lines)).toEqual([[total]]);
-    });
-
-    it("keeps the total paid on a narrow map, dropping the call count first", () => {
-        const narrow = layoutMap(buildMap(recordOf("ended-full")), 720);
-        for (const e of narrow.edges.filter((x) => x.to.node.paidMicros > 0)) {
-            const texts = drawn(e.lines).flat();
-            expect(texts, e.to.node.id).toContain(formatUsdc(e.to.node.paidMicros));
+    it("draws every refusal at every width, with no shorter form to fall back on", () => {
+        for (const width of widths) {
+            for (const model of [busiest(), buildMap(recordOf("ended-crowded"))]) {
+                for (const e of layoutMap(model, width).edges) {
+                    if (e.to.node.refused === 0) continue;
+                    expect(drawn(e.lines), `${e.to.node.id} at ${width}`).toEqual([
+                        [`${e.to.node.refused} refused`],
+                    ]);
+                }
+            }
         }
+    });
+
+    it("crops the maps to the heights it draws them at", () => {
+        const heights = (name: ScenarioName) =>
+            widths.map((w) => Math.round(layoutMap(buildMap(recordOf(name)), w).height * 10) / 10);
+        expect(heights("ended-full")).toEqual([390, 390, 390, 390]);
+        expect(heights("ended-crowded")).toEqual([443.9, 387.9, 387.9, 387.9]);
     });
 
     it("anchors left labels at the end and right labels at the start", () => {

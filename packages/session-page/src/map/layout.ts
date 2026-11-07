@@ -6,12 +6,12 @@
  * and right nodes stack in a column each, with labels on the outer side starting at one edge, and
  * each column moves inward only as far as its longest label needs. Bottom nodes spread along one
  * row under the centre, alternate their labels between two rows when one row cannot hold them, and
- * drop lower when their outer edges would cross a column. The centre moves sideways only when an
- * edge label needs the room, first for every edge's shortest label, then for the amounts. Each edge
- * label starts in its shortest form, then takes the fullest form that clears every circle, label
- * and other edge label. Label sizes are estimated at 7.5 px per character on 16 px lines, wider
- * than the page's fonts draw them, plus a fixed gap between the parts of a line. The map is then
- * cropped to what it draws.
+ * drop lower when their outer edges would cross a column. Counts and amounts show once, under each
+ * bubble, so an edge carries a label only for refused calls, and the centre moves sideways only
+ * when such a label needs the room. Label sizes are estimated at 7.5 px per character on 16 px
+ * lines, plus a fixed gap between the parts of a line. The fonts draw some characters wider than
+ * that, so the drawing cuts any line that runs past its estimate (svg.ts). The map is then cropped
+ * to what it draws.
  */
 import { copy } from "../copy.ts";
 import type { MapModel, MapNode, MetricPart } from "./model.ts";
@@ -36,11 +36,10 @@ export interface Box {
     height: number;
 }
 
-export type EdgeTone = "muted" | "money" | "warn";
-
+// Refusals are the only figure an edge shows
 export interface EdgePart {
     text: string;
-    tone: EdgeTone;
+    tone: "warn";
 }
 
 export interface MapEdge {
@@ -49,12 +48,10 @@ export interface MapEdge {
     y1: number;
     x2: number;
     y2: number;
-    // The edge label of session-page-ui.md 5 in full, such as the calls and the total paid
-    label: EdgePart[];
     dashed: boolean;
     money: boolean;
     refusedLabel: string | null;
-    // What the map draws, one array of parts per line, shorter than the full label where it must be
+    // What the map draws, one array of parts per line, none for an edge with no refusals
     lines: EdgePart[][];
     // The background behind the drawn lines, centred on the line's midpoint
     box: Box;
@@ -72,13 +69,12 @@ export interface MapLayout {
     note: { x: number; y: number } | null;
 }
 
-const CHAR_WIDTH = 7.5;
+export const CHAR_WIDTH = 7.5;
 export const LINE_HEIGHT = 16;
 export const ASCENT = 12;
 // The page's --gap-inline, between the parts of one line
 export const GAP = 16;
 
-const HEIGHT = 460;
 const CENTER_Y = 190;
 const CENTER_R = 56;
 const COLUMN_TOP = 40;
@@ -91,15 +87,14 @@ const BOTTOM_TO = 0.66;
 const DROP = 8;
 const MAX_DROP = 120;
 const LABEL_GAP = 12;
-const MAX_R = 40;
-const MIN_R = 8;
+// The busiest bubble stays a mark beside the centre, and a one-event bubble still reads as one
+const MAX_R = 36;
+const MIN_R = 12;
 const NOTE_BELOW = 28;
 const MARGIN = 4;
 const SPACE = 8;
 const LINE_CHARS = 24;
 const EDGE_PAD = 4;
-// A fuller edge label keeps this far from everything, so it never sits flush against a neighbour
-const EDGE_CLEAR = 2;
 
 const chars = (s: string) => Array.from(s).length;
 
@@ -125,35 +120,9 @@ const blockHeight = (metricLines: MetricPart[][]) => (1 + metricLines.length) * 
 
 /* Edge labels */
 
-interface EdgeText {
-    label: EdgePart[];
-    refusedLabel: string | null;
-    // Fullest first, the last is the one an edge keeps when nothing fuller fits
-    forms: EdgePart[][][];
-}
-
-// Counts stay muted (warn when every call was refused) and only amounts take the money tone
-function edgeText(node: MapNode): EdgeText {
-    const paid: EdgePart | null =
-        node.paidMicros > 0 ? { text: copy.metrics.usdc(node.paidMicros), tone: "money" } : null;
-    if (node.kind === "payments") {
-        const total = paid ?? { text: copy.metrics.usdc(0), tone: "muted" };
-        // Any other figure here would read as the total, so a total with no room leaves it bare
-        return { label: [total], refusedLabel: null, forms: [[[total]], []] };
-    }
-    const allRefused = node.refused > 0 && node.refused === node.count;
-    const count: EdgePart = { text: String(node.count), tone: allRefused ? "warn" : "muted" };
-    const full = paid ? [count, paid] : [count];
-    const kept = paid ? [full, [paid], [count]] : [full];
-    if (node.refused === 0 || allRefused) {
-        return { label: full, refusedLabel: null, forms: kept.map((parts) => [parts]) };
-    }
-    const refusedLabel = copy.metrics.refused(node.refused);
-    const refused: EdgePart = { text: refusedLabel, tone: "warn" };
-    const forms = kept.flatMap((parts) => [[[...parts, refused]], [parts, [refused]]]);
-    // The refusals show nowhere else on the map, so they are the last thing an edge gives up
-    forms.push([[refused]]);
-    return { label: full, refusedLabel, forms };
+function edgeLines(node: MapNode): EdgePart[][] {
+    if (node.refused === 0) return [];
+    return [[{ text: copy.metrics.refused(node.refused), tone: "warn" }]];
 }
 
 function formWidth(lines: EdgePart[][]): number {
@@ -161,15 +130,7 @@ function formWidth(lines: EdgePart[][]): number {
     return Math.max(...lines.map(partsWidth)) + 2 * EDGE_PAD;
 }
 
-// Need is the shortest form, want the shortest that still shows the money or says anything
-type Room = "need" | "want";
-
-function edgeBoxWidth(node: MapNode, room: Room = "need"): number {
-    const { forms } = edgeText(node);
-    if (room === "need") return formWidth(forms.at(-1)!);
-    const money = forms.findLast((lines) => lines.flat().some((part) => part.tone === "money"));
-    return formWidth(money ?? forms.findLast((lines) => lines.length > 0)!);
-}
+const edgeBoxWidth = (node: MapNode) => formWidth(edgeLines(node));
 
 /* Columns */
 
@@ -321,17 +282,13 @@ function placeBottomClear(
 function centerX(width: number, left: Placed[], right: Placed[]): number {
     const middle = width / 2;
     if (left.length === 0 || right.length === 0) return middle;
-    const gap = (side: Placed[], room: Room) =>
-        Math.max(...side.map((p) => edgeBoxWidth(p.node, room)));
+    const gap = (side: Placed[]) => Math.max(...side.map((p) => edgeBoxWidth(p.node)));
     const leftEdge = Math.max(...left.map((p) => p.x + p.r));
     const rightEdge = Math.min(...right.map((p) => p.x - p.r));
-    // Both sides' shortest labels come before either side's amounts
-    for (const room of ["need", "want"] as const) {
-        const leftSpare = middle - CENTER_R - leftEdge - gap(left, room);
-        const rightSpare = rightEdge - middle - CENTER_R - gap(right, room);
-        if (rightSpare < 0 && leftSpare > 0) return middle - Math.min(-rightSpare, leftSpare);
-        if (leftSpare < 0 && rightSpare > 0) return middle + Math.min(-leftSpare, rightSpare);
-    }
+    const leftSpare = middle - CENTER_R - leftEdge - gap(left);
+    const rightSpare = rightEdge - middle - CENTER_R - gap(right);
+    if (rightSpare < 0 && leftSpare > 0) return middle - Math.min(-rightSpare, leftSpare);
+    if (leftSpare < 0 && rightSpare > 0) return middle + Math.min(-leftSpare, rightSpare);
     return middle;
 }
 
@@ -357,15 +314,13 @@ function edgeTo(center: Placed, to: Placed): MapEdge {
         y2: to.y - dy * to.r,
     };
     const node = to.node;
-    const { label, refusedLabel, forms } = edgeText(node);
-    const lines = forms.at(-1)!;
+    const lines = edgeLines(node);
     return {
         to,
         ...ends,
-        label,
         dashed: node.refused > 0 && node.refused === node.count,
         money: node.paidMicros > 0,
-        refusedLabel,
+        refusedLabel: node.refused > 0 ? copy.metrics.refused(node.refused) : null,
         lines,
         box: boxAt(ends, lines),
     };
@@ -380,42 +335,6 @@ function labelBox(p: Placed): Box {
         width,
         height: blockHeight(p.metricLines),
     };
-}
-
-const boxesMeet = (a: Box, b: Box, gap: number) =>
-    a.x < b.x + b.width + gap &&
-    b.x < a.x + a.width + gap &&
-    a.y < b.y + b.height + gap &&
-    b.y < a.y + a.height + gap;
-
-function circleMeetsBox(c: Placed, b: Box, gap: number): boolean {
-    const nx = Math.min(Math.max(c.x, b.x), b.x + b.width);
-    const ny = Math.min(Math.max(c.y, b.y), b.y + b.height);
-    return Math.hypot(c.x - nx, c.y - ny) < c.r + gap;
-}
-
-function widenLabels(edges: MapEdge[], circles: Placed[], width: number, height: number) {
-    const labels = circles.filter((c) => c.node.side !== "center").map(labelBox);
-    const out = [...edges];
-    for (const [i, edge] of out.entries()) {
-        const others = out.filter((e, j) => j !== i && e.lines.length > 0);
-        const blocks = [...labels, ...others.map((e) => e.box)];
-        const fits = (b: Box) =>
-            b.x >= EDGE_CLEAR &&
-            b.y >= EDGE_CLEAR &&
-            b.x + b.width <= width - EDGE_CLEAR &&
-            b.y + b.height <= height - EDGE_CLEAR &&
-            circles.every((c) => !circleMeetsBox(c, b, EDGE_CLEAR)) &&
-            blocks.every((other) => !boxesMeet(other, b, EDGE_CLEAR));
-        for (const lines of edgeText(edge.to.node).forms.slice(0, -1)) {
-            const box = boxAt(edge, lines);
-            if (fits(box)) {
-                out[i] = { ...edge, lines, box };
-                break;
-            }
-        }
-    }
-    return out;
 }
 
 // One square-root scale for every bubble but the centre, so equal counts draw equal bubbles
@@ -465,14 +384,7 @@ export function layoutMap(model: MapModel, width: number): MapLayout {
         ...columns,
         ...placeBottomClear(bottomNodes, center, columns, width, radius, row),
     ];
-    // Edge labels stay inside the usual height, or the dropped bottom row's labels
-    const frame = Math.max(HEIGHT, ...placed.map(labelBox).map((b) => b.y + b.height));
-    const edges = widenLabels(
-        placed.map((p) => edgeTo(center, p)),
-        [center, ...placed],
-        width,
-        frame,
-    );
+    const edges = placed.map((p) => edgeTo(center, p));
     const note = placed.length === 0 ? { x: cx, y: CENTER_Y + CENTER_R + NOTE_BELOW } : null;
     const ink = [
         ...[center, ...placed].map(circleBox),

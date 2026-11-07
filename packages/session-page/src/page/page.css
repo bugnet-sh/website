@@ -7,8 +7,6 @@
 /* The page's own sizes, on the brand's grid */
 
 :root {
-    --hairline: 1px;
-    --ring: 2px;
     --body-size: 15px;
     --body-line: 24px;
     --small-size: 13px;
@@ -19,8 +17,9 @@
     --h1-line: 40px;
     --map-name-size: 13px;
     --map-metric-size: 12px;
+    /* A refused edge's dash and gap */
+    --dash: 6px 4px;
     --logo: 24px;
-    --dot: 8px;
     --tip-button: 24px;
     --tip-width: 320px;
     /* At most 480 px, and short of a landscape phone's height, so the page itself still scrolls */
@@ -413,6 +412,7 @@ h1 {
 
 .map-edge.warn {
     stroke: var(--warn);
+    stroke-dasharray: var(--dash);
 }
 
 .map-edge-label-bg {
@@ -421,7 +421,7 @@ h1 {
 
 .map-edge-label text,
 .map-metric,
-.map-empty {
+.map-svg .map-empty {
     font-size: var(--map-metric-size);
 }
 
@@ -539,6 +539,8 @@ h1 {
     display: flex;
     align-items: center;
     height: var(--row);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
 }
 
 .map-caption {

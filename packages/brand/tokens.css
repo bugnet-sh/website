@@ -46,6 +46,11 @@
     --row: 40px;
     --header: 56px;
 
+    /* Lines are 1 px hairlines; the ring marks keyboard focus and selection */
+    --hairline: 1px;
+    --ring: 2px;
+    --dot: 8px;
+
     --space-1: 4px;
     --space-2: 8px;
     --space-3: 12px;

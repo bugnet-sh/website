@@ -113,8 +113,9 @@ function tone(e: MapEdge): string {
     return e.money ? "money" : "muted";
 }
 
+// A refused edge's warn class also dashes it, from the stylesheet's token
 function edgeLine(doc: Document, e: MapEdge): SVGLineElement {
-    const attrs: Record<string, string> = {
+    return svgEl(doc, "line", {
         class: `map-edge ${tone(e)}`,
         x1: num(e.x1),
         y1: num(e.y1),
@@ -122,9 +123,7 @@ function edgeLine(doc: Document, e: MapEdge): SVGLineElement {
         y2: num(e.y2),
         stroke: "currentColor",
         "data-node-id": e.to.node.id,
-    };
-    if (e.dashed) attrs["stroke-dasharray"] = "6 4";
-    return svgEl(doc, "line", attrs);
+    });
 }
 
 function edgeTexts(doc: Document, e: MapEdge): SVGTextElement[] {
