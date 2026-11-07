@@ -32,15 +32,23 @@ export default tseslint.config(
         files: ["packages/session-page/src/**/*.ts"],
         ignores: ["**/*.test.ts", "packages/session-page/src/testing/**"],
         rules: {
+            "no-restricted-globals": ["error", { name: "DOMParser", message: textOnly }],
             "no-restricted-properties": [
                 "error",
-                ...["innerHTML", "outerHTML", "insertAdjacentHTML"].map((property) => ({
-                    property,
-                    message: textOnly,
-                })),
+                ...["innerHTML", "outerHTML", "insertAdjacentHTML", "createContextualFragment"].map(
+                    (property) => ({
+                        property,
+                        message: textOnly,
+                    }),
+                ),
                 ...["write", "writeln"].map((property) => ({
                     object: "document",
                     property,
+                    message: textOnly,
+                })),
+                ...["window", "globalThis", "self"].map((object) => ({
+                    object,
+                    property: "DOMParser",
                     message: textOnly,
                 })),
             ],
