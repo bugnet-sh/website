@@ -196,3 +196,10 @@ export function formatStamp(iso: string): string {
     const at = new Date(iso);
     return `${at.getDate()} ${months[at.getMonth()]} ${two(at.getHours())}:${two(at.getMinutes())}`;
 }
+
+/** A part's share of a whole, 0 when the whole is nothing yet. */
+export const share = (part: number, total: number): number => (total > 0 ? part / total : 0);
+
+/** A whole percentage, as the share bars read: "42 %". */
+export const formatShare = (part: number, total: number): string =>
+    `${Math.round(share(part, total) * 100)} %`;
