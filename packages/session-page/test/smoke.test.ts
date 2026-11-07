@@ -27,7 +27,7 @@ const ownLinks = [
     "https://bugnet.sh/",
     "https://bugnet.sh/terms",
     "https://bugnet.sh/privacy",
-    "mailto:abuse@bugnet.sh",
+    "mailto:abuse@bugnet.org",
 ];
 
 const launcher = await findLauncher();

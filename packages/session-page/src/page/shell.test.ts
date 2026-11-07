@@ -53,7 +53,7 @@ describe("index.html", () => {
         expect(links).toEqual([
             { text: copy.footer.terms, href: "https://bugnet.sh/terms", rel: "noreferrer" },
             { text: copy.footer.privacy, href: "https://bugnet.sh/privacy", rel: "noreferrer" },
-            { text: copy.footer.reportAbuse, href: "mailto:abuse@bugnet.sh", rel: "noreferrer" },
+            { text: copy.footer.reportAbuse, href: "mailto:abuse@bugnet.org", rel: "noreferrer" },
         ]);
     });
 
