@@ -49,12 +49,7 @@ export function Limits() {
                                     <td className={bodyCell(true)}>{limit.value}</td>
                                     <td className={cx(bodyCell(), "text-right")}>
                                         {limit.tip && (
-                                            <span className="inline-flex align-middle">
-                                                <Tip
-                                                    text={limit.tip}
-                                                    label={`About ${limit.label}`}
-                                                />
-                                            </span>
+                                            <Tip text={limit.tip} label={`About ${limit.label}`} />
                                         )}
                                     </td>
                                 </tr>
