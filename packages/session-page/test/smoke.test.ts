@@ -4,12 +4,13 @@
  *
  * Every page records its CSP violations and page errors from before its first script runs, so a
  * refusal anywhere fails the test that caused it. Firefox and WebKit, when a build of either is
- * installed, run the ended view and the delete flow, the two calls whose Origin they handle apart.
+ * installed, run the ended view and the delete flow, the two calls whose Origin they handle apart,
+ * and draw a bubble's keyboard ring, which WebKit paints for no outline on an SVG group.
  */
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import type { Browser, BrowserContext, BrowserContextOptions, Page } from "playwright-core";
+import type { Browser, BrowserContext, BrowserContextOptions, Page, Route } from "playwright-core";
 import { buildPage } from "../src/build.ts";
 import { copy } from "../src/copy.ts";
 import { isSignature } from "../src/payload.ts";
@@ -52,6 +53,8 @@ function opener(contexts: BrowserContext[]) {
         browser: Browser,
         url: string,
         options: BrowserContextOptions = {},
+        // Set up before the page opens, such as a held answer
+        before?: (page: Page) => Promise<unknown>,
     ): Promise<Opened> => {
         const context = await browser.newContext({
             viewport: { width: 1280, height: 900 },
@@ -75,6 +78,7 @@ function opener(contexts: BrowserContext[]) {
                 w.violations.push(`${e.effectiveDirective} ${e.blockedURI}`);
             });
         });
+        await before?.(page);
         await page.goto(url);
         const violations = () =>
             page.evaluate(() => (window as unknown as { violations: string[] }).violations);
@@ -99,6 +103,8 @@ const ACCENT = "rgb(82, 255, 184)";
 const BAD = "rgb(255, 107, 107)";
 const TEXT = "rgb(237, 237, 237)";
 const MUTED = "rgb(161, 161, 161)";
+const LINE = "rgb(38, 38, 38)";
+const FONTS = ["15px Manrope", "600 15px Manrope", '200 32px "Lexend Deca"', '13px "Obel Mono"'];
 // The copy button's flash and a margin
 const AFTER_COPIED_MS = COPIED_MS + 500;
 
@@ -106,20 +112,44 @@ interface Ring {
     focused: string;
     style: string;
     color: string;
+    // The element's own outline, which a bubble and a table control leave to another mark
+    own: string;
 }
 
+// The ring as drawn: a bubble's circle in the map, a table control's ::after, else the outline
 function focusRing(page: Page): Promise<Ring> {
     return page.evaluate(() => {
         const el = document.activeElement!;
         const cs = getComputedStyle(el);
         const id = el.getAttribute("data-node-id");
         const tag = `${el.tagName.toLowerCase()}.${el.getAttribute("class")}`;
-        return {
-            focused: id ? `${tag}[${id}]` : tag,
-            style: cs.outlineStyle,
-            color: cs.outlineColor,
-        };
+        const focused = id ? `${tag}[${id}]` : tag;
+        const own = cs.outlineStyle;
+        const circle = el.querySelector("circle.map-focus");
+        if (circle !== null) {
+            const ring = getComputedStyle(circle);
+            const shown = ring.visibility === "visible";
+            return { focused, own, style: shown ? "solid" : "none", color: ring.stroke };
+        }
+        const after = getComputedStyle(el, "::after");
+        const drawn = own === "none" && after.outlineStyle !== "none" ? after : cs;
+        return { focused, own, style: drawn.outlineStyle, color: drawn.outlineColor };
     });
+}
+
+// Clicked, then reached again from the keyboard: no ring, then the accent ring
+async function ringsForKeysOnly(page: Page, selector: string, focused: string): Promise<void> {
+    await page.locator(selector).click();
+    const clicked = await focusRing(page);
+    expect(clicked.focused).toContain(focused);
+    expect(clicked.style, selector).toBe("none");
+    expect(clicked.own, selector).toBe("none");
+    await page.keyboard.press("Shift+Tab");
+    await page.keyboard.press("Tab");
+    const keyed = await focusRing(page);
+    expect(keyed.focused).toBe(clicked.focused);
+    expect(keyed.style, selector).toBe("solid");
+    expect(keyed.color, selector).toBe(ACCENT);
 }
 
 function colours(page: Page, selector: string): Promise<{ color: string; border: string }> {
@@ -291,19 +321,174 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
             { click: 'tr.cmd-row[data-seq="2"] .cmd-toggle', focused: "cmd-toggle" },
             { click: "button.expand-all", focused: "expand-all" },
         ];
-        for (const target of targets) {
-            await page.locator(target.click).click();
-            const clicked = await focusRing(page);
-            expect(clicked.focused).toContain(target.focused);
-            expect(clicked.style, target.click).toBe("none");
-            // Back onto the same control from the keyboard
-            await page.keyboard.press("Shift+Tab");
-            await page.keyboard.press("Tab");
-            const keyed = await focusRing(page);
-            expect(keyed.focused).toBe(clicked.focused);
-            expect(keyed.style, target.click).toBe("solid");
-            expect(keyed.color, target.click).toBe(ACCENT);
+        for (const target of targets) await ringsForKeysOnly(page, target.click, target.focused);
+        await expectClean(o);
+    });
+
+    it("rings a phone row and both delete buttons for the keyboard, and mutes a busy Delete", async () => {
+        let held: Route | null = null;
+        const o = await open(
+            browser,
+            linkOf(route, scenarios["ended-full"]),
+            { viewport: { width: 375, height: 812 } },
+            // The DELETE never reaches the route, so the session stays for the other tests
+            (page) =>
+                page.route("**/v1/**", (r) => {
+                    if (r.request().method() === "DELETE") held = r;
+                    else void r.continue();
+                }),
+        );
+        const { page } = o;
+        await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
+        await ringsForKeysOnly(page, 'button.map-row[data-node-id="payments"]', "map-row");
+        // A click on Delete now hands focus to its prompt, so it is reached from the keyboard only
+        await page.locator("button.delete-now").focus();
+        await page.keyboard.press("Shift+Tab");
+        await page.keyboard.press("Tab");
+        const start = await focusRing(page);
+        expect(start.focused).toContain("delete-now");
+        expect([start.style, start.color]).toEqual(["solid", ACCENT]);
+        // The prompt takes focus, and the next Tab stop is Delete
+        await page.keyboard.press("Enter");
+        await page.locator("button.confirm-delete").waitFor({ state: "visible" });
+        await page.keyboard.press("Tab");
+        const ring = await focusRing(page);
+        expect(ring.focused).toContain("confirm-delete");
+        expect([ring.style, ring.color]).toEqual(["solid", ACCENT]);
+        await page.keyboard.press("Enter");
+        await expect.poll(() => held !== null).toBe(true);
+        expect(await page.locator("button.confirm-delete").isDisabled()).toBe(true);
+        expect(await colours(page, "button.confirm-delete")).toEqual({
+            color: MUTED,
+            border: LINE,
+        });
+        await (held as Route | null)?.fulfill({ status: 500 });
+        await page.locator("p.confirm-text", { hasText: copy.deleteFailed }).waitFor();
+        expect(await colours(page, "button.confirm-delete")).toEqual({ color: BAD, border: BAD });
+        await expectClean(o);
+    });
+
+    it("keeps the heading where it is when the first view arrives", async () => {
+        for (const width of [1280, 375]) {
+            let release: (() => Promise<void>) | null = null;
+            const o = await open(
+                browser,
+                linkOf(route, scenarios["ended-full"]),
+                { viewport: { width, height: 900 } },
+                (page) =>
+                    page.route("**/v1/**", (r) => {
+                        if (release === null) release = () => r.continue();
+                        else void r.continue();
+                    }),
+            );
+            const { page } = o;
+            await page.locator("h1").waitFor({ state: "visible" });
+            await expect.poll(() => release !== null).toBe(true);
+            const top = () => page.locator("h1").evaluate((h) => h.getBoundingClientRect().top);
+            const before = await top();
+            expect(await page.locator(".map").count()).toBe(0);
+            await (release as (() => Promise<void>) | null)?.();
+            await endedView(page);
+            expect(await top(), `at ${width} px`).toBe(before);
+            await expectClean(o);
         }
+    });
+
+    it("keeps every face loaded as the page crosses 768 px and back", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-full"]));
+        const { page } = o;
+        await endedView(page);
+        for (const width of [1280, 375, 1280]) {
+            await page.setViewportSize({ width, height: 900 });
+            await page.waitForFunction(
+                (fonts) => fonts.every((f) => document.fonts.check(f)),
+                FONTS,
+                { timeout: 5_000 },
+            );
+        }
+        await expectClean(o);
+    });
+
+    it("never leaves a control focused from the keyboard under a sticky head", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-crowded"]), {
+            viewport: { width: 1440, height: 700 },
+        });
+        const { page } = o;
+        await endedView(page);
+        // The fold's table is long enough to scroll inside, and every command is open
+        await page.locator('g.map-node[data-node-id="more-right"] circle.map-bubble').click();
+        await page.locator(".map-table .table-scroll").waitFor();
+        await page.locator("button.expand-all").click();
+        await page.locator("footer.site a").last().focus();
+        const covered: string[] = [];
+        let inTables = 0;
+        for (let i = 0; i < 400; i++) {
+            await page.keyboard.press("Shift+Tab");
+            const m = await page.evaluate(() => {
+                const el = document.activeElement!;
+                const table = el.closest("table");
+                // The th, since a stuck cell moves while its row's box stays where it was
+                const th = table?.querySelector("thead th");
+                if (!table || !th) return { inMap: el.closest(".map") !== null, cover: null };
+                const a = el.getBoundingClientRect();
+                const b = th.getBoundingClientRect();
+                const cover = Math.max(0, Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top));
+                const name = `${el.tagName.toLowerCase()}.${el.getAttribute("class")}`;
+                return { inMap: false, cover: cover > 0 ? `${name} ${cover}` : "" };
+            });
+            if (m.inMap) break;
+            if (m.cover === null) continue;
+            inTables++;
+            if (m.cover !== "") covered.push(m.cover);
+        }
+        expect(inTables).toBeGreaterThan(60);
+        expect(covered).toEqual([]);
+        await expectClean(o);
+    }, 60_000);
+
+    it("prints every output block and event table whole, with no buttons", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-hostile"]));
+        const { page } = o;
+        await endedView(page);
+        await page.locator("button.expand-all").click();
+        await page.locator(".term-out .line", { hasText: "RED ALERT" }).waitFor();
+        await page.locator("g.map-node circle.map-bubble").nth(1).click();
+        await page.locator(".map-table .table-scroll").waitFor();
+        await page.emulateMedia({ media: "print" });
+        const printed = await page.evaluate(() => ({
+            cut: [...document.querySelectorAll(".term-cmd, .term-out, .table-scroll")]
+                .filter((el) => el.scrollHeight > el.clientHeight + 1)
+                .map((el) => `${el.className} ${el.scrollHeight} > ${el.clientHeight}`),
+            shown: [...document.querySelectorAll(".delete, .copy-button, .commands-bar")]
+                .filter((el) => el.getClientRects().length > 0)
+                .map((el) => el.className),
+        }));
+        expect(printed).toEqual({ cut: [], shown: [] });
+        await expectClean(o);
+    });
+
+    it("keeps the list's lines, its selected row and the head's line in forced colours", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-full"]), {
+            viewport: { width: 375, height: 812 },
+            forcedColors: "active",
+        });
+        const { page } = o;
+        await page.locator("tr.cmd-row").first().waitFor({ state: "visible" });
+        await page.locator('button.map-row[data-node-id="payments"]').click();
+        const look = (selector: string) =>
+            page
+                .locator(selector)
+                .first()
+                .evaluate((el) => {
+                    const cs = getComputedStyle(el);
+                    return {
+                        line: `${cs.borderBottomStyle} ${cs.borderBottomWidth}`,
+                        ring: cs.outlineStyle,
+                    };
+                });
+        expect((await look('button.map-row[data-node-id="mcp"]')).line).toBe("solid 1px");
+        expect((await look("button.map-row.is-selected")).ring).toBe("solid");
+        expect((await look("table.commands thead th")).line).toBe("solid 1px");
         await expectClean(o);
     });
 
@@ -419,6 +604,36 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
     }, 60_000);
 });
 
+// The share of a crop's pixels near the accent, decoded on a blank page, since the session
+// page's CSP refuses a data: image
+async function accentPixels(browser: Browser, png: Buffer): Promise<number> {
+    const scratch = await browser.newPage();
+    try {
+        return await scratch.evaluate(
+            async (src) => {
+                const img = new Image();
+                img.src = src;
+                await img.decode();
+                const canvas = document.createElement("canvas");
+                canvas.width = img.width;
+                canvas.height = img.height;
+                const ctx = canvas.getContext("2d")!;
+                ctx.drawImage(img, 0, 0);
+                const { data } = ctx.getImageData(0, 0, img.width, img.height);
+                let n = 0;
+                for (let i = 0; i < data.length; i += 4) {
+                    const [r, g, b] = [data[i]!, data[i + 1]!, data[i + 2]!];
+                    if (Math.abs(r - 82) < 40 && g > 200 && Math.abs(b - 184) < 40) n++;
+                }
+                return n;
+            },
+            `data:image/png;base64,${png.toString("base64")}`,
+        );
+    } finally {
+        await scratch.close();
+    }
+}
+
 describe.each(others.map((l) => [l.label, l] as const))(
     "in %s, which handles a state change's Origin apart from Chromium",
     (_label, other) => {
@@ -461,6 +676,49 @@ describe.each(others.map((l) => [l.label, l] as const))(
             expect(deletes).toHaveLength(1);
             expect(deletes[0]?.headers.origin).toBe(route.origin);
             await expectClean(o);
+        }, 60_000);
+
+        it("draws a bubble's keyboard ring in the accent", async () => {
+            const o = await open(browser, linkOf(route, scenarios["ended-full"]));
+            const { page } = o;
+            await endedView(page);
+            const bubble = page.locator('g.map-node[data-node-id="payments"]');
+            const box = await bubble.locator("circle.map-focus").boundingBox();
+            expect(box).not.toBeNull();
+            const clip = {
+                x: box!.x - 8,
+                y: box!.y - 8,
+                width: box!.width + 16,
+                height: box!.height + 16,
+            };
+            // Each shot in WebKit adds and drops a style element of Playwright's own to sync
+            // animations, which the page's CSP refuses; anything else refused before it counts
+            let shots = 0;
+            const shot = () => {
+                shots++;
+                return page.screenshot({ clip, caret: "initial" });
+            };
+            const clean = await o.violations();
+            const before = await accentPixels(browser, await shot());
+            // Safari's Tab skips buttons and links by default, never the bubbles
+            for (let i = 0; i < 40; i++) {
+                await page.keyboard.press("Tab");
+                const on = await page.evaluate(
+                    () => document.activeElement?.getAttribute("data-node-id") ?? null,
+                );
+                if (on === "payments") break;
+            }
+            expect(await bubble.evaluate((g) => g === document.activeElement)).toBe(true);
+            const after = await accentPixels(browser, await shot());
+            expect(before).toBe(0);
+            // A 2 px circle around the bubble, a ring of well over a hundred pixels
+            expect(after).toBeGreaterThan(100);
+            expect(clean).toEqual([]);
+            const added = (await o.violations()).slice(clean.length);
+            expect(added.length).toBeLessThanOrEqual(shots);
+            expect(added.filter((v) => v !== "style-src-elem inline")).toEqual([]);
+            expect(o.errors).toEqual([]);
+            expect(o.dialogs).toEqual([]);
         }, 60_000);
     },
 );

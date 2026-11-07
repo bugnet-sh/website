@@ -2,7 +2,8 @@
  * Takes a full-page screenshot of each state at each checked width, into screens/ for a person to
  * look at, and measures the layout rules a screenshot alone would not prove: no sideways scroll,
  * one shared left edge, no overflowing box, 40 px targets in the tables, the four fonts loaded
- * and no CSP refusal.
+ * and no CSP refusal. It also checks, in Chromium, Firefox and WebKit, that table rows are 40 px
+ * tall and that the footer lands on the same pixel in all three.
  */
 import { mkdir, mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -12,7 +13,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { Browser, Page } from "playwright-core";
 import { buildPage } from "../src/build.ts";
 import { copy } from "../src/copy.ts";
-import { findLauncher, type Launcher } from "../src/testing/browser.ts";
+import { findLauncher, findOtherLaunchers, type Launcher } from "../src/testing/browser.ts";
 import { makeScenarios, type Scenario } from "../src/testing/fixtures.ts";
 import { startFakeRoute, type FakeRoute } from "../src/testing/route.ts";
 
@@ -21,6 +22,7 @@ const fonts = ["15px Manrope", "600 15px Manrope", '200 32px "Lexend Deca"', '13
 const unknown = { id: "zzzzzzzzzzzzzzzz", key: `bnk_${"A".repeat(43)}` };
 
 const launcher = await findLauncher();
+const others = await findOtherLaunchers();
 
 const shots = [
     { width: 1440, scale: 1 },
@@ -147,7 +149,7 @@ const states: State[] = [
 interface Measures {
     overflowX: number;
     // Every block marked as sharing the edge, measured where it starts a line of its own
-    edges: { el: string; left: number; startsLine: boolean }[];
+    edges: { el: string; left: number; startsLine: boolean; flushRight: boolean }[];
     // The children of the containers that start a line of their own
     lines: { el: string; left: number }[];
     overflowing: string[];
@@ -190,6 +192,9 @@ function measure(fontList: string[]): Measures {
             el: name(el),
             left: contentLeft(el),
             startsLine: startsLine(el),
+            flushRight:
+                el.getBoundingClientRect().right >=
+                el.parentElement!.getBoundingClientRect().right - 0.5,
         })),
         lines: [...document.querySelectorAll(containers)].flatMap((box) =>
             [...box.children]
@@ -277,6 +282,12 @@ describe.runIf(launcher !== null)(`screenshots in ${launcher?.label ?? "no brows
                         ...state.edges,
                         "footer.site",
                     ]);
+                    // The status sits at the heading's right, as the spec places it: always from
+                    // 768 px, and on a phone while it is short enough to fit there, flush right
+                    const besideHeading = (e: { el: string; flushRight: boolean }) =>
+                        e.el === status && (width >= 768 || e.flushRight);
+                    const inline = m.edges.filter((e) => !e.startsLine && !besideHeading(e));
+                    expect(inline.map((e) => e.el)).toEqual([]);
                     const left = m.edges[0]!.left;
                     const starts = [...m.edges.filter((e) => e.startsLine), ...m.lines];
                     expect(m.lines.length).toBeGreaterThan(0);
@@ -299,4 +310,66 @@ describe.runIf(launcher !== null)(`screenshots in ${launcher?.label ?? "no brows
             60_000,
         );
     });
+});
+
+interface Rows {
+    // Row heights that are not whole rows: 40 px, or a whole number of 40 px lines on a phone
+    odd: string[];
+    rows: number;
+    footerTop: number;
+}
+
+// Runs in the page, on ended-full with the Payments table open
+function rowHeights(phone: boolean): Rows {
+    const odd: string[] = [];
+    const rows = [...document.querySelectorAll("table.events tbody tr, table.commands tr.cmd-row")];
+    for (const tr of rows) {
+        const h = tr.getBoundingClientRect().height;
+        // A phone's event row is a grid of 40 px lines
+        const whole = phone && tr.closest("table.events") ? h % 40 === 0 : h === 40;
+        if (!whole) odd.push(`${tr.closest("table")!.className} ${h}`);
+    }
+    return {
+        odd,
+        rows: rows.length,
+        footerTop: document.querySelector("footer.site")!.getBoundingClientRect().top,
+    };
+}
+
+const engines = [...(launcher === null ? [] : [launcher]), ...others];
+
+describe.runIf(engines.length > 0)("table rows in every engine", () => {
+    it("are 40 px tall, so the footer lands on the same pixel everywhere", async () => {
+        const dist = join(await mkdtemp(join(tmpdir(), "bugnet-session-rows-")), "dist");
+        await buildPage({ outdir: dist });
+        const scenarios = makeScenarios(new Date());
+        const route = await startFakeRoute(dist, scenarios, { liveDelayMs: 50 });
+        const footers: Record<string, number> = {};
+        try {
+            for (const engine of engines) {
+                const browser = await engine.launch();
+                try {
+                    for (const width of [1440, 375]) {
+                        const page = await browser.newPage({ viewport: { width, height: 900 } });
+                        const s = scenarios["ended-full"];
+                        await page.goto(`${route.origin}/s/${s.id}#k=${s.key}`);
+                        await ended(page);
+                        await openNode(page, "payments");
+                        await page.evaluate(() => document.fonts.ready.then(() => undefined));
+                        const m = await page.evaluate(rowHeights, width < 768);
+                        expect(m.rows, engine.label).toBeGreaterThan(6);
+                        expect(m.odd, `${engine.label} at ${width} px`).toEqual([]);
+                        if (width === 1440) footers[engine.label] = m.footerTop;
+                        await page.close();
+                    }
+                } finally {
+                    await browser.close();
+                }
+            }
+        } finally {
+            await route.close();
+            await rm(dirname(dist), { recursive: true, force: true });
+        }
+        expect(new Set(Object.values(footers)).size, JSON.stringify(footers)).toBe(1);
+    }, 120_000);
 });
