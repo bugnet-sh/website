@@ -7,7 +7,10 @@ sandbox run from a link and a key. The four bugnet.sh pages come later.
 
 - `packages/brand`: design tokens (`tokens.css`), the self-hosted fonts, the logo and icon, and
   the contrast check every colour pair must pass.
-- `packages/session-page`: the session page itself (added in later tasks).
+- `packages/session-page`: the session page: it reads a session link and its key, asks the
+  sessions route, and shows the running or ended session with its map and commands.
+  `pnpm dev` builds it and serves it with a fake sessions route, printing one link per sample
+  scenario.
 
 ## Commands
 
