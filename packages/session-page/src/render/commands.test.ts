@@ -71,6 +71,11 @@ const notes = (root: HTMLElement, seq: number) =>
     detail(root, seq).querySelector(".term-notes")!.textContent;
 const expandAll = (root: HTMLElement) =>
     root.querySelector<HTMLButtonElement>("button.expand-all")!;
+// Both labels stay in the button, so it keeps its width, and only one is read or seen
+const shownLabel = (button: HTMLElement) =>
+    [...button.children]
+        .filter((c) => c.getAttribute("aria-hidden") !== "true")
+        .map((c) => c.textContent);
 // Values hold no-break spaces, which these expectations write as plain ones
 const plain = (s: string | null) => (s ?? "").replaceAll("\u00a0", " ");
 const footer = (root: HTMLElement, seq: number) =>
@@ -178,6 +183,20 @@ describe("createCommandsView", () => {
         expect(expired.view.root.querySelector<HTMLElement>("table")!.hidden).toBe(true);
     });
 
+    it("keeps the rows a running view streamed when the end leaves its output saving", () => {
+        const t = make();
+        t.view.setJobs(runningJobs(), NOW);
+        t.view.apply(4, { type: "out", frame: { s: "o", t: "hello\n", cr: false }, cursor: "c1" });
+        t.scheduler.flush();
+        t.view.setOutput("pending");
+        const note = t.view.root.querySelector<HTMLElement>(".commands-note")!;
+        expect(note.hidden).toBe(false);
+        expect(note.textContent).toBe(copy.savingOutput);
+        expect(t.view.root.querySelector<HTMLElement>("table")!.hidden).toBe(false);
+        expect(expandAll(t.view.root).closest("[hidden]")).toBeNull();
+        expect(lineTexts(t.view.root, 4)).toEqual(["hello"]);
+    });
+
     it("keeps the rows of partial output under a warning", () => {
         const { view } = showEnded("ended-partial");
         const note = view.root.querySelector<HTMLElement>(".commands-note")!;
@@ -229,7 +248,8 @@ describe("createCommandsView", () => {
         const toggled = vi.fn();
         view.onToggle(toggled);
         const button = expandAll(view.root);
-        expect(button.textContent).toBe(copy.expandAll);
+        expect(shownLabel(button)).toEqual([copy.expandAll]);
+        expect(button.textContent).toBe(`${copy.expandAll}${copy.collapseAll}`);
         button.click();
         scheduler.flush();
         for (const seq of [1, 2, 3, 4, 5, 6]) {
@@ -237,13 +257,13 @@ describe("createCommandsView", () => {
             expect(detail(view.root, seq).hidden).toBe(false);
         }
         expect(lineTexts(view.root, 1)).toContain("added 214 packages in 11s");
-        expect(button.textContent).toBe(copy.collapseAll);
+        expect(shownLabel(button)).toEqual([copy.collapseAll]);
         expect(toggled.mock.calls).toEqual([1, 2, 3, 4, 5].map((seq) => [seq, true]));
         expect(view.openSeqs()).toEqual([5, 4, 3, 2, 1, 6]);
 
         button.click();
         for (const seq of [1, 2, 3, 4, 5, 6]) expect(detail(view.root, seq).hidden).toBe(true);
-        expect(button.textContent).toBe(copy.expandAll);
+        expect(shownLabel(button)).toEqual([copy.expandAll]);
         expect(view.openSeqs()).toEqual([]);
     });
 
@@ -364,6 +384,15 @@ describe("createCommandsView", () => {
         expect(clipboard.writeText).toHaveBeenCalledWith(
             "\nadded 214 packages in 11s\n\n38 packages are looking for funding",
         );
+    });
+
+    it("copies the output from the open row's command line too, for phones", () => {
+        const { view, clipboard } = showEnded("ended-full");
+        const head = detail(view.root, 6).querySelector(".term-head")!;
+        expect([...head.children].map((c) => c.className)).toEqual(["term-cmd", "copy-button"]);
+        head.querySelector<HTMLButtonElement>("button.copy-button")!.click();
+        expect(clipboard.writeText).toHaveBeenCalledWith(view.buffer(6).text());
+        expect(view.buffer(6).text()).toContain("Successfully installed torch-2.5.1");
     });
 
     it("sets hostile commands and output as text", () => {

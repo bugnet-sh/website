@@ -23,6 +23,8 @@ export function createTerminalBlock(opts: {
     notices: () => string[];
     // The last line's parts, none while there is no last line
     footer: () => string[];
+    // A control beside the command, such as a copy button
+    copy?: HTMLElement;
     scheduler: Scheduler;
 }): TerminalBlock {
     const { doc, buffer, scheduler } = opts;
@@ -30,13 +32,14 @@ export function createTerminalBlock(opts: {
         class: "term-cmd",
         text: `$ ${opts.command ?? copy.noCommand}`,
     });
+    const head = el(doc, "div", { class: "term-head" }, opts.copy ? [cmd, opts.copy] : [cmd]);
     const notes = el(doc, "div", { class: "term-notes" });
     const out = el(doc, "div", {
         class: "term-out",
         attrs: { tabindex: "0", role: "log", "aria-label": copy.outputLabel(opts.seq) },
     });
     const foot = el(doc, "p", { class: "term-foot parts" });
-    const root = el(doc, "div", { class: "term" }, [cmd, notes, out, foot]);
+    const root = el(doc, "div", { class: "term" }, [head, notes, out, foot]);
 
     const nodes: HTMLElement[] = [];
     let droppedSeen = 0;

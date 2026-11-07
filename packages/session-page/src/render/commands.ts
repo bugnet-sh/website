@@ -113,15 +113,22 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
     const opened: number[] = [];
     const listeners: ((seq: number, open: boolean) => void)[] = [];
     let output: OutputState | null = null;
+    // Live text was shown, so an end that leaves the output saving keeps the rows on screen
+    let streamed = false;
     let firstJobs = true;
     let ticking = false;
     let destroyed = false;
 
-    const expand = el(doc, "button", {
-        class: "expand-all",
-        text: copy.expandAll,
-        attrs: { type: "button" },
+    // Both labels stay in the button and the CSS shows one, so its width never changes
+    const expandLabel = el(doc, "span", { text: copy.expandAll });
+    const collapseLabel = el(doc, "span", {
+        text: copy.collapseAll,
+        attrs: { "aria-hidden": "true" },
     });
+    const expand = el(doc, "button", { class: "expand-all", attrs: { type: "button" } }, [
+        expandLabel,
+        collapseLabel,
+    ]);
     const bar = el(doc, "div", { class: "commands-bar" }, [expand]);
     const note = el(doc, "p", { class: "commands-note" });
     const head = copy.commandsHead;
@@ -163,6 +170,17 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         return list;
     }
 
+    function copyOutput(seq: number): HTMLButtonElement {
+        return copyButton(
+            doc,
+            copy.copyOutput,
+            () => bufferOf(seq).text(),
+            opts.clipboard,
+            scheduler,
+        );
+    }
+
+    // Phones show no copy column, so the open row's command line carries its own copy button
     function mount(row: Row): void {
         row.block = createTerminalBlock({
             doc,
@@ -171,6 +189,7 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             command: row.job.command,
             notices: () => notices(row),
             footer: () => copy.exitLine(exitOf(row).info, durationMs(row, opts.now()) ?? 0),
+            copy: copyOutput(row.seq),
             scheduler,
         });
         row.slot.replaceChildren(row.block.root);
@@ -200,7 +219,9 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
 
     function syncExpand(): void {
         const all = order.length > 0 && order.every((r) => r.open);
-        expand.textContent = all ? copy.collapseAll : copy.expandAll;
+        const [shown, hidden] = all ? [collapseLabel, expandLabel] : [expandLabel, collapseLabel];
+        shown.removeAttribute("aria-hidden");
+        hidden.setAttribute("aria-hidden", "true");
     }
 
     function syncOutput(): void {
@@ -215,7 +236,8 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         note.textContent = message ?? "";
         note.hidden = message === null;
         note.className = output === "partial" ? "commands-note warn" : "commands-note";
-        const shown = output !== "pending" && output !== "expired" && order.length > 0;
+        const shown =
+            output !== "expired" && order.length > 0 && (output !== "pending" || streamed);
         table.hidden = !shown;
         bar.hidden = !shown;
     }
@@ -294,15 +316,7 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         const timeCell = el(doc, "td", { class: "num col-wide" });
         const outCell = el(doc, "td", { class: "num col-wide" });
         const errCell = el(doc, "td", { class: "num col-wide" });
-        const copyCell = el(doc, "td", { class: "copy" }, [
-            copyButton(
-                doc,
-                copy.copyOutput,
-                () => bufferOf(job.seq).text(),
-                opts.clipboard,
-                scheduler,
-            ),
-        ]);
+        const copyCell = el(doc, "td", { class: "copy" }, [copyOutput(job.seq)]);
         const slot = el(doc, "td", { attrs: { colspan: String(COLUMNS) } });
         const detail = el(doc, "tr", { class: "cmd-detail", attrs: { id } }, [slot]);
         detail.hidden = true;
@@ -382,6 +396,7 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
 
         apply(seq, frame) {
             const row = rows.get(seq);
+            if (frame.type === "out" || frame.type === "skip") streamed = true;
             if (frame.type === "out") bufferOf(seq).apply(frame.frame);
             else if (frame.type === "skip") bufferOf(seq).skip(frame.outBytes, frame.errBytes);
             else if (frame.type === "exit" && row !== undefined) {

@@ -310,12 +310,14 @@ h1 {
 
 /* Every label stays in one grid cell, so a button keeps its width as its label changes */
 .button > span,
-.copy-button > span {
+.copy-button > span,
+.expand-all > span {
     grid-area: 1 / 1;
 }
 
 .button > [aria-hidden="true"],
-.copy-button > [aria-hidden="true"] {
+.copy-button > [aria-hidden="true"],
+.expand-all > [aria-hidden="true"] {
     visibility: hidden;
 }
 
@@ -622,6 +624,8 @@ section.commands {
 }
 
 .expand-all {
+    display: inline-grid;
+    align-items: center;
     min-height: var(--row);
     padding: 0;
     border: 0;
@@ -637,6 +641,11 @@ section.commands {
 
 .commands-note {
     color: var(--text-muted);
+}
+
+/* Every column has its cell in the head row, so ticking numbers never move a column */
+table.commands {
+    table-layout: fixed;
 }
 
 table.commands thead th:first-child {
@@ -726,6 +735,25 @@ tr.cmd-detail > td {
     line-height: var(--mono-line);
 }
 
+/* The command line, with the phone's copy button at its right */
+.term-head {
+    display: flex;
+    align-items: flex-start;
+    column-gap: var(--gap-inline);
+    margin-bottom: var(--space-2);
+}
+
+.term-head > .term-cmd {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+/* A full row tall to tap, yet only a line tall in the block */
+.term-head > .copy-button {
+    flex: none;
+    margin-block: calc((var(--mono-line) - var(--row)) / 2);
+}
+
 .term-cmd,
 .term-out {
     max-height: var(--term-max);
@@ -743,7 +771,6 @@ tr.cmd-detail > td {
 }
 
 .term-cmd {
-    margin-bottom: var(--space-2);
     color: var(--text);
 }
 
@@ -812,10 +839,9 @@ tr.cmd-detail > td {
     }
 }
 
-/* Every column has its cell in the head row here, so ticking numbers never move a column */
 @media (min-width: 768px) {
-    table.commands {
-        table-layout: fixed;
+    .term-head > .copy-button {
+        display: none;
     }
 }
 
@@ -830,5 +856,16 @@ tr.cmd-detail > td {
 
     .col-wide {
         display: none;
+    }
+
+    /* The open row's command line carries the copy button, so the command keeps the width */
+    table.commands td.copy,
+    table.commands thead td {
+        display: none;
+    }
+
+    /* Hidden columns would otherwise keep their share of the width as empty tracks */
+    table.commands thead th:nth-child(2) {
+        width: 100%;
     }
 }
