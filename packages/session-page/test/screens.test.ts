@@ -149,7 +149,7 @@ const states: State[] = [
 interface Measures {
     overflowX: number;
     // Every block marked as sharing the edge, measured where it starts a line of its own
-    edges: { el: string; left: number; startsLine: boolean; flushRight: boolean }[];
+    edges: { el: string; left: number; startsLine: boolean; besideHeading: boolean }[];
     // The children of the containers that start a line of their own
     lines: { el: string; left: number }[];
     overflowing: string[];
@@ -184,6 +184,18 @@ function measure(fontList: string[]): Measures {
         return before.every((s) => s.getBoundingClientRect().bottom <= top + 0.5);
     };
 
+    // Within the heading's line, top to bottom, and ending flush right in its parent
+    const besideHeading = (el: Element): boolean => {
+        const h1 = document.querySelector("h1")?.getBoundingClientRect();
+        const r = el.getBoundingClientRect();
+        return (
+            h1 !== undefined &&
+            r.top >= h1.top - 0.5 &&
+            r.bottom <= h1.bottom + 0.5 &&
+            r.right >= el.parentElement!.getBoundingClientRect().right - 0.5
+        );
+    };
+
     const containers = "div.session-head, div.session-meta, footer.site, div.map";
     const scrollers = ".term-out, .term-cmd, .table-scroll";
     return {
@@ -192,9 +204,7 @@ function measure(fontList: string[]): Measures {
             el: name(el),
             left: contentLeft(el),
             startsLine: startsLine(el),
-            flushRight:
-                el.getBoundingClientRect().right >=
-                el.parentElement!.getBoundingClientRect().right - 0.5,
+            besideHeading: besideHeading(el),
         })),
         lines: [...document.querySelectorAll(containers)].flatMap((box) =>
             [...box.children]
@@ -283,10 +293,11 @@ describe.runIf(launcher !== null)(`screenshots in ${launcher?.label ?? "no brows
                         "footer.site",
                     ]);
                     // The status sits at the heading's right, as the spec places it: always from
-                    // 768 px, and on a phone while it is short enough to fit there, flush right
-                    const besideHeading = (e: { el: string; flushRight: boolean }) =>
-                        e.el === status && (width >= 768 || e.flushRight);
-                    const inline = m.edges.filter((e) => !e.startsLine && !besideHeading(e));
+                    // 768 px, and on a phone only the short running status, on the heading's line
+                    const exempt = (e: Measures["edges"][number]) =>
+                        e.el === status &&
+                        (width >= 768 || (state.name === "running" && e.besideHeading));
+                    const inline = m.edges.filter((e) => !e.startsLine && !exempt(e));
                     expect(inline.map((e) => e.el)).toEqual([]);
                     const left = m.edges[0]!.left;
                     const starts = [...m.edges.filter((e) => e.startsLine), ...m.lines];
