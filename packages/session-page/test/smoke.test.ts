@@ -10,13 +10,21 @@
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
-import type { Browser, BrowserContext, BrowserContextOptions, Page, Route } from "playwright-core";
+import type {
+    Browser,
+    BrowserContext,
+    BrowserContextOptions,
+    Locator,
+    Page,
+    Route,
+} from "playwright-core";
 import { buildPage } from "../src/build.ts";
 import { copy } from "../src/copy.ts";
+import { formatUsdc } from "../src/format.ts";
 import { isSignature } from "../src/payload.ts";
 import { COPIED_MS } from "../src/render/controls.ts";
 import { findLauncher, findOtherLaunchers, type Launcher } from "../src/testing/browser.ts";
-import { makeScenarios, type Scenario } from "../src/testing/fixtures.ts";
+import { base58, makeScenarios, sampleTx, type Scenario } from "../src/testing/fixtures.ts";
 import { startFakeRoute, type FakeRoute } from "../src/testing/route.ts";
 
 const dist = join(dirname(fileURLToPath(import.meta.url)), "..", "dist");
@@ -163,6 +171,48 @@ async function expectClean(o: Opened): Promise<void> {
     expect(await o.violations()).toEqual([]);
     expect(o.errors).toEqual([]);
     expect(o.dialogs).toEqual([]);
+}
+
+const BASE58_RUN = /[1-9A-HJ-NP-Za-km-z]+/g;
+const BASE58 = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz";
+
+// The bytes a base58 string decodes to, each leading "1" a zero byte
+function base58Bytes(text: string): number {
+    let zeros = 0;
+    while (text[zeros] === "1") zeros++;
+    let n = 0n;
+    for (const c of text.slice(zeros)) n = n * 58n + BigInt(BASE58.indexOf(c));
+    return zeros + (n === 0n ? 0 : Math.ceil(n.toString(16).length / 2));
+}
+
+// A Solana address is 32 bytes and a transaction signature 64, so only an address decodes to 32
+function addressesIn(texts: string[]): string[] {
+    return texts
+        .flatMap((t) => [...t.matchAll(BASE58_RUN)].map((m) => m[0]))
+        .filter((run) => run.length >= 32 && run.length <= 44 && base58Bytes(run) === 32);
+}
+
+// Every text node and every attribute value in the page, shown or not
+function pageStrings(page: Page): Promise<string[]> {
+    return page.evaluate(() => {
+        const found: string[] = [document.title];
+        const walker = document.createTreeWalker(document.documentElement, NodeFilter.SHOW_TEXT);
+        for (let n = walker.nextNode(); n !== null; n = walker.nextNode()) {
+            found.push(n.nodeValue ?? "");
+        }
+        for (const el of document.querySelectorAll("*")) {
+            for (const a of el.attributes) found.push(a.value);
+        }
+        return found;
+    });
+}
+
+// The bubble's own circle, since the middle of its box can fall between it and its label
+async function openBubble(page: Page, id: string): Promise<Locator> {
+    await page.locator(`g.map-node[data-node-id="${id}"] circle.map-bubble`).click();
+    const table = page.locator(`.map-table .table-scroll[data-node-id="${id}"]`);
+    await table.waitFor({ state: "visible" });
+    return table;
 }
 
 describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "none"})`, () => {
@@ -571,6 +621,150 @@ describe.runIf(launcher !== null)(`in a headless browser (${launcher?.label ?? "
         expect((await colours(page, 'tr.cmd-row[data-seq="6"] .cmd-toggle')).color).toBe(TEXT);
         await expectClean(o);
     });
+
+    it("opens the Allowance bubble's table with its totals", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-x402"]));
+        const { page } = o;
+        await endedView(page);
+        const table = await openBubble(page, "allowance");
+        expect(await table.locator("caption > span").first().textContent()).toBe(
+            copy.nodes.allowance,
+        );
+        expect(await table.locator("tbody tr").count()).toBe(2);
+        const totals = await table
+            .locator("tfoot tr.total")
+            .evaluateAll((rows) =>
+                rows.map((r) => [
+                    r.querySelector("th")?.textContent ?? "",
+                    r.querySelector("td.ev-amount")?.textContent ?? "",
+                ]),
+            );
+        // Three digits, the longest fraction in the table, on every amount
+        const usdc = (micros: number) => formatUsdc(micros, 3);
+        expect(totals).toEqual([
+            ["Paid in", usdc(100_000)],
+            ["Spent on search-api.example", usdc(12_000)],
+            ["Spent on weather-api.example", usdc(3_000)],
+            // The resent forecast adds nothing, and the seller's word on two calls is not paid
+            ["Settling, 2 calls", usdc(7_000)],
+            ["Refunded", usdc(78_000)],
+            // The folded row of 40 counts as 40, beside the one refused before it
+            ["Refused, allowance spent: 41", ""],
+            ["Refused, unregistered host: 22", ""],
+            ["Refused, body over 1 MiB: 1", ""],
+            ["Refused, no USDC on Solana: 1", ""],
+            ["Refused, payee changed: 1", ""],
+            ["Refused, payment service down: 1", ""],
+            ["Refused, price above the approved maximum: 1", ""],
+            ["Refused, split payment: 1", ""],
+            ["Refused, seller unreachable: 1", ""],
+        ]);
+        expect(await table.locator(".totals-note").count()).toBe(0);
+        await expectClean(o);
+    });
+
+    it("opens the allowance tip with its three sentences, and Escape closes it", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-x402"]));
+        const { page } = o;
+        await endedView(page);
+        const table = await openBubble(page, "allowance");
+        const button = table.locator("caption button.tip-button");
+        expect(await button.getAttribute("aria-label")).toBe(copy.allowanceTipLabel);
+        const text = table.locator("caption .tip-text");
+        expect(await text.isVisible()).toBe(false);
+        await button.click();
+        await text.waitFor({ state: "visible" });
+        expect(await text.textContent()).toBe(copy.allowanceTip);
+        // x402 spec 8.8, the first of its three in two sentences
+        for (const sentence of [
+            "Code in the sandbox has no Bugnet wallet. Code that brings its own wallet can pay " +
+                "hosts Bugnet does not see, and on a registered host such calls show as self-paid.",
+            "Bugnet pays every seller from one shared Bugnet wallet, so sellers see Bugnet's " +
+                "address, not yours.",
+            "Each transaction link opens on a public explorer, which shows the wallet that " +
+                "signed it.",
+        ]) {
+            expect(await text.textContent()).toContain(sentence);
+        }
+        // Shown by the pointer alone, so the table's own Escape, which would drop the tip with
+        // the table, never runs
+        await page.locator("h1").click();
+        await text.waitFor({ state: "hidden" });
+        await table.locator("caption .tip").hover();
+        await text.waitFor({ state: "visible" });
+        expect(await button.evaluate((b) => b === document.activeElement)).toBe(false);
+        await page.keyboard.press("Escape");
+        await text.waitFor({ state: "hidden" });
+        expect(await table.isVisible()).toBe(true);
+        await expectClean(o);
+    });
+
+    it("lists refused names as text in their tables, never as links", async () => {
+        const o = await open(browser, linkOf(route, scenarios["ended-x402"]));
+        const { page } = o;
+        await endedView(page);
+        const nodes = [
+            { id: "refused-host:mirror.example", name: "mirror.example" },
+            { id: "refused-host:pay.unknown-seller.example", name: "pay.unknown-seller.example" },
+            { id: "refused-host:", name: copy.nodes.otherNames },
+            // The fold holds the fourth name, which its row lists beside the reason
+            { id: "more-right", name: "zz-sample-ended-x402.example" },
+        ];
+        for (const { id, name } of nodes) {
+            const table = await openBubble(page, id);
+            expect(await table.textContent(), id).toContain(name);
+            expect(await table.locator("a").count(), id).toBe(0);
+            const tones = await table
+                .locator("tbody td.ev-detail")
+                .evaluateAll((cells) => cells.map((c) => c.className));
+            expect(tones.length, id).toBeGreaterThan(0);
+            expect(
+                tones.filter((c) => !c.includes("warn")),
+                id,
+            ).toEqual([]);
+        }
+        expect(await page.locator(".map a").count()).toBe(0);
+        await expectClean(o);
+    });
+
+    it("never shows a wallet address, only 64-byte transaction signatures", async () => {
+        // The scan itself, on a 32-byte address and on a signature
+        const address = base58(new Uint8Array(32).fill(7));
+        expect(addressesIn([`paid to ${address}.`])).toEqual([address]);
+        expect(addressesIn([`https://explorer.solana.com/tx/${sampleTx("scan")}`])).toEqual([]);
+
+        const names = [
+            "ended-x402",
+            "ended-x402-settling",
+            "ended-x402-kept",
+            "ended-x402-reconcile",
+        ] as const;
+        for (const name of names) {
+            const o = await open(browser, linkOf(route, scenarios[name]));
+            const { page } = o;
+            await endedView(page);
+            await page.locator("button.expand-all").click();
+            const strings = await pageStrings(page);
+            const ids = await page
+                .locator("g.map-node")
+                .evaluateAll((nodes) => nodes.map((n) => n.getAttribute("data-node-id") ?? ""));
+            for (const id of ids) {
+                await openBubble(page, id);
+                strings.push(...(await pageStrings(page)));
+            }
+            // The tip's text is in the page while hidden, so the scan reads it either way
+            expect(
+                strings.some((s) => s.includes(copy.allowanceTip)),
+                name,
+            ).toBe(true);
+            expect(
+                strings.some((s) => explorer.test(s)),
+                name,
+            ).toBe(true);
+            expect([...new Set(addressesIn(strings))], name).toEqual([]);
+            await expectClean(o);
+        }
+    }, 60_000);
 
     // The bugnet.sh pages do not exist yet, so they are checked by shape and never fetched
     it("links only to Bugnet's own pages and to explorer transactions", async () => {

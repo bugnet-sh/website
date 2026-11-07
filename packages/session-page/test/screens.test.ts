@@ -134,6 +134,32 @@ const states: State[] = [
         reach: (page) => message(page, copy.notFound),
     },
     {
+        name: "ended-x402",
+        edges: [status, times, "div.map", "table.commands"],
+        link: (s) => s["ended-x402"],
+        // The Allowance's totals, each refusal reason among them, under its rows
+        reach: async (page) => {
+            await ended(page);
+            await openNode(page, "allowance");
+            await page.locator(".map-table tfoot tr.total").first().waitFor();
+            await openRowDrawn(page);
+        },
+    },
+    {
+        name: "ended-x402-settling",
+        edges: [status, times, "div.map", "table.commands"],
+        link: (s) => s["ended-x402-settling"],
+        // The first answer, with two calls settling, which the page asks again for in 30 s
+        reach: async (page) => {
+            await ended(page);
+            await openNode(page, "allowance");
+            await page
+                .locator(".map-table tfoot tr.total", { hasText: copy.totals.settling(2) })
+                .waitFor();
+            await openRowDrawn(page);
+        },
+    },
+    {
         name: "ended-hostile",
         edges: [status, times, "div.map", "table.commands"],
         link: (s) => s["ended-hostile"],
