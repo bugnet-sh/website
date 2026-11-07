@@ -34,7 +34,9 @@ export function createSessionHead(doc: Document): SessionHead {
     });
     const dot = el(doc, "span", { class: "dot", attrs: { "aria-hidden": "true" } });
     dot.hidden = true;
-    const label = doc.createTextNode("");
+    // An element, not a text node: a page translation swaps text nodes out, and writing to a
+    // detached one would leave the old status on screen
+    const label = el(doc, "span", { class: "state-label" });
     const state = el(doc, "p", { class: "session-state", attrs: { ...EDGE, role: "status" } }, [
         dot,
         label,
@@ -44,11 +46,16 @@ export function createSessionHead(doc: Document): SessionHead {
         el(doc, "div", { class: "session-heading" }, [heading]),
         state,
     ]);
+    // What the page last set, since a translation changes what the label holds
+    let said = "";
     return {
         root,
         heading,
         setStatus(text, running = false) {
-            if (label.data !== (text ?? "")) label.data = text ?? "";
+            if (said !== (text ?? "")) {
+                said = text ?? "";
+                label.textContent = said;
+            }
             // Only a change of hidden touches the dot, so its pulse never restarts
             if (dot.hidden === running) dot.hidden = !running;
             state.hidden = text === null;
@@ -56,22 +63,27 @@ export function createSessionHead(doc: Document): SessionHead {
     };
 }
 
-// Disabled at the first click, so a double click sends one request
+// Disabled at the first click, so a double click sends one request. Both labels stay in the
+// button and the CSS shows one, so its width never changes as it turns busy.
 function actionButton(
     doc: Document,
     cls: string,
     label: string,
+    busyLabel: string,
     onClick: () => void,
 ): HTMLButtonElement {
-    const button = el(doc, "button", {
-        class: `button ${cls}`,
-        text: label,
-        attrs: { type: "button" },
-    });
+    const idle = el(doc, "span", { text: label });
+    const busy = el(doc, "span", { text: busyLabel, attrs: { "aria-hidden": "true" } });
+    const button = el(doc, "button", { class: `button ${cls}`, attrs: { type: "button" } }, [
+        idle,
+        busy,
+    ]);
     button.addEventListener("click", () => {
         if (button.disabled) return;
         button.disabled = true;
         button.setAttribute("aria-busy", "true");
+        idle.setAttribute("aria-hidden", "true");
+        busy.removeAttribute("aria-hidden");
         onClick();
     });
     return button;
@@ -82,7 +94,7 @@ function plainButton(doc: Document, cls: string, label: string): HTMLButtonEleme
 }
 
 export function retryButton(doc: Document, onRetry: () => void): HTMLButtonElement {
-    return actionButton(doc, "retry", copy.retry, onRetry);
+    return actionButton(doc, "retry", copy.retry, copy.loading, onRetry);
 }
 
 // Focusable, so the page can move focus to the line that replaced the view
@@ -199,6 +211,8 @@ const rowsKey = (node: MapNode | undefined) =>
 
 const FOCUSABLE = "a[href], button, [tabindex]";
 
+let sections = 0;
+
 // Where focus sits in a table: its row's text, and its place among that row's controls
 interface TablePlace {
     row: string | null;
@@ -240,7 +254,8 @@ export function createMapSection(
     const ruler = el(doc, "div", { class: "map-ruler", attrs: { "aria-hidden": "true" } });
     const map = el(doc, "div", { class: "map", attrs: EDGE }, [ruler]);
     const caption = el(doc, "div", { class: "map-caption" });
-    const table = el(doc, "div", { class: "map-table" });
+    const tableId = `map-table-${++sections}`;
+    const table = el(doc, "div", { class: "map-table", attrs: { id: tableId } });
     const root = el(doc, "div", { class: "map-section" }, [map, caption, table]);
 
     let selectedId: string | null = null;
@@ -258,7 +273,7 @@ export function createMapSection(
                 ? (active.closest("[data-node-id]")?.getAttribute("data-node-id") ?? null)
                 : null;
         const inSvg = active !== null && svg !== null && svg.contains(active);
-        const select: MapSelect = { selectedId, onSelect };
+        const select: MapSelect = { selectedId, onSelect, controls: tableId };
         if (drawSvg) {
             width = widthNow();
             const next = renderMapSvg(doc, layoutMap(model, width), select);
@@ -303,6 +318,18 @@ export function createMapSection(
         redraw(true, true);
         showTable();
     }
+
+    // Escape inside the open table closes it and goes back to its bubble, or to its row on a phone
+    table.addEventListener("keydown", (e) => {
+        if (e.key !== "Escape" || selectedId === null) return;
+        const id = selectedId;
+        onSelect(id);
+        const svgShown = svg !== null && doc.defaultView?.getComputedStyle(svg).display !== "none";
+        const back = svgShown
+            ? nodeElement(svg!, "g.map-node", id)
+            : nodeElement(list!, "button.map-row", id);
+        back?.focus();
+    });
 
     showCaption();
     redraw(true, true);

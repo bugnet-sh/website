@@ -53,6 +53,8 @@ const CLOCK_MS = 60_000;
 // The route's per-IP limit on live streams
 const MAX_STREAMS = 4;
 const STREAM_RETRY_MS = 2_000;
+// A retry says it is loading for at least this long, so a quick same answer still shows a try
+const RETRY_BUSY_MS = 400;
 
 type Mode = "loading" | "message" | "running" | "ended";
 
@@ -161,16 +163,31 @@ export function startPage(env: PageEnv): { destroy(): void } {
         return savingAsks++ < SAVING_FAST_ASKS ? SAVING_EVERY_MS : SAVING_SLOW_MS;
     }
 
+    // A drawing bug is not a network failure, so the view stays as it is
+    function applySafely(result: GetResult): void {
+        try {
+            apply(result);
+        } catch (err) {
+            reportError(err);
+        }
+    }
+
     async function ask(): Promise<void> {
         const at = epoch;
         const result = await api.get();
         if (destroyed || at !== epoch) return;
-        try {
-            apply(result);
-        } catch (err) {
-            // A drawing bug is not a network failure, so the view stays as it is
-            reportError(err);
-        }
+        applySafely(result);
+    }
+
+    async function retry(): Promise<void> {
+        const at = epoch;
+        const startedAt = env.now().getTime();
+        const result = await api.get();
+        if (destroyed || at !== epoch) return;
+        const wait = Math.max(0, RETRY_BUSY_MS - (env.now().getTime() - startedAt));
+        env.setTimer(() => {
+            if (!destroyed && at === epoch) applySafely(result);
+        }, wait);
     }
 
     function apply(result: GetResult): void {
@@ -237,7 +254,7 @@ export function startPage(env: PageEnv): { destroy(): void } {
         root.replaceChildren(
             head.root,
             line,
-            retryButton(doc, () => void ask()),
+            retryButton(doc, () => void retry()),
         );
         line.focus();
     }

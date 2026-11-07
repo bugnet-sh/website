@@ -9,6 +9,8 @@ const EXPLORER = "https://explorer.solana.com/tx/";
 
 // Phones lay rows out as grids, which drops a table's own roles in WebKit
 const CELL = { role: "cell" };
+// Hosts, paths and signatures, which a page translation would rewrite
+const DATA_CELL = { ...CELL, translate: "no" };
 const ROW = { role: "row" };
 const GROUP = { role: "rowgroup" };
 
@@ -31,23 +33,28 @@ const shown = (shape: Shape) => COLUMNS.filter((column) => shape.has[column]);
 
 // Only a value that decodes to a signature becomes a link, so sandbox text never does
 function txCell(doc: Document, tx: string | null, clipboard: Clipboard): HTMLTableCellElement {
-    if (tx === null) return el(doc, "td", { class: "ev-tx", attrs: CELL });
+    if (tx === null) return el(doc, "td", { class: "ev-tx", attrs: DATA_CELL });
+    const short = shortSignature(tx);
     if (!isSignature(tx)) {
-        return el(doc, "td", { class: "ev-tx", text: shortSignature(tx), attrs: CELL });
+        return el(doc, "td", { class: "ev-tx", text: short, attrs: DATA_CELL });
     }
     const link = el(doc, "a", {
         class: "tx-link",
-        text: shortSignature(tx),
+        text: short,
         attrs: {
             href: `${EXPLORER}${tx}`,
             target: "_blank",
             rel: "noreferrer noopener",
             title: copy.openInExplorer,
+            // The visible text first, then where it goes
+            "aria-label": `${short}, ${copy.openInExplorer}`,
         },
     });
-    return el(doc, "td", { class: "ev-tx", attrs: CELL }, [
+    return el(doc, "td", { class: "ev-tx", attrs: DATA_CELL }, [
         link,
-        copyButton(doc, copy.copySignature, () => tx, clipboard),
+        copyButton(doc, copy.copySignature, () => tx, clipboard, undefined, {
+            name: copy.copySignatureOf(short),
+        }),
     ]);
 }
 
@@ -67,7 +74,7 @@ function rowEl(doc: Document, row: EventRow, opts: TableOpts, shape: Shape): HTM
                 "td",
                 {
                     class: row.tone === "normal" ? "ev-detail" : `ev-detail ${row.tone}`,
-                    attrs: CELL,
+                    attrs: DATA_CELL,
                 },
                 row.detail.length === 0
                     ? []

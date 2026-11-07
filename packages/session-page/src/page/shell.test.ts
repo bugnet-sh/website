@@ -3,6 +3,7 @@ import { JSDOM } from "jsdom";
 import { describe, expect, it } from "vitest";
 import { copy } from "../copy.ts";
 import { GAP } from "../map/layout.ts";
+import { ANNOUNCER_ID } from "../render/controls.ts";
 
 const read = (name: string) => readFileSync(new URL(name, import.meta.url), "utf8");
 const html = read("./index.html");
@@ -59,6 +60,16 @@ describe("index.html", () => {
         ]);
     });
 
+    it("holds the status line copy buttons speak through, out of sight and empty", () => {
+        const announcer = doc.getElementById(ANNOUNCER_ID)!;
+        expect(announcer.tagName).toBe("P");
+        expect(announcer.getAttribute("role")).toBe("status");
+        expect(announcer.className).toBe("sr-only");
+        expect(announcer.textContent).toBe("");
+        // Outside #app, which each view replaces, so it is there before its first message
+        expect(announcer.closest("#app")).toBeNull();
+    });
+
     it("marks the logo, the banner and the footer as sharing the left edge", () => {
         const edges = [...doc.querySelectorAll("[data-edge]")].map((e) => e.className);
         expect(edges).toEqual(["logo", "banner", "site"]);
@@ -74,6 +85,7 @@ describe("headers.txt", () => {
                 "X-Content-Type-Options: nosniff",
                 "Cross-Origin-Opener-Policy: same-origin",
                 "X-Robots-Tag: noindex, nofollow, noarchive",
+                "Document-Policy: force-load-at-top",
                 "Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self'; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; require-trusted-types-for 'script'; trusted-types 'none'",
                 "",
             ].join("\n"),
@@ -192,6 +204,92 @@ describe("page.css", () => {
         const space = /^var\((--[\w-]+)\)$/.exec(gap ?? "")?.[1];
         const value = space === undefined ? gap : tokenOf(tokensCss, space);
         expect(value).toBe(`${GAP}px`);
+    });
+
+    it("never marks a phrase a shared link's text fragment names", () => {
+        const rule = ruleFor("::target-text");
+        expect(rule).toContain("background-color: transparent");
+        expect(rule).toContain("color: inherit");
+    });
+
+    it("sets the block's last line in the page's own font, under a hairline", () => {
+        const foot = ruleFor(".term-foot");
+        expect(foot).toContain("font-family: var(--font-ui)");
+        expect(foot).toContain("font-size: var(--small-size)");
+        expect(foot).toContain("line-height: var(--small-line)");
+        expect(foot).toContain("border-top: var(--hairline) solid var(--line)");
+        expect(foot).toContain("padding-top: var(--space-2)");
+        // The notices keep the output's font, set apart by their tone
+        expect(ruleFor(".term-notes")).not.toContain("font-family");
+    });
+
+    it("keeps a control focused under a sticky head in view", () => {
+        expect(ruleFor("html")).toContain("scroll-padding-top: var(--row)");
+        expect(ruleFor(".table-scroll")).toContain("scroll-padding-top: var(--row)");
+    });
+
+    it("draws a bubble's keyboard ring in the map itself, never the browser's box", () => {
+        expect(ruleFor(".map-node:focus").trim()).toBe("outline: none;");
+        const ring = ruleFor(".map-focus");
+        for (const d of [
+            "fill: none",
+            "stroke: var(--accent)",
+            "stroke-width: var(--ring)",
+            "visibility: hidden",
+        ]) {
+            expect(ring).toContain(d);
+        }
+        expect(ruleFor(".map-node:focus-visible .map-focus")).toContain("visibility: visible");
+    });
+
+    it("rings a table control inside its row, so a sticky head or a scroller never cuts it", () => {
+        const controls =
+            "td :is(.cmd-toggle, .copy-button, .tx-link):focus-visible,\n.expand-all:focus-visible";
+        expect(ruleFor(controls)).toContain("outline: none");
+        const ring = ruleFor(
+            "td :is(.cmd-toggle, .copy-button, .tx-link):focus-visible::after,\n.expand-all:focus-visible::after",
+        );
+        expect(ring).toContain("inset: calc(2 * var(--ring)) 0");
+        expect(ring).toContain("outline: var(--ring) solid var(--accent)");
+        expect(ring).toContain("pointer-events: none");
+        expect(ruleFor("td :is(.tx-link, .copy-button)")).toContain("vertical-align: middle");
+    });
+
+    it("prints the page as it shows, with every output and table whole", () => {
+        const print = plain.slice(plain.indexOf("@media print"));
+        expect(print).toMatch(/print-color-adjust: exact;/);
+        expect(print).toMatch(
+            /\.term-cmd,\s*\.term-out,\s*\.table-scroll\s*\{\s*max-height: none;\s*overflow: visible;/,
+        );
+        expect(print).toMatch(
+            /\.delete,\s*\.tip,\s*\.copy-button,\s*\.commands-bar\s*\{\s*display: none;/,
+        );
+    });
+
+    it("keeps lines, the selected row and the running dot in forced colours", () => {
+        const forced = plain.slice(plain.indexOf("@media (forced-colors: active)"));
+        expect(forced).toMatch(
+            /\.map-row\s*\{\s*border-bottom: var\(--hairline\) solid CanvasText;/,
+        );
+        expect(forced).toMatch(
+            /\.map-row\.is-selected\s*\{\s*outline: var\(--ring\) solid Highlight;/,
+        );
+        expect(forced).toMatch(
+            /th,\s*td\s*\{\s*border-bottom: var\(--hairline\) solid CanvasText;/,
+        );
+        expect(forced).toMatch(/\.dot\s*\{\s*forced-color-adjust: none;\s*background: CanvasText;/);
+    });
+
+    it("hides the copy announcements from sight, not from a screen reader", () => {
+        const rule = ruleFor(".sr-only");
+        for (const d of ["position: absolute", "overflow: hidden", "clip-path: inset(50%)"]) {
+            expect(rule).toContain(d);
+        }
+        expect(rule).not.toContain("display");
+    });
+
+    it("marks a whole command row as one that opens", () => {
+        expect(ruleFor("tr.cmd-row")).toContain("cursor: pointer");
     });
 
     it("turns the map into a list and drops the wide columns below 768 px", () => {

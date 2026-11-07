@@ -47,7 +47,9 @@
     box-sizing: border-box;
 }
 
+/* The sticky commands head is one row tall, so a control focused under it scrolls clear */
 html {
+    scroll-padding-top: var(--row);
     background: var(--bg);
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
@@ -97,6 +99,22 @@ button {
 /* Headings and lines take focus only so a screen reader starts there */
 [tabindex="-1"]:focus-visible {
     outline: none;
+}
+
+/* A shared link can name a phrase of sandbox output, and the page never marks it as the page's */
+::target-text {
+    background-color: transparent;
+    color: inherit;
+}
+
+/* Read by a screen reader, yet never drawn, so it takes no room */
+.sr-only {
+    position: absolute;
+    width: var(--hairline);
+    height: var(--hairline);
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
 }
 
 .site,
@@ -451,6 +469,22 @@ h1 {
     stroke-width: var(--ring);
 }
 
+/* WebKit paints no outline on an SVG group, so every engine draws the ring the map holds */
+.map-node:focus {
+    outline: none;
+}
+
+.map-focus {
+    fill: none;
+    stroke: var(--accent);
+    stroke-width: var(--ring);
+    visibility: hidden;
+}
+
+.map-node:focus-visible .map-focus {
+    visibility: visible;
+}
+
 .map-label,
 .map-name {
     fill: var(--text);
@@ -607,6 +641,7 @@ td:last-child {
 .table-scroll {
     max-height: var(--events-max);
     overflow: auto;
+    scroll-padding-top: var(--row);
 }
 
 table.events caption {
@@ -631,6 +666,31 @@ table.events td {
 
 .tx-link + .copy-button {
     margin-inline-start: var(--space-3);
+}
+
+/* Off the shared baseline, which would make the row a fraction taller than 40 px */
+td :is(.tx-link, .copy-button) {
+    vertical-align: middle;
+}
+
+/*
+ * The ring of a control in a row sits inside the row's height, since a sticky head above it or
+ * the table's scroller would cut a ring drawn past it, and keeps the usual gap at the sides
+ */
+td :is(.cmd-toggle, .copy-button, .tx-link):focus-visible,
+.expand-all:focus-visible {
+    position: relative;
+    outline: none;
+}
+
+td :is(.cmd-toggle, .copy-button, .tx-link):focus-visible::after,
+.expand-all:focus-visible::after {
+    content: "";
+    position: absolute;
+    inset: calc(2 * var(--ring)) 0;
+    outline: var(--ring) solid var(--accent);
+    outline-offset: var(--ring);
+    pointer-events: none;
 }
 
 .copy-button {
@@ -754,6 +814,11 @@ td.cmd {
     cursor: pointer;
 }
 
+/* A click anywhere on the row opens it, as its hover band says */
+tr.cmd-row {
+    cursor: pointer;
+}
+
 @media (hover: hover) {
     .cmd-toggle:hover {
         color: var(--accent);
@@ -862,9 +927,15 @@ tr.cmd-detail > td {
     border-left: var(--hairline) solid var(--line);
 }
 
+/* In the page's own font, which output never takes, so output cannot copy this line */
 .term-foot {
     margin-top: var(--space-2);
+    padding-top: var(--space-2);
+    border-top: var(--hairline) solid var(--line);
     color: var(--text-muted);
+    font-family: var(--font-ui);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
 }
 
 /*
@@ -904,6 +975,54 @@ tr.cmd-detail > td {
 @media (prefers-reduced-motion: reduce) {
     .dot {
         animation: none;
+    }
+}
+
+/* Paper keeps the screen's dark look, so the contrast checked for it holds */
+@media print {
+    :root {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    .term-cmd,
+    .term-out,
+    .table-scroll {
+        max-height: none;
+        overflow: visible;
+    }
+
+    .delete,
+    .tip,
+    .copy-button,
+    .commands-bar {
+        display: none;
+    }
+}
+
+/* Forced colours drop shadows and backgrounds, which draw these lines, rings and the dot */
+@media (forced-colors: active) {
+    .map-row {
+        border-bottom: var(--hairline) solid CanvasText;
+    }
+
+    .map-row.is-selected {
+        outline: var(--ring) solid Highlight;
+        outline-offset: calc(-1 * var(--ring));
+    }
+
+    th,
+    td {
+        border-bottom: var(--hairline) solid CanvasText;
+    }
+
+    tr.cmd-detail > td {
+        border-bottom: 0;
+    }
+
+    .dot {
+        forced-color-adjust: none;
+        background: CanvasText;
     }
 }
 
@@ -1032,5 +1151,15 @@ tr.cmd-detail > td {
 
     table.events td:empty {
         display: none;
+    }
+}
+
+@media (forced-colors: active) and (max-width: 767.98px) {
+    table.events tbody tr {
+        border-bottom: var(--hairline) solid CanvasText;
+    }
+
+    table.events td {
+        border-bottom: 0;
     }
 }

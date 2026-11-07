@@ -17,6 +17,9 @@ const num = (v: number) => String(Math.round(v * 10) / 10);
 // Half the page's 40 px row, so a small bubble is still a full-size target
 const HIT_R = 20;
 
+// The page's focus ring keeps a 2 px gap and is 2 px wide, so its circle sits 4 px out
+export const FOCUS_GAP = 4;
+
 function tspan(doc: Document, value: string, attrs: Record<string, string>): SVGTSpanElement {
     const span = svgEl(doc, "tspan", attrs);
     span.textContent = value;
@@ -95,7 +98,8 @@ function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
             class: selected ? "map-node is-selected" : "map-node",
             role: "button",
             tabindex: "0",
-            "aria-pressed": String(selected),
+            "aria-expanded": String(selected),
+            ...(opts.controls === undefined ? {} : { "aria-controls": opts.controls }),
             "aria-label": accessibleName(node),
             "data-node-id": node.id,
         },
@@ -108,6 +112,12 @@ function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
                 r: num(Math.max(p.r, HIT_R)),
             }),
             svgEl(doc, "circle", { class: "map-bubble", cx: num(p.x), cy: num(p.y), r: num(p.r) }),
+            svgEl(doc, "circle", {
+                class: "map-focus",
+                cx: num(p.x),
+                cy: num(p.y),
+                r: num(p.r + FOCUS_GAP),
+            }),
             ...labelTexts(doc, p),
         ],
     );
@@ -186,8 +196,9 @@ export function fitLabels(svg: SVGSVGElement): void {
 
 export function renderMapSvg(doc: Document, layout: MapLayout, opts: MapSelect): SVGSVGElement {
     const { width, top, height, note } = layout;
+    // translate is an HTML attribute, so the SVG takes the class translators honour instead
     const svg = svgEl(doc, "svg", {
-        class: "map-svg",
+        class: "map-svg notranslate",
         role: "group",
         "aria-label": copy.mapLabel,
         viewBox: `0 ${num(top)} ${num(width)} ${num(height)}`,

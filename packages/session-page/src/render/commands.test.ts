@@ -468,6 +468,57 @@ describe("createCommandsView", () => {
         expect(view.buffer(6).text()).toContain("Successfully installed torch-2.5.1");
     });
 
+    it("names each copy button after its command, so a screen reader can tell them apart", () => {
+        const { view } = showEnded("ended-full");
+        for (const seq of [1, 6]) {
+            const cell = row(view.root, seq).querySelector("td.copy button")!;
+            expect(cell.getAttribute("aria-label")).toBe(copy.copyOutputOf(seq));
+        }
+        const head = detail(view.root, 6).querySelector(".term-head")!;
+        expect(head.querySelector(".copy-command")!.getAttribute("aria-label")).toBe(
+            copy.copyCommandOf(6),
+        );
+        expect(head.querySelector(".copy-output")!.getAttribute("aria-label")).toBe(
+            copy.copyOutputOf(6),
+        );
+    });
+
+    it("names the table, and keeps a translator off commands and output", () => {
+        const { view } = showEnded("ended-full");
+        expect(view.root.querySelector("table.commands")!.getAttribute("aria-label")).toBe(
+            copy.commandsLabel,
+        );
+        for (const text of view.root.querySelectorAll(".cmd-text")) {
+            expect(text.getAttribute("translate")).toBe("no");
+        }
+        expect(detail(view.root, 6).querySelector(".term")!.getAttribute("translate")).toBe("no");
+    });
+
+    it("opens a row from a click anywhere on it, but not from its copy button or a selection", () => {
+        const { view, clipboard } = showEnded("ended-full");
+        const click = (target: Element) =>
+            target.dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        click(row(view.root, 2).querySelector("td.exit")!);
+        expect(toggle(view.root, 2).getAttribute("aria-expanded")).toBe("true");
+        expect(view.openSeqs()).toEqual([2, 6]);
+        click(row(view.root, 2).querySelector("td.num")!);
+        expect(toggle(view.root, 2).getAttribute("aria-expanded")).toBe("false");
+        // The toggle opens it once, not once for itself and once for its row
+        toggle(view.root, 3).click();
+        expect(toggle(view.root, 3).getAttribute("aria-expanded")).toBe("true");
+        row(view.root, 4).querySelector<HTMLButtonElement>("td.copy button")!.click();
+        expect(clipboard.writeText).toHaveBeenCalled();
+        expect(toggle(view.root, 4).getAttribute("aria-expanded")).toBe("false");
+        // A reader selecting a row's text to copy it keeps the row as it was
+        const range = document.createRange();
+        range.selectNodeContents(row(view.root, 5).querySelector("td.exit")!);
+        document.getSelection()!.removeAllRanges();
+        document.getSelection()!.addRange(range);
+        click(row(view.root, 5).querySelector("td.exit")!);
+        expect(toggle(view.root, 5).getAttribute("aria-expanded")).toBe("false");
+        document.getSelection()!.removeAllRanges();
+    });
+
     it("sets hostile commands and output as text", () => {
         const { view, scheduler } = showEnded("ended-hostile");
         expandAll(view.root).click();

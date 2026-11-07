@@ -7,7 +7,7 @@ import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
 import { layoutMap } from "./layout.ts";
 import { renderMapList } from "./list.ts";
 import { accessibleName, buildMap, type MapModel, type MapNode } from "./model.ts";
-import { fitLabels, renderMapSvg } from "./svg.ts";
+import { FOCUS_GAP, fitLabels, renderMapSvg } from "./svg.ts";
 import { renderEventTable } from "./table.ts";
 
 const now = new Date("2026-11-06T12:00:00Z");
@@ -28,7 +28,11 @@ function nodeOf(model: MapModel, id: string): MapNode {
 }
 
 function svgOf(model: MapModel, selectedId: string | null = null, onSelect = vi.fn()) {
-    const svg = renderMapSvg(document, layoutMap(model, 900), { selectedId, onSelect });
+    const svg = renderMapSvg(document, layoutMap(model, 900), {
+        selectedId,
+        onSelect,
+        controls: "map-table-1",
+    });
     document.body.replaceChildren(svg);
     return { svg, onSelect };
 }
@@ -249,15 +253,44 @@ describe("renderMapSvg", () => {
         expect(onSelect).toHaveBeenCalledExactlyOnceWith("payments");
     });
 
-    it("presses only the selected bubble", () => {
+    it("expands only the selected bubble, and names the table it opens", () => {
         const { svg } = svgOf(modelOf("ended-full"), "payments");
         for (const g of bubbles(svg)) {
             const selected = g.dataset.nodeId === "payments";
-            expect(g.getAttribute("aria-pressed")).toBe(String(selected));
+            expect(g.getAttribute("aria-expanded")).toBe(String(selected));
+            expect(g.getAttribute("aria-controls")).toBe("map-table-1");
+            expect(g.hasAttribute("aria-pressed")).toBe(false);
             expect(g.classList.contains("is-selected")).toBe(selected);
         }
         const { svg: none } = svgOf(modelOf("ended-full"), null);
-        expect(bubbles(none).every((g) => g.getAttribute("aria-pressed") === "false")).toBe(true);
+        expect(bubbles(none).every((g) => g.getAttribute("aria-expanded") === "false")).toBe(true);
+    });
+
+    it("holds each bubble's keyboard ring, one gap outside its circle", () => {
+        // The ring's 2 px offset and its 2 px width, as the page's other rings have
+        expect(FOCUS_GAP).toBe(4);
+        const layout = layoutMap(modelOf("ended-full"), 900);
+        const svg = renderMapSvg(document, layout, { selectedId: null, onSelect: vi.fn() });
+        for (const p of [layout.center, ...layout.placed]) {
+            const g = bubble(svg, p.node.id);
+            const circles = [...g.querySelectorAll("circle")].map((c) => c.getAttribute("class"));
+            expect(circles).toEqual(["map-hit", "map-bubble", "map-focus"]);
+            const ring = g.querySelector("circle.map-focus")!;
+            const bubbleR = Number(g.querySelector("circle.map-bubble")!.getAttribute("r"));
+            expect(Number(ring.getAttribute("r"))).toBeCloseTo(bubbleR + FOCUS_GAP, 1);
+            expect(ring.getAttribute("cx")).toBe(
+                g.querySelector(".map-bubble")!.getAttribute("cx"),
+            );
+            expect(ring.getAttribute("cy")).toBe(
+                g.querySelector(".map-bubble")!.getAttribute("cy"),
+            );
+        }
+    });
+
+    it("keeps a translator off the map, whose names are hosts and ports", () => {
+        const { svg } = svgOf(modelOf("ended-full"));
+        expect(svg.classList.contains("map-svg")).toBe(true);
+        expect(svg.classList.contains("notranslate")).toBe(true);
     });
 
     it("draws money and refused edges with their classes, and labels only refusals", () => {
@@ -304,14 +337,18 @@ describe("renderMapSvg", () => {
 
 describe("renderMapList", () => {
     const listOf = (selectedId: string | null = null, onSelect = vi.fn()) => {
-        const list = renderMapList(document, modelOf("ended-full"), { selectedId, onSelect });
+        const list = renderMapList(document, modelOf("ended-full"), {
+            selectedId,
+            onSelect,
+            controls: "map-table-1",
+        });
         document.body.replaceChildren(list);
         return { list, onSelect };
     };
     const rowOf = (list: Element, id: string) =>
         list.querySelector<HTMLButtonElement>(`[data-node-id="${id}"]`)!;
 
-    it("gives one button per node, pressed when selected", () => {
+    it("gives one button per node, expanded when selected", () => {
         const model = modelOf("ended-full");
         const { list, onSelect } = listOf("mcp");
         expect(list.tagName).toBe("UL");
@@ -322,7 +359,9 @@ describe("renderMapList", () => {
             const node = model.nodes[i]!;
             expect(b.textContent).toContain(node.label);
             expect(b.textContent).toContain(node.metricParts[0]?.text ?? "");
-            expect(b.getAttribute("aria-pressed")).toBe(String(node.id === "mcp"));
+            expect(b.getAttribute("aria-expanded")).toBe(String(node.id === "mcp"));
+            expect(b.getAttribute("aria-controls")).toBe("map-table-1");
+            expect(b.hasAttribute("aria-pressed")).toBe(false);
         }
         buttons[2]!.click();
         expect(onSelect).toHaveBeenCalledExactlyOnceWith(model.nodes[2]!.id);
@@ -342,6 +381,15 @@ describe("renderMapList", () => {
         expect(search.getAttribute("aria-label")).toBe(
             "search-api.example, 5 calls, 0.024 USDC, 2 refused",
         );
+    });
+
+    it("keeps a translator off each row's name and numbers", () => {
+        const { list } = listOf();
+        const search = rowOf(list, "x402-host:search-api.example");
+        const kept = [...search.querySelectorAll('[translate="no"]')].map((e) => e.className);
+        expect(kept).toEqual(["map-row-name", "muted", "money"]);
+        // The refusal reads in words, so a translation may change it
+        expect(search.querySelector(".map-row-refused")!.hasAttribute("translate")).toBe(false);
     });
 
     it("shows Payments with nothing paid and a refund as 0 USDC paid alone", () => {
@@ -481,13 +529,29 @@ describe("renderEventTable", () => {
             expect(a.getAttribute("target")).toBe("_blank");
             expect(a.getAttribute("rel")).toBe("noreferrer noopener");
             expect(a.textContent).toBe(shortSignature(tx));
+            const short = shortSignature(tx);
+            // The visible text first, then what the link does
+            expect(a.getAttribute("aria-label")).toBe(`${short}, ${copy.openInExplorer}`);
             const button = a.closest("td")!.querySelector("button")!;
             expect(button.textContent).toContain(copy.copySignature);
+            expect(button.getAttribute("aria-label")).toBe(copy.copySignatureOf(short));
             button.click();
             await Promise.resolve();
             expect(board.writeText).toHaveBeenLastCalledWith(tx);
         }
         expect(new Set(links.map((a) => a.textContent)).size).toBe(4);
+    });
+
+    it("keeps a translator off the detail and the transaction, and on the event", () => {
+        const node = nodeOf(modelOf("ended-full"), "x402-host:search-api.example");
+        const root = renderEventTable(document, node, { now, clipboard: clipboard() });
+        const cells = [...root.querySelectorAll("tbody td")];
+        expect(root.querySelector("td.ev-detail")).not.toBeNull();
+        expect(root.querySelector("td.ev-tx")).not.toBeNull();
+        for (const td of cells) {
+            const kept = td.classList.contains("ev-detail") || td.classList.contains("ev-tx");
+            expect(td.getAttribute("translate"), td.className).toBe(kept ? "no" : null);
+        }
     });
 
     it("shows an invalid transaction as plain text, with no link and no copy button", () => {

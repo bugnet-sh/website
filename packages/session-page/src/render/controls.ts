@@ -7,6 +7,12 @@ export type Clipboard = { writeText(s: string): Promise<void> };
 // How long a copy button shows its outcome
 export const COPIED_MS = 1_500;
 
+// Long enough for the pointer to cross the gap between the ? and its text
+export const TIP_HIDE_MS = 300;
+
+// The page's status line for copy outcomes, outside #app, so it is there before its first message
+export const ANNOUNCER_ID = "announcer";
+
 let tips = 0;
 
 // The tooltip is absolutely placed by the page's CSS, so showing it moves nothing
@@ -31,7 +37,9 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
         bubble.hidden = false;
         doc.addEventListener("keydown", onKey);
     };
+    let hideTimer: ReturnType<typeof setTimeout> | undefined;
     const hide = () => {
+        clearTimeout(hideTimer);
         if (bubble.hidden) return;
         bubble.hidden = true;
         doc.removeEventListener("keydown", onKey);
@@ -39,16 +47,30 @@ export function tip(doc: Document, text: string, label: string): HTMLElement {
     button.addEventListener("focus", show);
     button.addEventListener("click", show);
     button.addEventListener("blur", hide);
-    root.addEventListener("mouseenter", show);
+    // The text is inside the tip, so the pointer reaching it enters the tip again in time
+    root.addEventListener("mouseenter", () => {
+        clearTimeout(hideTimer);
+        show();
+    });
     root.addEventListener("mouseleave", () => {
-        if (doc.activeElement !== button) hide();
+        if (doc.activeElement !== button) hideTimer = setTimeout(hide, TIP_HIDE_MS);
     });
     return root;
 }
 
 type CopyState = "idle" | "copied" | "partial" | "failed" | "loading";
 
+// Clears only its own message, so a later button's message is never cut short
+function announce(doc: Document, text: string, replacing?: string): void {
+    const line = doc.getElementById(ANNOUNCER_ID);
+    if (line === null) return;
+    if (replacing !== undefined && line.textContent !== replacing) return;
+    line.textContent = text;
+}
+
 export interface CopyChecks {
+    // The accessible name, when the label alone would read the same as its neighbours'
+    name?: string;
     // False when the text has not come yet; the click then starts loading it and copies nothing
     prepare?: () => boolean;
     // True when the text is only part of the whole, such as output cut short
@@ -71,10 +93,12 @@ export function copyButton(
         ["failed", el(doc, "span", { class: "copy-failed", text: copy.copyFailed })],
         ["loading", el(doc, "span", { class: "copy-loading", text: copy.loading })],
     ];
+    const attrs: Record<string, string> = { type: "button" };
+    if (checks.name !== undefined) attrs["aria-label"] = checks.name;
     const button = el(
         doc,
         "button",
-        { class: "copy-button", attrs: { type: "button" } },
+        { class: "copy-button", attrs },
         labels.map(([, span]) => span),
     );
     const apply = (state: CopyState) => {
@@ -93,10 +117,16 @@ export function copyButton(
     };
     apply("idle");
     let timer: ReturnType<typeof setTimeout> | undefined;
+    // The name stays put, so the outcome is said through the page's status line
     const flash = (state: CopyState) => {
         show(state);
+        const said = labels.find(([shows]) => shows === state)![1].textContent ?? "";
+        announce(doc, said);
         clearTimeout(timer);
-        timer = setTimeout(() => show("idle"), COPIED_MS);
+        timer = setTimeout(() => {
+            show("idle");
+            announce(doc, "", said);
+        }, COPIED_MS);
     };
     button.addEventListener("click", () => {
         // A write after waiting for the text would fall outside the click, which browsers refuse

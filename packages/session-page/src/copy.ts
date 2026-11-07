@@ -75,10 +75,15 @@ export const copy = {
         out: "Out",
         err: "Err",
     },
+    // Names the table for a screen reader's list of tables
+    commandsLabel: "Commands",
     expandAll: "Expand all",
     collapseAll: "Collapse all",
     copyOutput: "Copy output",
     copyCommand: "Copy command",
+    // Each name starts with the button's visible label, so a spoken command finds it
+    copyOutputOf: (seq: number) => `Copy output of command ${seq}`,
+    copyCommandOf: (seq: number) => `Copy command ${seq}`,
     copied: "Copied",
     // What was copied is all the page holds, which is less than the command wrote
     copiedPartial: "Copied, cut",
@@ -107,6 +112,7 @@ export const copy = {
     },
     openInExplorer: "Open in explorer",
     copySignature: "Copy signature",
+    copySignatureOf: (short: string) => `Copy signature ${short}`,
 
     cut: (bytes: number) => `Earlier output not kept (${formatBytes(bytes)})`,
     dropped: (n: number) => `Earlier lines not shown or copied: ${formatCount(n)}`,

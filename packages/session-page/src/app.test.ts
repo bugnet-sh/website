@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { startPage, type PageEnv } from "./app.ts";
 import { copy } from "./copy.ts";
 import { formatClock } from "./format.ts";
+import { createSessionHead } from "./render/session.ts";
 import type { Scheduler } from "./schedule.ts";
 import { makeScenarios, type Scenario } from "./testing/fixtures.ts";
 
@@ -141,6 +142,9 @@ const message = (app: HTMLElement) => text(app, ".message");
 const status = (app: HTMLElement) => text(app, ".session-state");
 const rows = (app: HTMLElement) => app.querySelectorAll("tr.cmd-row").length;
 const button = (app: HTMLElement, sel: string) => q<HTMLButtonElement>(app, sel)!;
+// The one label of a button that holds several and shows one
+const shownLabel = (b: HTMLElement) =>
+    [...b.children].find((c) => c.getAttribute("aria-hidden") !== "true")?.textContent ?? null;
 const stored = (s: Scenario) => window.sessionStorage.getItem(`bugnet.session.${s.id}`);
 
 interface Ended {
@@ -274,6 +278,26 @@ describe("the session row", () => {
         expect(vi.getTimerCount()).toBe(0);
     });
 
+    it("keeps the status current after a page translation replaced its words", () => {
+        const head = createSessionHead(document);
+        document.body.replaceChildren(head.root);
+        head.setStatus(copy.running, true);
+        const label = head.root.querySelector(".session-state .state-label")!;
+        expect(label.textContent).toBe(copy.running);
+        // What a browser's translation does: the text node goes, a font element takes its place
+        const font = document.createElement("font");
+        font.textContent = "[tr] Running";
+        label.replaceChildren(font);
+        head.setStatus(copy.reconnecting, false);
+        expect(head.root.querySelector(".session-state")!.textContent).toBe(copy.reconnecting);
+        head.setStatus(copy.ended("stopped"), false);
+        expect(head.root.querySelector(".session-state")!.textContent).toBe(copy.ended("stopped"));
+        // The words the page last set, not what the page now holds, decide a change
+        label.replaceChildren(font);
+        head.setStatus(copy.ended("stopped"), false);
+        expect(label.textContent).toBe("[tr] Running");
+    });
+
     it("marks the status line as sharing the page's left edge", async () => {
         const srv = server([first(scenarios["ended-full"])]);
         const { app } = open({ fetch: srv.fetch });
@@ -334,6 +358,28 @@ describe("an ended session", () => {
         expect(document.activeElement).toBe(bubble());
         bubble().dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
         expect(table()).toBeNull();
+        expect(document.activeElement).toBe(bubble());
+    });
+
+    it("closes an open table on Escape from inside it, and goes back to its bubble", async () => {
+        const srv = server([first(scenarios["ended-full"])]);
+        const { app } = open({ fetch: srv.fetch });
+        await settle();
+        const bubble = () => q<SVGGElement>(app, 'g.map-node[data-node-id="payments"]')!;
+        const holder = q(app, ".map-table")!;
+        expect(holder.id).not.toBe("");
+        expect(bubble().getAttribute("aria-controls")).toBe(holder.id);
+        expect(q(app, "button.map-row")!.getAttribute("aria-controls")).toBe(holder.id);
+        bubble().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+        expect(bubble().getAttribute("aria-expanded")).toBe("true");
+        const link = q<HTMLAnchorElement>(app, ".map-table a.tx-link")!;
+        link.focus();
+        link.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        expect(q(app, ".map-table .table-scroll")).toBeNull();
+        expect(bubble().getAttribute("aria-expanded")).toBe("false");
+        expect(document.activeElement).toBe(bubble());
+        // Escape with nothing open does nothing
+        holder.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
         expect(document.activeElement).toBe(bubble());
     });
 
@@ -417,7 +463,7 @@ describe("an ended session", () => {
         const row = () => q<HTMLButtonElement>(app, 'button.map-row[data-node-id="mcp"]')!;
         row().click();
         expect(q(app, '.map-table .table-scroll[data-node-id="mcp"]')).not.toBeNull();
-        expect(row().getAttribute("aria-pressed")).toBe("true");
+        expect(row().getAttribute("aria-expanded")).toBe("true");
         row().click();
         expect(q(app, ".map-table .table-scroll")).toBeNull();
     });
@@ -735,12 +781,36 @@ describe("the end states", () => {
         await settle();
         expect(message(app)).toBe(copy.rateLimited);
         const retry = button(app, "button.retry");
-        expect(retry.textContent).toBe(copy.retry);
+        expect(shownLabel(retry)).toBe(copy.retry);
         retry.click();
         retry.click();
         await settle();
         expect(srv.gets()).toHaveLength(2);
+        await advance(400);
         expect(rows(app)).toBe(6);
+    });
+
+    it("says it is loading for at least 400 ms after a retry, even when the answer is quick", async () => {
+        const srv = server([{ status: 429, body: null }]);
+        const { app } = open({ scenario: scenarios["rate-limited"], fetch: srv.fetch });
+        await settle();
+        const retry = button(app, "button.retry");
+        expect(retry.textContent).toBe(copy.retry + copy.loading);
+        retry.click();
+        expect(shownLabel(retry)).toBe(copy.loading);
+        expect(retry.disabled).toBe(true);
+        await settle();
+        expect(srv.gets()).toHaveLength(2);
+        // The same answer came at once, yet the page still shows that it is trying
+        expect(q(app, "button.retry")).toBe(retry);
+        await advance(399);
+        expect(q(app, "button.retry")).toBe(retry);
+        await advance(1);
+        const again = button(app, "button.retry");
+        expect(again).not.toBe(retry);
+        expect(shownLabel(again)).toBe(copy.retry);
+        expect(again.disabled).toBe(false);
+        expect(document.activeElement).toBe(q(app, "p.message"));
     });
 
     it("offers a retry when Bugnet cannot be reached", async () => {

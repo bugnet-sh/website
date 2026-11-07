@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { copy } from "../copy.ts";
 import type { Scheduler } from "../schedule.ts";
-import { COPIED_MS, copyButton, tip } from "./controls.ts";
+import { ANNOUNCER_ID, COPIED_MS, copyButton, tip, TIP_HIDE_MS } from "./controls.ts";
 
 function mount(text = "Nothing loads until you click.", label = "About this page") {
     const root = tip(document, text, label);
@@ -16,6 +16,9 @@ const key = (target: EventTarget, k: string) =>
     target.dispatchEvent(new KeyboardEvent("keydown", { key: k, bubbles: true }));
 
 describe("tip", () => {
+    beforeEach(() => void vi.useFakeTimers());
+    afterEach(() => void vi.useRealTimers());
+
     it("shows on focus, hides on Escape, and describes its button", () => {
         const { button, bubble } = mount();
         expect(bubble.textContent).toBe("Nothing loads until you click.");
@@ -33,12 +36,33 @@ describe("tip", () => {
         root.dispatchEvent(new MouseEvent("mouseenter"));
         expect(bubble.hidden).toBe(false);
         root.dispatchEvent(new MouseEvent("mouseleave"));
+        vi.advanceTimersByTime(TIP_HIDE_MS);
         expect(bubble.hidden).toBe(true);
         button.click();
         expect(bubble.hidden).toBe(false);
         button.focus();
         button.blur();
         expect(bubble.hidden).toBe(true);
+    });
+
+    it("stays while the pointer crosses the gap from its button onto its text", () => {
+        expect(TIP_HIDE_MS).toBe(300);
+        const { root, bubble } = mount();
+        root.dispatchEvent(new MouseEvent("mouseenter"));
+        root.dispatchEvent(new MouseEvent("mouseleave"));
+        vi.advanceTimersByTime(TIP_HIDE_MS - 1);
+        expect(bubble.hidden).toBe(false);
+        // The text is inside the tip, so reaching it enters the tip again
+        root.dispatchEvent(new MouseEvent("mouseenter"));
+        vi.advanceTimersByTime(TIP_HIDE_MS);
+        expect(bubble.hidden).toBe(false);
+        // Escape still hides at once, and no timer left behind hides it again later
+        root.dispatchEvent(new MouseEvent("mouseleave"));
+        key(document.body, "Escape");
+        expect(bubble.hidden).toBe(true);
+        root.dispatchEvent(new MouseEvent("mouseenter"));
+        vi.advanceTimersByTime(TIP_HIDE_MS);
+        expect(bubble.hidden).toBe(false);
     });
 
     it("closes on Escape anywhere while shown by hover", () => {
@@ -203,6 +227,49 @@ describe("copyButton", () => {
         await vi.advanceTimersByTimeAsync(1_500);
         expect(visible(button)).toBe(copy.copyOutput);
         ready = true;
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(clipboard.writeText).toHaveBeenCalledOnce();
+        expect(visible(button)).toBe(copy.copied);
+    });
+
+    it("takes a name of its own that starts with its label, and keeps it as it flashes", async () => {
+        const button = copyButton(document, copy.copyOutput, () => "x", board(), undefined, {
+            name: copy.copyOutputOf(3),
+        });
+        expect(button.getAttribute("aria-label")).toBe("Copy output of command 3");
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(button.getAttribute("aria-label")).toBe("Copy output of command 3");
+        expect(
+            copyButton(document, copy.copyOutput, () => "x", board()).hasAttribute("aria-label"),
+        ).toBe(false);
+    });
+
+    it("says each outcome in the page's status line, and clears it after 1,500 ms", async () => {
+        const announcer = document.createElement("p");
+        announcer.id = ANNOUNCER_ID;
+        announcer.setAttribute("role", "status");
+        const clipboard = board();
+        clipboard.writeText.mockRejectedValueOnce(new Error("denied"));
+        const button = copyButton(document, copy.copyOutput, () => "x", clipboard);
+        document.body.replaceChildren(announcer, button);
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(announcer.textContent).toBe(copy.copyFailed);
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(announcer.textContent).toBe(copy.copied);
+        await vi.advanceTimersByTimeAsync(1_499);
+        expect(announcer.textContent).toBe(copy.copied);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(announcer.textContent).toBe("");
+    });
+
+    it("copies as before on a page with no status line", async () => {
+        const clipboard = board();
+        const button = copyButton(document, copy.copyOutput, () => "x", clipboard);
+        document.body.replaceChildren(button);
         button.click();
         await vi.advanceTimersByTimeAsync(0);
         expect(clipboard.writeText).toHaveBeenCalledOnce();

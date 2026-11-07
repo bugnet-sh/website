@@ -135,21 +135,26 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
     const th = (text: string, cls?: string) =>
         el(doc, "th", { class: cls, text, attrs: { scope: "col" } });
     const tbody = el(doc, "tbody");
-    const table = el(doc, "table", { class: "commands", attrs: { "data-edge": "" } }, [
-        el(doc, "thead", {}, [
-            el(doc, "tr", {}, [
-                th(head.seq, "num"),
-                th(head.command),
-                th(head.exit),
-                th(head.time, "num col-wide"),
-                th(head.out, "num col-wide"),
-                th(head.err, "num col-wide"),
-                // The copy column needs no heading, and an empty th reads as a missing one
-                el(doc, "td"),
+    const table = el(
+        doc,
+        "table",
+        { class: "commands", attrs: { "data-edge": "", "aria-label": copy.commandsLabel } },
+        [
+            el(doc, "thead", {}, [
+                el(doc, "tr", {}, [
+                    th(head.seq, "num"),
+                    th(head.command),
+                    th(head.exit),
+                    th(head.time, "num col-wide"),
+                    th(head.out, "num col-wide"),
+                    th(head.err, "num col-wide"),
+                    // The copy column needs no heading, and an empty th reads as a missing one
+                    el(doc, "td"),
+                ]),
             ]),
-        ]),
-        tbody,
-    ]);
+            tbody,
+        ],
+    );
     const root = el(doc, "section", { class: "commands" }, [bar, note, table]);
 
     function bufferOf(seq: number): OutputBuffer {
@@ -192,6 +197,7 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             opts.clipboard,
             scheduler,
             {
+                name: copy.copyOutputOf(seq),
                 prepare: () => outputReady(seq),
                 isPartial: () => {
                     const buffer = bufferOf(seq);
@@ -338,7 +344,14 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
                 class: "cmd-toggle",
                 attrs: { type: "button", "aria-expanded": "false", "aria-controls": id },
             },
-            [el(doc, "span", { class: "cmd-text", text: oneLine(job.command) })],
+            // A command is code, which a page translation would rewrite
+            [
+                el(doc, "span", {
+                    class: "cmd-text",
+                    text: oneLine(job.command),
+                    attrs: { translate: "no" },
+                }),
+            ],
         );
         const exitCell = el(doc, "td", { class: "exit" });
         const timeCell = el(doc, "td", { class: "num col-wide" });
@@ -376,6 +389,14 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             setOpen(row, !row.open);
             syncExpand();
             notify([row], row.open);
+        });
+        // The whole row lights up on hover, so a click anywhere on it opens it; the toggle stays
+        // the one Tab stop, and a reader selecting text keeps the row as it was
+        tr.addEventListener("click", (e) => {
+            const target = e.target as Element;
+            if (target.closest("button, a") !== null) return;
+            if ((doc.getSelection()?.toString() ?? "") !== "") return;
+            toggle.click();
         });
         tbody.append(tr, detail);
         rows.set(job.seq, row);

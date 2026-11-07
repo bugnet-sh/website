@@ -78,6 +78,8 @@ export interface MapSelect {
     selectedId: string | null;
     // Called with the selected id again on Escape, so the page closes its table
     onSelect(id: string): void;
+    // The id of the element a selection opens, for each bubble's aria-controls
+    controls?: string;
 }
 
 export const MAX_RIGHT = 6;

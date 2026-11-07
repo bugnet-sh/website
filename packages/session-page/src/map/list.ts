@@ -14,16 +14,19 @@ function shown(parts: MetricPart[]): MetricPart[] {
     return paid === -1 ? parts : parts.slice(0, paid + 1);
 }
 
+// Names are hosts and ports, and metrics are numbers, which a translation would change
+const KEEP = { translate: "no" };
+
 function metricSpans(doc: Document, parts: MetricPart[]): HTMLSpanElement[] {
     return parts.map((part) =>
-        el(doc, "span", { class: part.money ? "money" : "muted", text: part.text }),
+        el(doc, "span", { class: part.money ? "money" : "muted", text: part.text, attrs: KEEP }),
     );
 }
 
 function row(doc: Document, node: MapNode, opts: MapSelect): HTMLLIElement {
     const selected = node.id === opts.selectedId;
     const parts = [
-        el(doc, "span", { class: "map-row-name", text: node.label }),
+        el(doc, "span", { class: "map-row-name", text: node.label, attrs: KEEP }),
         el(doc, "span", { class: "map-row-metric" }, metricSpans(doc, shown(node.metricParts))),
     ];
     if (node.refused > 0) {
@@ -41,7 +44,8 @@ function row(doc: Document, node: MapNode, opts: MapSelect): HTMLLIElement {
             class: selected ? "map-row is-selected" : "map-row",
             attrs: {
                 type: "button",
-                "aria-pressed": String(selected),
+                "aria-expanded": String(selected),
+                ...(opts.controls === undefined ? {} : { "aria-controls": opts.controls }),
                 "aria-label": accessibleName(node),
                 "data-node-id": node.id,
             },

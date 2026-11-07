@@ -50,6 +50,7 @@ export function createTerminalBlock(opts: {
             () => command,
             opts.clipboard,
             scheduler,
+            { name: copy.copyCommandOf(opts.seq) },
         );
         copyCommand.classList.add("copy-command");
         head.append(copyCommand);
@@ -61,7 +62,13 @@ export function createTerminalBlock(opts: {
         attrs: { tabindex: "0", role: "log", "aria-label": copy.outputLabel(opts.seq) },
     });
     const foot = el(doc, "p", { class: "term-foot parts" });
-    const root = el(doc, "div", { class: "term" }, [head, notes, out, foot]);
+    // The command and its output are code, which a page translation would rewrite
+    const root = el(doc, "div", { class: "term", attrs: { translate: "no" } }, [
+        head,
+        notes,
+        out,
+        foot,
+    ]);
 
     const nodes: HTMLElement[] = [];
     let droppedSeen = 0;
