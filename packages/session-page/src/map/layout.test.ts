@@ -106,6 +106,9 @@ const models: [string, () => MapModel][] = [
     ["ended-crowded", () => buildMap(recordOf("ended-crowded"))],
     ["ended-hostile", () => buildMap(recordOf("ended-hostile"))],
     ["ended-x402", () => buildMap(recordOf("ended-x402"))],
+    ["ended-x402-settling", () => buildMap(recordOf("ended-x402-settling"))],
+    ["ended-x402-kept", () => buildMap(recordOf("ended-x402-kept"))],
+    ["ended-x402-reconcile", () => buildMap(recordOf("ended-x402-reconcile"))],
     ["ended-empty", () => buildMap(recordOf("ended-empty"))],
     ["busiest", busiest],
 ];
@@ -404,6 +407,9 @@ describe("layoutMap edges", () => {
         expect(heights("ended-crowded")).toEqual([443.9, 387.9, 387.9, 387.9]);
         expect(heights("ended-hostile")).toEqual([252, 252, 252, 252]);
         expect(heights("ended-x402")).toEqual([289.1, 289.1, 289.1, 289.1]);
+        expect(heights("ended-x402-settling")).toEqual([254, 254, 254, 254]);
+        expect(heights("ended-x402-kept")).toEqual([261.5, 261.5, 261.5, 261.5]);
+        expect(heights("ended-x402-reconcile")).toEqual([261.5, 261.5, 261.5, 261.5]);
     });
 
     it("stacks Bugnet MCP, Payments and the Allowance in the left column", () => {
@@ -412,6 +418,9 @@ describe("layoutMap edges", () => {
             "ended-crowded",
             "ended-hostile",
             "ended-x402",
+            "ended-x402-settling",
+            "ended-x402-kept",
+            "ended-x402-reconcile",
         ] as const) {
             for (const width of widths) {
                 const left = layoutMap(buildMap(recordOf(name)), width).placed.filter(
