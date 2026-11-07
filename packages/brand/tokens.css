@@ -38,6 +38,8 @@
     --accent: #52ffb8;
     --accent-ink: #0a0a0a;
     --accent-2: #fab2ea;
+    /* The waves' middle stripe, between the two accents; decoration, so no contrast pair */
+    --waves-mid: #0ae16d;
     --bad: #ff6b6b;
     --warn: #f5c451;
 

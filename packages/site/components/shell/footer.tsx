@@ -1,4 +1,5 @@
 import { Logo } from "../brand/logo";
+import { FooterWaves } from "../waves/waves";
 import { Frame } from "./frame";
 import { github, linkText, ShellAnchor, type ShellLink } from "./links";
 
@@ -49,13 +50,8 @@ export function SiteFooter() {
                     </ul>
                 ))}
             </Frame>
-            {/* S3 mounts the waves here; the height is fixed so nothing moves when they load */}
             <Frame padded={false}>
-                <div
-                    data-testid="waves-slot"
-                    aria-hidden="true"
-                    className="pointer-events-none h-(--waves)"
-                />
+                <FooterWaves />
             </Frame>
         </footer>
     );

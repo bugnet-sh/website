@@ -77,4 +77,9 @@ export default tseslint.config(
             ],
         },
     },
+    {
+        // Vendored from React Bits as published, so it keeps its own @ts-nocheck
+        files: ["packages/site/components/waves/sliced-waves.tsx"],
+        rules: { "@typescript-eslint/ban-ts-comment": "off" },
+    },
 );
