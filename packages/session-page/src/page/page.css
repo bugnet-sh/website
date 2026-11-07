@@ -33,6 +33,8 @@
     /* Room for an amount of 15 characters, such as 123.456789 USDC */
     --col-amount: 144px;
     --col-tx: 224px;
+    /* What a phone list row's name keeps beside counts and amounts that never cut */
+    --row-name-min: 96px;
     --pulse: 1.6s;
     --gap-inline: var(--space-4);
     /* Full-bleed blocks pad to the centred column, so hairlines run edge to edge */
@@ -519,12 +521,13 @@ h1 {
     list-style: none;
 }
 
+/* A row grows a line when its counts and amounts wrap, since none of them is ever cut */
 .map-row {
     display: flex;
     align-items: center;
     gap: var(--gap-inline);
     width: 100%;
-    height: var(--row);
+    min-height: var(--row);
     /* The selected ring is drawn on the row's edge, so the text keeps off it on both sides */
     padding: 0 var(--space-2);
     border: 0;
@@ -548,27 +551,22 @@ h1 {
         0 0 0 var(--hairline) var(--accent);
 }
 
-.map-row-name,
-.map-row-metric,
-.map-row-refused {
-    min-width: 0;
-}
-
 /* The name takes the cut, so a count, an amount or a refusal stays whole */
 .map-row-name {
-    flex: 1 1 0;
+    flex: 1 0 var(--row-name-min);
+    min-width: 0;
     font-weight: 600;
 }
 
-.map-row-metric,
-.map-row-refused {
-    flex: 0 1 auto;
-    font-size: var(--small-size);
-}
-
+/* Its least width is its widest part, so a narrow row wraps the parts rather than cut them */
 .map-row-metric {
     display: flex;
+    flex: 0 1 auto;
+    flex-wrap: wrap;
+    justify-content: flex-end;
     column-gap: var(--gap-inline);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
 }
 
 .map-list .map-empty {
@@ -657,6 +655,37 @@ table.events caption {
 table.events td {
     font-size: var(--small-size);
     white-space: nowrap;
+}
+
+/* The Allowance's few rows and its totals show whole, so its open tip is never clipped */
+.table-scroll.is-whole {
+    max-height: none;
+    overflow: visible;
+}
+
+/* With no scroller of its own, a sticky head would stick to the page instead */
+.table-scroll.is-whole thead th {
+    position: static;
+}
+
+/* The tip's text drops under the caption, as wide as the table allows */
+table.events caption.has-tip {
+    position: relative;
+}
+
+caption.has-tip .tip {
+    margin-inline-start: var(--space-2);
+    vertical-align: middle;
+}
+
+/* Each total is its label and, in the Amount column, its value */
+table.events tfoot th {
+    font-size: var(--small-size);
+    font-weight: 400;
+}
+
+table.events td.totals-note {
+    white-space: normal;
 }
 
 .tx-link {
@@ -945,9 +974,7 @@ tr.cmd-detail > td {
  * text never runs wider than its box the way a one-line text-overflow cut does
  */
 .cmd-text,
-.map-row-name,
-.map-row-metric > span,
-.map-row-refused {
+.map-row-name {
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 1;
@@ -1069,7 +1096,8 @@ tr.cmd-detail > td {
     }
 
     table.events td.ev-event,
-    table.events td.ev-detail {
+    table.events td.ev-detail,
+    table.events tfoot th {
         white-space: normal;
         overflow-wrap: anywhere;
         line-height: var(--small-line);
@@ -1100,7 +1128,10 @@ tr.cmd-detail > td {
         width: 100%;
     }
 
-    /* Each event is a small grid, time, event and amount, then its detail and transaction */
+    /*
+     * Each event is a small grid, time, event and amount, then its detail and transaction. A
+     * total's label takes the time and event tracks, its value the amount's.
+     */
     table.events thead {
         position: absolute;
         width: var(--hairline);
@@ -1110,20 +1141,32 @@ tr.cmd-detail > td {
         white-space: nowrap;
     }
 
-    table.events tbody tr {
+    table.events tbody tr,
+    table.events tfoot tr {
         display: grid;
         grid-template-columns: auto 1fr auto;
         column-gap: var(--space-3);
         box-shadow: inset 0 calc(-1 * var(--hairline)) 0 var(--line);
     }
 
-    table.events td {
+    table.events td,
+    table.events tfoot th {
         display: flex;
         align-items: center;
         height: auto;
         min-height: var(--row);
         padding: 0;
         box-shadow: none;
+    }
+
+    table.events tfoot th {
+        grid-area: 1 / 1 / auto / 3;
+        white-space: normal;
+        overflow-wrap: anywhere;
+    }
+
+    table.events td.totals-note {
+        grid-area: 1 / 1 / auto / -1;
     }
 
     table.events td.ev-time {
@@ -1157,11 +1200,13 @@ tr.cmd-detail > td {
 }
 
 @media (forced-colors: active) and (max-width: 767.98px) {
-    table.events tbody tr {
+    table.events tbody tr,
+    table.events tfoot tr {
         border-bottom: var(--hairline) solid CanvasText;
     }
 
-    table.events td {
+    table.events td,
+    table.events tfoot th {
         border-bottom: 0;
     }
 }

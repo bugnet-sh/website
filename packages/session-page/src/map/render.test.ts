@@ -379,7 +379,7 @@ describe("renderMapList", () => {
         expect(payments.getAttribute("aria-label")).toBe("Payments, 0.075 USDC paid");
         const search = rowOf(list, "x402-host:search-api.example");
         const metric = [...search.querySelectorAll(".map-row-metric > span")];
-        expect(metric.map((s) => s.textContent)).toEqual(["5 calls", "0.024 USDC"]);
+        expect(metric.map((s) => s.textContent)).toEqual(["5 calls", "0.024 USDC", "3 refused"]);
         expect(search.getAttribute("aria-label")).toBe(
             "search-api.example, 5 calls, 0.024 USDC, 3 refused",
         );
@@ -418,6 +418,7 @@ describe("renderMapList", () => {
         expect(parts(search, ".map-row-metric span")).toEqual([
             ["5 calls", "muted"],
             ["0.024 USDC", "money"],
+            ["3 refused", "map-row-refused warn"],
         ]);
         expect(parts(rowOf(list, "mcp"), ".map-row-metric span")).toEqual([
             ["19 tool calls", "muted"],
@@ -590,5 +591,204 @@ describe("renderEventTable", () => {
         );
         // Every refusal reads in the warning colour, a seller out of reach included
         expect(tones).toEqual(["", "", "warn", "warn", "warn"]);
+    });
+});
+
+describe("the x402 view", () => {
+    const x402 = () => modelOf("ended-x402");
+    const tableOf = (model: MapModel, id: string) =>
+        renderEventTable(document, nodeOf(model, id), {
+            now,
+            clipboard: clipboard(),
+            allowance: model.allowance,
+        });
+    // Each total's label, value and the value's tone
+    const totalsOf = (root: Element) =>
+        [...root.querySelectorAll("tfoot tr.total")].map((tr) => {
+            const value = tr.querySelector("td.ev-amount")!;
+            const tone = ["money", "muted"].find((c) => value.classList.contains(c)) ?? "";
+            return [tr.querySelector("th")!.textContent, value.textContent, tone];
+        });
+
+    it("draws the Allowance under Payments, in the left column after Bugnet MCP", () => {
+        const layout = layoutMap(x402(), 900);
+        const left = layout.placed.filter((p) => p.node.side === "left");
+        expect(left.map((p) => p.node.id)).toEqual(["mcp", "payments", "allowance"]);
+        const { svg } = svgOf(x402());
+        const circle = (id: string) => bubble(svg, id).querySelector("circle.map-bubble")!;
+        const at = (id: string, a: string) => Number(circle(id).getAttribute(a));
+        expect(at("allowance", "cx")).toBe(at("payments", "cx"));
+        expect(at("allowance", "cy")).toBeGreaterThan(at("payments", "cy"));
+        expect(labelLines(bubble(svg, "allowance"))).toEqual([
+            ["Allowance"],
+            ["0.1 USDC", "paid in"],
+        ]);
+    });
+
+    it("draws each unregistered name's edge dashed in the warning colour, its name as text", () => {
+        const model = x402();
+        const { svg } = svgOf(model);
+        const refused = model.nodes.filter((n) => n.kind === "refused-host");
+        expect(refused.map((n) => [n.fullLabel, n.label])).toEqual([
+            [copy.nodes.otherNames, copy.nodes.otherNames],
+            ["mirror.example", "mirror.example"],
+            // Cut to the label limit like any name, whole in the title
+            ["pay.unknown-seller.example", "pay.unknown-seller.exam…"],
+        ]);
+        for (const node of refused) {
+            const line = svg.querySelector(`line[data-node-id="${node.id}"]`)!;
+            // The warn class dashes the line, from the stylesheet's --dash
+            expect(line.getAttribute("class")).toBe("map-edge warn");
+            const g = bubble(svg, node.id);
+            expect(g.querySelector("title")!.textContent).toBe(node.fullLabel);
+            expect(g.querySelector("tspan.map-name")!.textContent).toBe(node.label);
+            expect(g.querySelector("a")).toBeNull();
+        }
+    });
+
+    it("mutes a settling amount, never in the money colour", () => {
+        const model = x402();
+        const search = tableOf(model, "x402-host:search-api.example");
+        const amounts = [...search.querySelectorAll("tbody tr")].flatMap((tr) => {
+            const td = tr.querySelector("td.ev-amount")!;
+            return td.textContent === "" ? [] : [[td.textContent, td.className]];
+        });
+        expect(amounts).toEqual([
+            ["0.012 USDC", "ev-amount num money"],
+            ["0.002 USDC", "ev-amount num muted"],
+        ]);
+        const data = tableOf(model, "x402-host:data-api.example");
+        const settling = [...data.querySelectorAll("tbody td.ev-amount")].filter(
+            (td) => td.textContent !== "",
+        );
+        expect(settling.map((td) => [td.textContent, td.className])).toEqual([
+            ["0.005 USDC", "ev-amount num muted"],
+        ]);
+    });
+
+    it("heads the Allowance table with its tip", () => {
+        const root = tableOf(x402(), "allowance");
+        const caption = root.querySelector("caption")!;
+        expect(caption.firstElementChild!.textContent).toBe("Allowance");
+        const button = caption.querySelector(".tip-button")!;
+        expect(button.getAttribute("aria-label")).toBe("About the allowance");
+        expect(caption.querySelector('[role="tooltip"]')!.textContent).toBe(copy.allowanceTip);
+        // The tip's button would otherwise join the caption in the table's name
+        expect(root.querySelector("table")!.getAttribute("aria-label")).toBe("Allowance");
+        const payments = tableOf(x402(), "payments");
+        expect(payments.querySelector(".tip")).toBeNull();
+        expect(payments.querySelector("tfoot")).toBeNull();
+    });
+
+    it("lists the totals under the Allowance's rows, in order", () => {
+        const root = tableOf(x402(), "allowance");
+        const reason = (key: string, calls: number) => [
+            copy.totals.refused(copy.x402.reason(key), calls),
+            "",
+            "",
+        ];
+        expect(totalsOf(root)).toEqual([
+            ["Paid in", "0.100 USDC", "money"],
+            ["Spent on search-api.example", "0.012 USDC", "money"],
+            ["Spent on weather-api.example", "0.003 USDC", "money"],
+            ["Settling, 2 calls", "0.007 USDC", "muted"],
+            ["Refunded", "0.078 USDC", "money"],
+            reason("allowance_spent", 41),
+            reason("refused_host", 22),
+            reason("body_too_large", 1),
+            reason("network_unsupported", 1),
+            reason("payee_changed", 1),
+            reason("payments_unavailable", 1),
+            reason("price_above_max", 1),
+            reason("splits_unsupported", 1),
+            reason("upstream_unreachable", 1),
+        ]);
+        expect(root.querySelector("tfoot")!.getAttribute("role")).toBe("rowgroup");
+        // The rows' amounts and the totals' values share one column and one fraction
+        const heads = [...root.querySelectorAll("thead th")].map((th) => th.textContent);
+        expect(heads).toEqual(["Time", "Event", "Amount", "Transaction"]);
+        for (const tr of root.querySelectorAll("tfoot tr.total")) {
+            const th = tr.querySelector("th")!;
+            expect(th.getAttribute("scope")).toBe("row");
+            expect(th.getAttribute("colspan")).toBe("2");
+            expect([...tr.children].map((c) => c.className)).toEqual([
+                "total-label",
+                expect.stringMatching(/^ev-amount num/),
+                "ev-tx",
+            ]);
+        }
+        const refund = [...root.querySelectorAll("tfoot tr.total")][4]!;
+        const tx = x402().allowance!.refunded!.tx!;
+        expect(refund.querySelector("a")!.getAttribute("href")).toBe(
+            `https://explorer.solana.com/tx/${tx}`,
+        );
+        expect(refund.querySelector(".copy-button")).not.toBeNull();
+    });
+
+    it("shows the amount kept, with no settling line when nothing settles", () => {
+        const model = modelOf("ended-x402-kept");
+        expect(totalsOf(tableOf(model, "allowance"))).toEqual([
+            ["Paid in", "0.050 USDC", "money"],
+            ["Spent on search-api.example", "0.036 USDC", "money"],
+            ["Spent on weather-api.example", "0.010 USDC", "money"],
+            ["Kept under the minimum", "0.004 USDC", "money"],
+        ]);
+    });
+
+    it("says the figures are being reconciled in place of the totals", () => {
+        const root = tableOf(modelOf("ended-x402-reconcile"), "allowance");
+        const foot = root.querySelector("tfoot")!;
+        expect(foot.textContent).toBe("These figures are being reconciled.");
+        expect(foot.querySelectorAll("tr")).toHaveLength(1);
+        expect(foot.querySelector("td")!.getAttribute("colspan")).toBe("4");
+        expect(totalsOf(root)).toEqual([]);
+        expect(root.textContent).not.toContain(copy.totals.paidIn);
+    });
+
+    it("shows the parts of an Allowance row and a host row on a phone, none of them cut", () => {
+        const list = renderMapList(document, x402(), { selectedId: null, onSelect: vi.fn() });
+        const row = (id: string) => list.querySelector(`[data-node-id="${id}"]`)!;
+        expect(parts(row("allowance"), ".map-row-metric > span")).toEqual([
+            ["0.1 USDC", "money"],
+            ["paid in", "muted"],
+        ]);
+        expect(parts(row("x402-host:search-api.example"), ".map-row-metric > span")).toEqual([
+            ["45 calls", "muted"],
+            ["0.012 USDC", "money"],
+            ["1 settling", "muted"],
+            ["43 refused", "map-row-refused warn"],
+        ]);
+        expect(parts(row("x402-host:data-api.example"), ".map-row-metric > span")).toEqual([
+            ["6 calls", "muted"],
+            ["1 settling", "muted"],
+            ["3 refused", "map-row-refused warn"],
+        ]);
+    });
+
+    it("never draws a middle dot", () => {
+        // Spelled by its code point, since the page's code may not hold the character itself
+        const MIDDLE_DOT = String.fromCodePoint(0xb7);
+        const names: ScenarioName[] = [
+            "ended-full",
+            "ended-x402",
+            "ended-x402-settling",
+            "ended-x402-kept",
+            "ended-x402-reconcile",
+        ];
+        for (const name of names) {
+            const model = modelOf(name);
+            const select = { selectedId: null, onSelect: vi.fn() };
+            const roots: Element[] = [
+                renderMapSvg(document, layoutMap(model, 900), select),
+                renderMapList(document, model, select),
+                ...model.nodes.map((n) => tableOf(model, n.id)),
+            ];
+            for (const root of roots) {
+                const attrs = [root, ...root.querySelectorAll("*")].flatMap((e) =>
+                    [...e.attributes].map((a) => a.value),
+                );
+                expect([root.textContent, ...attrs].join("\n"), name).not.toContain(MIDDLE_DOT);
+            }
+        }
     });
 });

@@ -8,12 +8,6 @@ import {
     type MetricPart,
 } from "./model.ts";
 
-// The count and the total paid, so Payments leaves its refund to the table and the row's name
-function shown(parts: MetricPart[]): MetricPart[] {
-    const paid = parts.findIndex((p) => p.amount);
-    return paid === -1 ? parts : parts.slice(0, paid + 1);
-}
-
 // Names are hosts and ports, and metrics are numbers, which a translation would change
 const KEEP = { translate: "no" };
 
@@ -23,20 +17,22 @@ function metricSpans(doc: Document, parts: MetricPart[]): HTMLSpanElement[] {
     );
 }
 
+// The whole metric, then the refusals, which wrap together when the row is narrow
 function row(doc: Document, node: MapNode, opts: MapSelect): HTMLLIElement {
     const selected = node.id === opts.selectedId;
-    const parts = [
-        el(doc, "span", { class: "map-row-name", text: node.label, attrs: KEEP }),
-        el(doc, "span", { class: "map-row-metric" }, metricSpans(doc, shown(node.metricParts))),
-    ];
+    const metric = metricSpans(doc, node.metricParts);
     if (node.refused > 0) {
-        parts.push(
+        metric.push(
             el(doc, "span", {
                 class: "map-row-refused warn",
                 text: copy.metrics.refused(node.refused),
             }),
         );
     }
+    const parts = [
+        el(doc, "span", { class: "map-row-name", text: node.label, attrs: KEEP }),
+        el(doc, "span", { class: "map-row-metric" }, metric),
+    ];
     const button = el(
         doc,
         "button",

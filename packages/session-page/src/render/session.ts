@@ -8,7 +8,7 @@
 import { copy } from "../copy.ts";
 import { layoutMap } from "../map/layout.ts";
 import { renderMapList } from "../map/list.ts";
-import { buildMap, type MapNode, type MapSelect } from "../map/model.ts";
+import { buildMap, type MapModel, type MapNode, type MapSelect } from "../map/model.ts";
 import { fitLabels, renderMapSvg } from "../map/svg.ts";
 import { renderEventTable } from "../map/table.ts";
 import type { SessionRecord } from "../payload.ts";
@@ -206,8 +206,11 @@ export interface MapSection {
 // Events can still land after the end, and an unchanged record keeps the reader's place
 const recordKey = (record: SessionRecord) => JSON.stringify([record.events, record.eventsDropped]);
 
-const rowsKey = (node: MapNode | undefined) =>
-    node === undefined ? "" : JSON.stringify(node.rows);
+// The Allowance's totals sum other nodes' calls, so they can change while its own rows do not
+const tableKey = (model: MapModel, node: MapNode | undefined) =>
+    node === undefined
+        ? ""
+        : JSON.stringify([node.rows, node.kind === "allowance" ? model.allowance : null]);
 
 const FOCUSABLE = "a[href], button, [tabindex]";
 
@@ -316,7 +319,13 @@ export function createMapSection(
         table.replaceChildren(
             ...(node === undefined
                 ? []
-                : [renderEventTable(doc, node, { now: opts.now(), clipboard: opts.clipboard })]),
+                : [
+                      renderEventTable(doc, node, {
+                          now: opts.now(),
+                          clipboard: opts.clipboard,
+                          allowance: model.allowance,
+                      }),
+                  ]),
         );
     }
 
@@ -364,15 +373,15 @@ export function createMapSection(
             const key = recordKey(next);
             if (key === shownKey) return;
             shownKey = key;
-            const shownRows = rowsKey(selected());
+            const shownTable = tableKey(model, selected());
             const active = doc.activeElement;
             const place = active !== null && table.contains(active) ? placeOf(table, active) : null;
             model = buildMap(next);
             if (!model.nodes.some((n) => n.id === selectedId)) selectedId = null;
             showCaption();
             redraw(true, true);
-            // An open table whose rows did not change keeps the reader's scroll and focus
-            if (selectedId !== null && rowsKey(selected()) === shownRows) return;
+            // An open table that did not change keeps the reader's scroll and focus
+            if (selectedId !== null && tableKey(model, selected()) === shownTable) return;
             showTable();
             if (place !== null) findPlace(table, place)?.focus();
         },

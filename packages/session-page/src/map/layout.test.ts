@@ -105,6 +105,7 @@ const models: [string, () => MapModel][] = [
     ["ended-full", () => buildMap(recordOf("ended-full"))],
     ["ended-crowded", () => buildMap(recordOf("ended-crowded"))],
     ["ended-hostile", () => buildMap(recordOf("ended-hostile"))],
+    ["ended-x402", () => buildMap(recordOf("ended-x402"))],
     ["ended-empty", () => buildMap(recordOf("ended-empty"))],
     ["busiest", busiest],
 ];
@@ -398,8 +399,31 @@ describe("layoutMap edges", () => {
     it("crops the maps to the heights it draws them at", () => {
         const heights = (name: ScenarioName) =>
             widths.map((w) => Math.round(layoutMap(buildMap(recordOf(name)), w).height * 10) / 10);
+        // Each of these maps has its Allowance under Payments
         expect(heights("ended-full")).toEqual([390, 390, 390, 390]);
         expect(heights("ended-crowded")).toEqual([443.9, 387.9, 387.9, 387.9]);
+        expect(heights("ended-hostile")).toEqual([252, 252, 252, 252]);
+        expect(heights("ended-x402")).toEqual([289.1, 289.1, 289.1, 289.1]);
+    });
+
+    it("stacks Bugnet MCP, Payments and the Allowance in the left column", () => {
+        for (const name of [
+            "ended-full",
+            "ended-crowded",
+            "ended-hostile",
+            "ended-x402",
+        ] as const) {
+            for (const width of widths) {
+                const left = layoutMap(buildMap(recordOf(name)), width).placed.filter(
+                    (p) => p.node.side === "left",
+                );
+                expect(left.map((p) => p.node.id)).toEqual(["mcp", "payments", "allowance"]);
+                expect(new Set(left.map((p) => p.x)).size).toBe(1);
+                expect(left.map((p) => p.y)).toEqual(
+                    [...left.map((p) => p.y)].sort((a, b) => a - b),
+                );
+            }
+        }
     });
 
     it("anchors left labels at the end and right labels at the start", () => {
