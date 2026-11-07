@@ -8,10 +8,11 @@
  * a column. The centre moves sideways only when an edge label needs the room, first for every
  * edge's shortest label, then for the amounts. Each edge label starts in its shortest form, then
  * takes the fullest form that clears every circle, label and other edge label. Label sizes are
- * estimated at 7.5 px per character on 16 px lines, wider than the page's fonts draw them.
+ * estimated at 7.5 px per character on 16 px lines, wider than the page's fonts draw them, plus a
+ * fixed gap between the parts of a line.
  */
 import { copy } from "../copy.ts";
-import { partsText, type MapModel, type MapNode, type MetricPart } from "./model.ts";
+import type { MapModel, MapNode, MetricPart } from "./model.ts";
 
 export interface Placed {
     node: MapNode;
@@ -46,8 +47,8 @@ export interface MapEdge {
     y1: number;
     x2: number;
     y2: number;
-    // The edge label of session-page-ui.md 5 in full, such as "5 · 0.024 USDC" for calls and paid
-    label: string;
+    // The edge label of session-page-ui.md 5 in full, such as the calls and the total paid
+    label: EdgePart[];
     dashed: boolean;
     money: boolean;
     refusedLabel: string | null;
@@ -68,6 +69,8 @@ export interface MapLayout {
 const CHAR_WIDTH = 7.5;
 export const LINE_HEIGHT = 16;
 export const ASCENT = 12;
+// The page's --gap-inline, between the parts of one line
+export const GAP = 16;
 
 const HEIGHT = 460;
 const CENTER_Y = 190;
@@ -95,17 +98,22 @@ export function radiusFor(count: number): number {
 
 const chars = (s: string) => Array.from(s).length;
 
-// A 720 px column holds about 26 characters, so a metric over 24 draws only its first amount
+function partsWidth(parts: readonly { text: string }[]): number {
+    const text = parts.reduce((n, p) => n + chars(p.text), 0) * CHAR_WIDTH;
+    return text + GAP * Math.max(0, parts.length - 1);
+}
+
+// A 720 px column holds about 26 characters, so a wider metric draws only its first amount
 function metricLines(node: MapNode): MetricPart[][] {
     const parts = node.metricParts;
     if (parts.length === 0) return [];
-    if (chars(node.metric) <= LINE_CHARS) return [parts];
+    if (partsWidth(parts) <= LINE_CHARS * CHAR_WIDTH) return [parts];
     const amount = parts.find((p) => p.money);
     return [amount ? [amount] : parts];
 }
 
 function labelWidth(node: MapNode, metricLines: MetricPart[][]): number {
-    return Math.max(...[node.label, ...metricLines.map(partsText)].map(chars)) * CHAR_WIDTH;
+    return Math.max(chars(node.label) * CHAR_WIDTH, ...metricLines.map(partsWidth));
 }
 
 const blockHeight = (metricLines: MetricPart[][]) => (1 + metricLines.length) * LINE_HEIGHT;
@@ -113,7 +121,7 @@ const blockHeight = (metricLines: MetricPart[][]) => (1 + metricLines.length) * 
 /* Edge labels */
 
 interface EdgeText {
-    label: string;
+    label: EdgePart[];
     refusedLabel: string | null;
     // Fullest first, the last is the one an edge keeps when nothing fuller fits
     forms: EdgePart[][][];
@@ -126,27 +134,26 @@ function edgeText(node: MapNode): EdgeText {
     if (node.kind === "payments") {
         const total = paid ?? { text: copy.metrics.usdc(0), tone: "muted" };
         // Any other figure here would read as the total, so a total with no room leaves it bare
-        return { label: total.text, refusedLabel: null, forms: [[[total]], []] };
+        return { label: [total], refusedLabel: null, forms: [[[total]], []] };
     }
     const allRefused = node.refused > 0 && node.refused === node.count;
     const count: EdgePart = { text: String(node.count), tone: allRefused ? "warn" : "muted" };
     const full = paid ? [count, paid] : [count];
-    const label = partsText(full);
     const kept = paid ? [full, [paid], [count]] : [full];
     if (node.refused === 0 || allRefused) {
-        return { label, refusedLabel: null, forms: kept.map((parts) => [parts]) };
+        return { label: full, refusedLabel: null, forms: kept.map((parts) => [parts]) };
     }
     const refusedLabel = copy.metrics.refused(node.refused);
     const refused: EdgePart = { text: refusedLabel, tone: "warn" };
     const forms = kept.flatMap((parts) => [[[...parts, refused]], [parts, [refused]]]);
     // The refusals show nowhere else on the map, so they are the last thing an edge gives up
     forms.push([[refused]]);
-    return { label, refusedLabel, forms };
+    return { label: full, refusedLabel, forms };
 }
 
 function formWidth(lines: EdgePart[][]): number {
     if (lines.length === 0) return 0;
-    return Math.max(...lines.map((line) => chars(partsText(line)))) * CHAR_WIDTH + 2 * EDGE_PAD;
+    return Math.max(...lines.map(partsWidth)) + 2 * EDGE_PAD;
 }
 
 // Need is the shortest form, want the shortest that still shows the money or says anything

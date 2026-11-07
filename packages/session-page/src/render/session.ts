@@ -12,7 +12,7 @@ import { renderMapSvg } from "../map/svg.ts";
 import { renderEventTable } from "../map/table.ts";
 import type { SessionRecord } from "../payload.ts";
 import type { Clipboard } from "./controls.ts";
-import { el } from "./dom.ts";
+import { el, partSpans } from "./dom.ts";
 
 const EDGE = { "data-edge": "" };
 
@@ -142,7 +142,7 @@ function deleteControl(doc: Document, onDelete: OnDelete): HTMLElement {
 }
 
 export function createSessionMeta(doc: Document, onDelete: OnDelete): SessionMeta {
-    const times = el(doc, "p", { class: "session-times" });
+    const times = el(doc, "p", { class: "session-times parts" });
     const root = el(doc, "div", { class: "session-meta", attrs: EDGE }, [
         times,
         deleteControl(doc, onDelete),
@@ -151,16 +151,11 @@ export function createSessionMeta(doc: Document, onDelete: OnDelete): SessionMet
     return {
         root,
         setTimes(parts) {
-            const joined = parts.join(copy.SEP);
+            const joined = parts.join("\n");
             if (joined === shown) return;
             shown = joined;
             // Each part stays on one line, so a narrow screen breaks only between parts
-            times.replaceChildren(
-                ...parts.flatMap((part, i) => {
-                    const span = el(doc, "span", { class: "time-part", text: part });
-                    return i === 0 ? [span] : [el(doc, "span", { text: copy.SEP }), span];
-                }),
-            );
+            times.replaceChildren(...partSpans(doc, parts, "time-part"));
         },
     };
 }

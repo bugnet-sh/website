@@ -2,7 +2,7 @@ import { copy } from "../copy.ts";
 import { formatClock, formatUsdc, shortSignature } from "../format.ts";
 import { isSignature } from "../payload.ts";
 import { copyButton, type Clipboard } from "../render/controls.ts";
-import { el } from "../render/dom.ts";
+import { el, partSpans } from "../render/dom.ts";
 import type { EventRow, MapNode } from "./model.ts";
 
 const EXPLORER = "https://explorer.solana.com/tx/";
@@ -40,7 +40,14 @@ function rowEl(doc: Document, row: EventRow, opts: TableOpts): HTMLTableRowEleme
     return el(doc, "tr", {}, [
         el(doc, "td", { class: "num" }, [time]),
         el(doc, "td", { text: row.event }),
-        el(doc, "td", { class: row.tone === "normal" ? "" : row.tone, text: row.detail }),
+        el(
+            doc,
+            "td",
+            { class: row.tone === "normal" ? "" : row.tone },
+            row.detail.length === 0
+                ? []
+                : [el(doc, "span", { class: "parts" }, partSpans(doc, row.detail))],
+        ),
         row.amountMicros === null
             ? el(doc, "td", { class: "num" })
             : el(doc, "td", { class: "num money", text: formatUsdc(row.amountMicros) }),

@@ -28,7 +28,7 @@ function make(command: string | null = "ls") {
         seq: 3,
         command,
         notices: () => [],
-        footer: () => null,
+        footer: () => [],
         scheduler,
     });
     scheduler.flush();
@@ -111,7 +111,7 @@ describe("terminal block", () => {
         expect(out.getAttribute("aria-label")).toBe(copy.outputLabel(3));
     });
 
-    it("shows notices and footer from the caller", () => {
+    it("shows notices and the footer's parts from the caller", () => {
         const buffer = new OutputBuffer();
         const scheduler = manual();
         const block = createTerminalBlock({
@@ -120,12 +120,20 @@ describe("terminal block", () => {
             seq: 1,
             command: "x",
             notices: () => [copy.cut(2048)],
-            footer: () => "exit 0",
+            footer: () => ["exit 0", "9.2 s"],
             scheduler,
         });
         scheduler.flush();
         expect(block.root.querySelector(".term-notes")!.textContent).toBe(copy.cut(2048));
-        expect(block.root.querySelector(".term-foot")!.textContent).toBe("exit 0");
+        const foot = block.root.querySelector<HTMLElement>(".term-foot")!;
+        expect([...foot.children].map((p) => p.textContent)).toEqual(["exit 0", "9.2 s"]);
+        expect(foot.classList.contains("parts")).toBe(true);
+        expect(foot.hidden).toBe(false);
+    });
+
+    it("hides the footer while it has no parts", () => {
+        const { block } = make();
+        expect(block.root.querySelector<HTMLElement>(".term-foot")!.hidden).toBe(true);
     });
 
     it("keeps the notice nodes while the notices stay the same", () => {
@@ -137,7 +145,7 @@ describe("terminal block", () => {
             seq: 1,
             command: "x",
             notices: () => [copy.cut(2048)],
-            footer: () => null,
+            footer: () => [],
             scheduler,
         });
         scheduler.flush();

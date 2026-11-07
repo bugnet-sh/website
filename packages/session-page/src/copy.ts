@@ -10,9 +10,6 @@ const endedReason: Record<EndedBecause, string> = {
     other: "",
 };
 
-// Every template that joins parts uses it, and the map measures its label lines with it
-const SEP = " · ";
-
 export interface ExitInfo {
     state: JobState;
     exitCode: number | null;
@@ -22,7 +19,6 @@ export interface ExitInfo {
 
 // Byte and count parameters take numbers, while times come formatted, since they need the clock
 export const copy = {
-    SEP,
     title: "Bugnet sandbox session",
     heading: "Sandbox session",
     logoLabel: "Bugnet",
@@ -34,7 +30,7 @@ export const copy = {
     running: "Running",
     endedReason,
     ended: (because: EndedBecause) =>
-        because === "other" ? "Ended" : `Ended${SEP}${endedReason[because]}`,
+        because === "other" ? "Ended" : `Ended: ${endedReason[because]}`,
     started: (time: string) => `Started ${time}`,
     endedAt: (time: string) => `Ended ${time}`,
     ends: (time: string, left: string) => `Ends ${time} (${left} left)`,
@@ -107,16 +103,16 @@ export const copy = {
     dropped: (n: number) => `Earlier lines dropped from this view: ${n}`,
     skipped: (bytes: number) => `${formatBytes(bytes)} earlier not shown`,
     outputLabel: (seq: number) => `Output of command ${seq}`,
-    // Null while the job runs, since it has no last line yet
-    exitLine: (job: ExitInfo, durationMs: number): string | null => {
+    // The parts of a job's last line, which the page shows side by side
+    exitLine: (job: ExitInfo, durationMs: number): string[] => {
         const took = formatDuration(durationMs);
-        if (job.oom) return `killed: out of memory${SEP}${took}`;
-        if (job.state === "lost") return `lost${SEP}${took}`;
-        if (job.state === "cancelled") return `cancelled${SEP}${took}`;
-        if (job.state === "running") return null;
-        const peak = job.peakMib > 0 ? `${SEP}peak ${job.peakMib} MiB` : "";
-        if (job.exitCode === null) return `${took}${peak}`;
-        return `exit ${job.exitCode}${SEP}${took}${peak}`;
+        if (job.oom) return ["killed: out of memory", took];
+        if (job.state === "lost") return ["lost", took];
+        if (job.state === "cancelled") return ["cancelled", took];
+        if (job.state === "running") return ["running", took];
+        const peak = job.peakMib > 0 ? [`peak ${job.peakMib}\u00a0MiB`] : [];
+        if (job.exitCode === null) return [took, ...peak];
+        return [`exit ${job.exitCode}`, took, ...peak];
     },
     waiting: "Waiting for a free stream…",
     limit: "Live output limit reached for this sandbox.",
@@ -175,8 +171,10 @@ export const copy = {
         download: "Download",
         sshStarted: "SSH session started",
         sshEnded: "SSH session ended",
-        sshBytes: (bytesIn: number, bytesOut: number) =>
-            `${formatBytes(bytesIn)} in${SEP}${formatBytes(bytesOut)} out`,
+        sshBytes: (bytesIn: number, bytesOut: number) => [
+            `${formatBytes(bytesIn)} in`,
+            `${formatBytes(bytesOut)} out`,
+        ],
         x402: {
             paid: "paid",
             free: "free",

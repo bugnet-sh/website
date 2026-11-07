@@ -223,7 +223,12 @@ describe("an ended session", () => {
         expect(rows(app)).toBe(6);
         expect(text(app, ".map-caption")).toBe(copy.notSeen);
         expect(status(app)).toBe(copy.ended("stopped"));
-        expect(text(app, ".session-times")).toMatch(/^Started .* · Ended .* · Deleted in /);
+        const times = [...app.querySelectorAll(".session-times > span")].map((p) => p.textContent);
+        expect(times).toHaveLength(3);
+        expect(times[0]).toMatch(/^Started /);
+        expect(times[1]).toMatch(/^Ended /);
+        expect(times[2]).toMatch(/^Deleted in /);
+        expect(status(app)).toBe("Ended: stopped");
         expect(q(app, "table.commands")?.hasAttribute("data-edge")).toBe(true);
         expect(document.activeElement).toBe(q(app, "h1"));
     });
@@ -365,7 +370,7 @@ describe("a running session", () => {
         expect(q(app, ".session-state .dot")).not.toBeNull();
         expect(text(app, ".session-times")).toContain("(7 min left)");
         const timeCell = q(app, 'tr.cmd-row[data-seq="4"] td.col-wide');
-        expect(timeCell?.textContent).toBe("30 s");
+        expect(timeCell?.textContent).toBe("30\u00a0s");
         expect(text(app, ".map-later")).toBe(copy.mapLater);
         expect(rows(app)).toBe(4);
     });

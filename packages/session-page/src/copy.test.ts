@@ -1,13 +1,28 @@
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { copy, type ExitInfo } from "./copy.ts";
 
+// Every space in a byte count or a duration is a no-break space
+const nb = (s: string) => s.replaceAll(" ", "\u00a0");
+
+// The page's own code, which is all of src but the sample data the tests use
+function pageFiles(dir: string): string[] {
+    return readdirSync(dir, { withFileTypes: true }).flatMap((e) => {
+        const path = join(dir, e.name);
+        if (e.isDirectory()) return e.name === "testing" ? [] : pageFiles(path);
+        return [path];
+    });
+}
+
 describe("copy", () => {
-    it("names each way a sandbox ends", () => {
-        expect(copy.ended("stopped")).toBe("Ended · stopped");
-        expect(copy.ended("deadline")).toBe("Ended · reached its deadline");
-        expect(copy.ended("failed")).toBe("Ended · failed to start");
-        expect(copy.ended("exited")).toBe("Ended · powered off");
-        expect(copy.ended("fault")).toBe("Ended · lost by the provider");
+    it("names each way a sandbox ends, its reason after a colon", () => {
+        expect(copy.ended("stopped")).toBe("Ended: stopped");
+        expect(copy.ended("deadline")).toBe("Ended: reached its deadline");
+        expect(copy.ended("failed")).toBe("Ended: failed to start");
+        expect(copy.ended("exited")).toBe("Ended: powered off");
+        expect(copy.ended("fault")).toBe("Ended: lost by the provider");
         expect(copy.ended("other")).toBe("Ended");
     });
 
@@ -19,13 +34,13 @@ describe("copy", () => {
     });
 
     it("formats the byte and count notices", () => {
-        expect(copy.cut(1_258_291)).toBe("Earlier output not kept (1.2 MiB)");
+        expect(copy.cut(1_258_291)).toBe("Earlier output not kept (1.2\u00a0MiB)");
         expect(copy.dropped(1000)).toBe("Earlier lines dropped from this view: 1000");
-        expect(copy.skipped(12_345)).toBe("12 KiB earlier not shown");
+        expect(copy.skipped(12_345)).toBe("12\u00a0KiB earlier not shown");
         expect(copy.eventsDropped(120)).toBe("120 more events weren't recorded.");
     });
 
-    it("writes each job's last line", () => {
+    it("writes each job's last line as its parts", () => {
         const job = (o: Partial<ExitInfo>): ExitInfo => ({
             state: "exited",
             exitCode: 0,
@@ -33,24 +48,35 @@ describe("copy", () => {
             peakMib: 0,
             ...o,
         });
-        expect(copy.exitLine(job({ exitCode: 1, peakMib: 512 }), 9_200)).toBe(
-            "exit 1 · 9.2 s · peak 512 MiB",
-        );
-        expect(copy.exitLine(job({}), 41_000)).toBe("exit 0 · 41 s");
-        expect(copy.exitLine(job({ exitCode: 137, oom: true, peakMib: 2048 }), 41_000)).toBe(
-            "killed: out of memory · 41 s",
-        );
-        expect(copy.exitLine(job({ state: "lost", exitCode: null }), 400)).toBe("lost · 0.4 s");
-        expect(copy.exitLine(job({ state: "cancelled", exitCode: null }), 243_000)).toBe(
-            "cancelled · 4 min 3 s",
-        );
-        expect(copy.exitLine(job({ state: "running", exitCode: null }), 1_000)).toBeNull();
+        expect(copy.exitLine(job({ exitCode: 1, peakMib: 512 }), 9_200)).toEqual([
+            "exit 1",
+            "9.2\u00a0s",
+            "peak 512\u00a0MiB",
+        ]);
+        expect(copy.exitLine(job({}), 41_000)).toEqual(["exit 0", nb("41 s")]);
+        expect(copy.exitLine(job({ exitCode: 137, oom: true, peakMib: 2048 }), 41_000)).toEqual([
+            "killed: out of memory",
+            nb("41 s"),
+        ]);
+        expect(copy.exitLine(job({ state: "lost", exitCode: null }), 400)).toEqual([
+            "lost",
+            nb("0.4 s"),
+        ]);
+        expect(copy.exitLine(job({ state: "cancelled", exitCode: null }), 243_000)).toEqual([
+            "cancelled",
+            nb("4 min 3 s"),
+        ]);
+    });
+
+    it("says a running job is running, with its time so far", () => {
+        const running: ExitInfo = { state: "running", exitCode: null, oom: false, peakMib: 0 };
+        expect(copy.exitLine(running, 62_000)).toEqual(["running", nb("1 min 2 s")]);
     });
 
     it("leaves the exit part out of an exited job's line when it has no code", () => {
         const job: ExitInfo = { state: "exited", exitCode: null, oom: false, peakMib: 512 };
-        expect(copy.exitLine(job, 9_200)).toBe("9.2 s · peak 512 MiB");
-        expect(copy.exitLine({ ...job, peakMib: 0 }, 9_200)).toBe("9.2 s");
+        expect(copy.exitLine(job, 9_200)).toEqual([nb("9.2 s"), "peak 512\u00a0MiB"]);
+        expect(copy.exitLine({ ...job, peakMib: 0 }, 9_200)).toEqual([nb("9.2 s")]);
     });
 
     it("names the map's nodes and metrics", () => {
@@ -72,10 +98,17 @@ describe("copy", () => {
         expect(copy.metrics.refused(4)).toBe("4 refused");
     });
 
-    it("joins parts with one separator", () => {
-        expect(copy.SEP).toBe(" · ");
-        expect(copy.ended("stopped")).toBe(`Ended${copy.SEP}stopped`);
-        expect(copy.rows.sshBytes(1_024, 2_048)).toBe(`1 KiB in${copy.SEP}2 KiB out`);
+    it("keeps parts that sit side by side apart, never joined by a separator", () => {
+        expect("SEP" in copy).toBe(false);
+        expect(copy.rows.sshBytes(1_024, 2_048)).toEqual(["1\u00a0KiB in", "2\u00a0KiB out"]);
+    });
+
+    it("never writes a middle dot anywhere in the page's code", () => {
+        const files = pageFiles(fileURLToPath(new URL(".", import.meta.url)));
+        expect(files.some((f) => f.endsWith("copy.ts"))).toBe(true);
+        for (const file of files) {
+            expect(readFileSync(file, "utf8").includes("\u00b7"), file).toBe(false);
+        }
     });
 
     it("keeps the exact page text", () => {

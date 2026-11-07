@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { copy } from "../copy.ts";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
 import { formatUsdc } from "../format.ts";
@@ -112,6 +111,7 @@ const heights: Record<string, Record<(typeof widths)[number], number>> = {
 
 const CHAR = 7.5;
 const LINE = 16;
+const GAP = 16;
 
 interface Box {
     what: string;
@@ -122,12 +122,13 @@ interface Box {
 }
 
 const chars = (s: string) => Array.from(s).length;
-const lineText = (line: { text: string }[]) => line.map((part) => part.text).join(copy.SEP);
+const lineWidth = (line: { text: string }[]) =>
+    line.reduce((w, part, i) => w + chars(part.text) * CHAR + (i > 0 ? GAP : 0), 0);
 
 function lineBoxes(p: Placed): Box[] {
-    const lines = [p.node.label, ...p.metricLines.map(lineText)];
+    const lines = [[{ text: p.node.label }], ...p.metricLines];
     return lines.map((line, i) => {
-        const w = chars(line) * CHAR;
+        const w = lineWidth(line);
         const x0 =
             p.labelAnchor === "end"
                 ? p.labelX - w
@@ -162,7 +163,7 @@ function edgeBoxes(layout: MapLayout): Box[] {
         }));
 }
 
-const drawn = (lines: { text: string }[][]) => lines.map(lineText);
+const drawn = (lines: { text: string }[][]) => lines.map((line) => line.map((p) => p.text));
 
 function circleHitsBox(p: Placed, b: Box): boolean {
     const nx = Math.min(Math.max(p.x, b.x0), b.x1);
@@ -233,10 +234,10 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
             }
         });
 
-        it("gives each label two lines, its name and a metric of 24 characters at most", () => {
+        it("gives each label two lines, its name and a metric no wider than 24 characters", () => {
             for (const p of layout.placed) {
                 expect(lineBoxes(p), p.node.id).toHaveLength(2);
-                expect(chars(lineText(p.metricLines[0]!)), p.node.id).toBeLessThanOrEqual(24);
+                expect(lineWidth(p.metricLines[0]!), p.node.id).toBeLessThanOrEqual(24 * CHAR);
             }
         });
 
@@ -270,8 +271,8 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
                 expect(Math.hypot(e.x2 - e.to.x, e.y2 - e.to.y)).toBeCloseTo(e.to.r, 6);
                 expect(e.box.x + e.box.width / 2).toBeCloseTo((e.x1 + e.x2) / 2, 6);
                 expect(e.box.y + e.box.height / 2).toBeCloseTo((e.y1 + e.y2) / 2, 6);
-                const widest = Math.max(...e.lines.map((line) => chars(lineText(line))));
-                expect(e.box.width).toBeGreaterThanOrEqual(widest * CHAR);
+                const widest = Math.max(...e.lines.map(lineWidth));
+                expect(e.box.width).toBeGreaterThanOrEqual(widest);
                 expect(e.box.height).toBeGreaterThanOrEqual(e.lines.length * LINE);
             }
         });
@@ -289,12 +290,13 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
 
         it("draws every refusal, and the total paid or nothing on the Payments edge", () => {
             for (const e of layout.edges) {
-                const text = drawn(e.lines).join(copy.SEP);
+                const texts = drawn(e.lines).flat();
                 const { node } = e.to;
-                if (e.refusedLabel) expect(text, node.id).toContain(e.refusedLabel);
+                if (e.refusedLabel) expect(texts, node.id).toContain(e.refusedLabel);
                 if (node.kind !== "payments") continue;
                 const sample = name !== "busiest";
-                expect([formatUsdc(node.paidMicros), ...(sample ? [] : [""])]).toContain(text);
+                const total = [formatUsdc(node.paidMicros)];
+                expect([total, ...(sample ? [] : [[]])]).toContainEqual(texts);
             }
         });
 
@@ -316,33 +318,39 @@ describe("layoutMap edges", () => {
 
     it("labels each edge as the spec's table says, marking money and refusals", () => {
         expect(edge("payments")).toMatchObject({
-            label: "0.125 USDC",
+            label: [{ text: "0.125 USDC", tone: "money" }],
             money: true,
             dashed: false,
             refusedLabel: null,
             lines: [[{ text: "0.125 USDC", tone: "money" }]],
         });
         expect(edge("x402-host:weather-api.example")).toMatchObject({
-            label: "3 · 0.006 USDC",
+            label: [
+                { text: "3", tone: "muted" },
+                { text: "0.006 USDC", tone: "money" },
+            ],
             money: true,
             dashed: false,
             refusedLabel: null,
         });
         expect(edge("x402-host:search-api.example")).toMatchObject({
-            label: "5 · 0.024 USDC",
+            label: [
+                { text: "5", tone: "muted" },
+                { text: "0.024 USDC", tone: "money" },
+            ],
             money: true,
             dashed: false,
             refusedLabel: "2 refused",
         });
         expect(edge("x402-host:unregistered.example")).toMatchObject({
-            label: "1",
+            label: [{ text: "1", tone: "warn" }],
             money: false,
             dashed: true,
             refusedLabel: null,
             lines: [[{ text: "1", tone: "warn" }]],
         });
         expect(edge("mcp")).toMatchObject({
-            label: "19",
+            label: [{ text: "19", tone: "muted" }],
             money: false,
             dashed: false,
             lines: [[{ text: "19", tone: "muted" }]],
@@ -353,8 +361,8 @@ describe("layoutMap edges", () => {
     it("draws calls, total paid and refusals together where they fit", () => {
         const wide = layoutMap(buildMap(recordOf("ended-full")), 1152);
         const at = (id: string) => drawn(wide.edges.find((e) => e.to.node.id === id)!.lines);
-        expect(at("x402-host:search-api.example")).toEqual(["5 · 0.024 USDC · 2 refused"]);
-        expect(at("x402-host:weather-api.example")).toEqual(["3 · 0.006 USDC"]);
+        expect(at("x402-host:search-api.example")).toEqual([["5", "0.024 USDC", "2 refused"]]);
+        expect(at("x402-host:weather-api.example")).toEqual([["3", "0.006 USDC"]]);
         const search = edge("x402-host:search-api.example").lines;
         expect(search.flat().map((p) => [p.text, p.tone])).toEqual([
             ["5", "muted"],
@@ -366,17 +374,17 @@ describe("layoutMap edges", () => {
     it("leaves the Payments edge bare when its total has no room, rather than show a count", () => {
         const tight = layoutMap(busiest(), 720);
         const payments = tight.edges.find((e) => e.to.node.kind === "payments")!;
-        expect(payments.label).toBe("12.345678 USDC");
+        expect(payments.label).toEqual([{ text: "12.345678 USDC", tone: "money" }]);
         expect(payments.lines).toEqual([]);
         const roomy = layoutMap(busiest(), 900).edges.find((e) => e.to.node.kind === "payments")!;
-        expect(drawn(roomy.lines)).toEqual(["12.345678 USDC"]);
+        expect(drawn(roomy.lines)).toEqual([["12.345678 USDC"]]);
     });
 
     it("keeps the total paid on a narrow map, dropping the call count first", () => {
         const narrow = layoutMap(buildMap(recordOf("ended-full")), 720);
         for (const e of narrow.edges.filter((x) => x.to.node.paidMicros > 0)) {
-            const text = drawn(e.lines).join(copy.SEP);
-            expect(text, e.to.node.id).toContain(formatUsdc(e.to.node.paidMicros));
+            const texts = drawn(e.lines).flat();
+            expect(texts, e.to.node.id).toContain(formatUsdc(e.to.node.paidMicros));
         }
     });
 
@@ -399,10 +407,13 @@ describe("layoutMap edges", () => {
 
     it("draws a Payments metric over 24 characters as its total paid", () => {
         const payments = layout.placed.find((p) => p.node.id === "payments")!;
-        expect(payments.node.metric).toBe("0.125 USDC paid · 0.02 USDC refunded");
-        expect(drawn(payments.metricLines)).toEqual(["0.125 USDC paid"]);
+        expect(payments.node.metricParts.map((p) => p.text)).toEqual([
+            "0.125 USDC paid",
+            "0.02 USDC refunded",
+        ]);
+        expect(drawn(payments.metricLines)).toEqual([["0.125 USDC paid"]]);
         const busy = layoutMap(busiest(), 720).placed.find((p) => p.node.kind === "payments")!;
-        expect(drawn(busy.metricLines)).toEqual(["12.345678 USDC paid"]);
+        expect(drawn(busy.metricLines)).toEqual([["12.345678 USDC paid"]]);
     });
 
     it("draws a host metric over 24 characters as its amount, and a short one whole", () => {
@@ -423,10 +434,13 @@ describe("layoutMap edges", () => {
         ]);
         const placed = layoutMap(model, 720).placed;
         const host = (id: string) => placed.find((p) => p.node.id === `x402-host:${id}`)!;
-        expect(host("big.example").node.metric).toBe("100 calls · 12.345678 USDC");
+        expect(host("big.example").node.metricParts.map((p) => p.text)).toEqual([
+            "100 calls",
+            "12.345678 USDC",
+        ]);
         expect(host("big.example").metricLines).toEqual([
             [{ text: "12.345678 USDC", money: true }],
         ]);
-        expect(drawn(host("small.example").metricLines)).toEqual(["3 calls · 12.345678 USDC"]);
+        expect(drawn(host("small.example").metricLines)).toEqual([["3 calls", "12.345678 USDC"]]);
     });
 });

@@ -39,7 +39,8 @@ export type Tone = "normal" | "bad" | "warn";
 export interface EventRow {
     at: Date;
     event: string;
-    detail: string;
+    // Shown side by side, each part whole
+    detail: string[];
     amountMicros: number | null;
     tx: string | null;
     tone: Tone;
@@ -58,8 +59,6 @@ export interface MapNode {
     label: string;
     fullLabel: string;
     count: number;
-    // The parts joined by copy.SEP
-    metric: string;
     metricParts: MetricPart[];
     paidMicros: number;
     refused: number;
@@ -82,17 +81,14 @@ export interface MapSelect {
 export const MAX_RIGHT = 6;
 export const MAX_PREVIEWS = 4;
 
-export const partsText = (parts: readonly { text: string }[]) =>
-    parts.map((p) => p.text).join(copy.SEP);
-
 // The edges that show refusals are hidden from screen readers, so the name says them
 export function accessibleName(node: MapNode): string {
-    const refused = node.refused > 0 ? copy.metrics.refused(node.refused) : null;
-    return [node.fullLabel, node.metric, refused].filter((p) => p !== null && p !== "").join(", ");
+    const refused = node.refused > 0 ? [copy.metrics.refused(node.refused)] : [];
+    return [node.fullLabel, ...node.metricParts.map((p) => p.text), ...refused].join(", ");
 }
 
-function join(parts: (string | null)[]): string {
-    return parts.filter((p): p is string => p !== null && p !== "").join(copy.SEP);
+function parts(list: (string | null)[]): string[] {
+    return list.filter((p): p is string => p !== null && p !== "");
 }
 
 /* Rows */
@@ -129,27 +125,27 @@ function specParts(e: PlacementEvent, minutes: number | undefined): (string | nu
     ];
 }
 
-function placementText(e: PlacementEvent, ctx: RowContext): [string, string] {
+function placementText(e: PlacementEvent, ctx: RowContext): [string, string[]] {
     const t = copy.rows;
     switch (e.phase) {
         case "placed":
-            return [t.placed, join(specParts(e, e.minutes))];
+            return [t.placed, parts(specParts(e, e.minutes))];
         case "ready":
-            return [t.ready, ""];
+            return [t.ready, []];
         case "extended": {
             const by = e.minutes === undefined ? null : t.extendedBy(e.minutes);
             const until = e.deadline ? t.until(formatClock(e.deadline, ctx.endedAt)) : null;
-            return [t.extended, [by, until].filter((p) => p !== null).join(", ")];
+            return [t.extended, parts([by, until])];
         }
         case "ended":
-            return [t.ended, copy.endedReason[e.endedBecause ?? ctx.endedBecause]];
+            return [t.ended, parts([copy.endedReason[e.endedBecause ?? ctx.endedBecause]])];
     }
 }
 
-function jobEndDetail(exitCode: number | undefined, oom: boolean, durationMs?: number): string {
+function jobEndDetail(exitCode: number | undefined, oom: boolean, durationMs?: number): string[] {
     const took = durationMs === undefined ? null : formatDuration(durationMs);
-    if (oom) return join([copy.rows.oom, took]);
-    return join([exitCode === undefined ? null : copy.rows.exit(exitCode), took]);
+    if (oom) return parts([copy.rows.oom, took]);
+    return parts([exitCode === undefined ? null : copy.rows.exit(exitCode), took]);
 }
 
 function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
@@ -157,7 +153,7 @@ function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
     const row: EventRow = {
         at: e.at,
         event: "",
-        detail: "",
+        detail: [],
         amountMicros: null,
         tx: null,
         tone: "normal",
@@ -178,7 +174,7 @@ function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
             break;
         case "mcp":
             row.event = e.tool;
-            row.detail = join([e.outcome, formatDuration(e.durationMs)]);
+            row.detail = parts([e.outcome, formatDuration(e.durationMs)]);
             if (e.outcome !== "ok") row.tone = "bad";
             break;
         case "job":
@@ -192,24 +188,24 @@ function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
             break;
         case "file":
             row.event = t.file(e.op);
-            row.detail = join([e.path, formatBytes(e.bytes)]);
+            row.detail = parts([e.path, formatBytes(e.bytes)]);
             break;
         case "preview":
             if (e.phase === "traffic") {
                 row.event = t.requests;
-                row.detail = join([
+                row.detail = parts([
                     ctx.folded ? t.port(e.port) : null,
                     copy.metrics.requests(e.requests ?? 0),
                     formatBytes(e.bytes ?? 0),
                 ]);
             } else {
                 row.event = e.phase === "issued" ? t.previewIssued : t.previewRevoked;
-                row.detail = t.port(e.port);
+                row.detail = [t.port(e.port)];
             }
             break;
         case "transfer":
             row.event = e.direction === "in" ? t.upload : t.download;
-            row.detail = join([e.name, formatBytes(e.bytes)]);
+            row.detail = parts([e.name, formatBytes(e.bytes)]);
             break;
         case "ssh":
             row.event = e.phase === "start" ? t.sshStarted : t.sshEnded;
@@ -217,7 +213,7 @@ function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
             break;
         case "secret_host":
             row.event = t.requests;
-            row.detail = join([
+            row.detail = parts([
                 ctx.folded ? e.host : null,
                 copy.metrics.requests(e.requests),
                 formatBytes(e.bytes),
@@ -226,7 +222,7 @@ function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
         case "x402": {
             const status = statusText(e.status);
             row.event = `${e.method} ${e.path}`;
-            row.detail = join([ctx.folded ? e.host : null, status.text]);
+            row.detail = parts([ctx.folded ? e.host : null, status.text]);
             row.tone = status.tone;
             row.amountMicros = e.amountMicros > 0 ? e.amountMicros : null;
             row.tx = e.tx ?? null;
@@ -290,7 +286,6 @@ function toNode(g: Group, ctx: RowContext): MapNode {
         label: truncateLabel(g.fullLabel),
         fullLabel: g.fullLabel,
         count: g.count,
-        metric: partsText(g.metricParts),
         metricParts: g.metricParts,
         paidMicros: g.paidMicros,
         refused: g.refused,
@@ -315,7 +310,6 @@ function foldNode(
         label: fullLabel,
         fullLabel,
         count,
-        metric: partsText(metricParts),
         metricParts,
         paidMicros,
         refused: groups.reduce((n, g) => n + g.refused, 0),

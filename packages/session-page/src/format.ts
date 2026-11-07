@@ -1,31 +1,34 @@
 const byteUnits = ["B", "KiB", "MiB", "GiB", "TiB"] as const;
 
+// A no-break space joins each number to its unit, so a narrow line never splits a value
+const NB = "\u00a0";
+
 export function formatBytes(n: number): string {
-    if (!Number.isFinite(n) || n <= 0) return "0 B";
+    if (!Number.isFinite(n) || n <= 0) return `0${NB}B`;
     let unit = 0;
     let value = n;
     while (value >= 1024 && unit < byteUnits.length - 1) {
         value /= 1024;
         unit++;
     }
-    if (unit === 0) return `${Math.round(value)} B`;
+    if (unit === 0) return `${Math.round(value)}${NB}B`;
     let shown = value < 10 ? Math.round(value * 10) / 10 : Math.round(value);
     if (shown >= 1024 && unit < byteUnits.length - 1) {
         shown = 1;
         unit++;
     }
-    return `${shown} ${byteUnits[unit]}`;
+    return `${shown}${NB}${byteUnits[unit]}`;
 }
 
 // Rounds down, so a ticking duration never shows more time than has passed
 export function formatDuration(ms: number): string {
-    if (!Number.isFinite(ms) || ms <= 0) return "0 s";
-    if (ms < 10_000) return `${Math.floor(ms / 100) / 10} s`;
+    if (!Number.isFinite(ms) || ms <= 0) return `0${NB}s`;
+    if (ms < 10_000) return `${Math.floor(ms / 100) / 10}${NB}s`;
     const seconds = Math.floor(ms / 1000);
-    if (seconds < 60) return `${seconds} s`;
+    if (seconds < 60) return `${seconds}${NB}s`;
     const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes} min ${seconds % 60} s`;
-    return `${Math.floor(minutes / 60)} h ${minutes % 60} min`;
+    if (minutes < 60) return `${minutes}${NB}min${NB}${seconds % 60}${NB}s`;
+    return `${Math.floor(minutes / 60)}${NB}h${NB}${minutes % 60}${NB}min`;
 }
 
 interface ClockFormats {

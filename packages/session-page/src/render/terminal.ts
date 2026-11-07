@@ -1,7 +1,7 @@
 import { copy } from "../copy.js";
 import type { Line, OutputBuffer } from "../output.js";
 import type { Scheduler } from "../schedule.js";
-import { el } from "./dom.js";
+import { el, partSpans } from "./dom.js";
 
 export interface TerminalBlock {
     root: HTMLElement;
@@ -21,7 +21,8 @@ export function createTerminalBlock(opts: {
     seq: number;
     command: string | null;
     notices: () => string[];
-    footer: () => string | null;
+    // The last line's parts, none while there is no last line
+    footer: () => string[];
     scheduler: Scheduler;
 }): TerminalBlock {
     const { doc, buffer, scheduler } = opts;
@@ -34,12 +35,13 @@ export function createTerminalBlock(opts: {
         class: "term-out",
         attrs: { tabindex: "0", role: "log", "aria-label": copy.outputLabel(opts.seq) },
     });
-    const foot = el(doc, "p", { class: "term-foot" });
+    const foot = el(doc, "p", { class: "term-foot parts" });
     const root = el(doc, "div", { class: "term" }, [cmd, notes, out, foot]);
 
     const nodes: HTMLElement[] = [];
     let droppedSeen = 0;
     let shownNotices: string | null = null;
+    let shownFooter: string | null = null;
     let pending = false;
     let destroyed = false;
 
@@ -80,8 +82,12 @@ export function createTerminalBlock(opts: {
         }
 
         const footer = opts.footer();
-        foot.textContent = footer ?? "";
-        foot.hidden = footer === null;
+        const footerKey = footer.join("\n");
+        if (footerKey !== shownFooter) {
+            shownFooter = footerKey;
+            foot.replaceChildren(...partSpans(doc, footer));
+            foot.hidden = footer.length === 0;
+        }
 
         if (atBottom) out.scrollTop = out.scrollHeight;
     };

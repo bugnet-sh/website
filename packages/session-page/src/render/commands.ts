@@ -220,10 +220,13 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         bar.hidden = !shown;
     }
 
-    function paintTime(row: Row, now: Date): void {
+    // True when the shown time changed
+    function paintTime(row: Row, now: Date): boolean {
         const ms = durationMs(row, now);
         const text = ms === null ? copy.noValue : formatDuration(ms);
-        if (row.timeCell.textContent !== text) row.timeCell.textContent = text;
+        if (row.timeCell.textContent === text) return false;
+        row.timeCell.textContent = text;
+        return true;
     }
 
     function paint(row: Row, now: Date): void {
@@ -251,7 +254,10 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
         ticking = false;
         if (destroyed) return;
         const now = opts.now();
-        for (const row of order) if (isRunning(row)) paintTime(row, now);
+        for (const row of order) {
+            // The open block's last line holds the same time, the only place phones show it
+            if (isRunning(row) && paintTime(row, now)) refresh(row);
+        }
         startTicking();
     }
 

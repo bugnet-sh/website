@@ -15,10 +15,9 @@ function shown(parts: MetricPart[]): MetricPart[] {
 }
 
 function metricSpans(doc: Document, parts: MetricPart[]): HTMLSpanElement[] {
-    return parts.flatMap((part, i) => {
-        const span = el(doc, "span", { class: part.money ? "money" : "muted", text: part.text });
-        return i > 0 ? [el(doc, "span", { class: "muted", text: copy.SEP }), span] : [span];
-    });
+    return parts.map((part) =>
+        el(doc, "span", { class: part.money ? "money" : "muted", text: part.text }),
+    );
 }
 
 function row(doc: Document, node: MapNode, opts: MapSelect): HTMLLIElement {

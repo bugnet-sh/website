@@ -10,38 +10,47 @@ import {
     truncateLabel,
 } from "./format.ts";
 
+// Every space in a byte count or a duration is a no-break space
+const nb = (s: string) => s.replaceAll(" ", "\u00a0");
+
 describe("formatBytes", () => {
     it("uses binary units with one decimal below 10", () => {
-        expect(formatBytes(0)).toBe("0 B");
-        expect(formatBytes(1023)).toBe("1023 B");
-        expect(formatBytes(1024)).toBe("1 KiB");
-        expect(formatBytes(12_345)).toBe("12 KiB");
-        expect(formatBytes(1_258_291)).toBe("1.2 MiB");
-        expect(formatBytes(3 * 2 ** 30)).toBe("3 GiB");
+        expect(formatBytes(0)).toBe(nb("0 B"));
+        expect(formatBytes(1023)).toBe(nb("1023 B"));
+        expect(formatBytes(1024)).toBe(nb("1 KiB"));
+        expect(formatBytes(12_345)).toBe(nb("12 KiB"));
+        expect(formatBytes(1_258_291)).toBe(nb("1.2 MiB"));
+        expect(formatBytes(3 * 2 ** 30)).toBe(nb("3 GiB"));
     });
 
     it("moves up a unit instead of showing 1024 of the one below", () => {
-        expect(formatBytes(2 ** 20 - 1)).toBe("1 MiB");
+        expect(formatBytes(2 ** 20 - 1)).toBe(nb("1 MiB"));
     });
 
     it("shows nothing negative", () => {
-        expect(formatBytes(-5)).toBe("0 B");
+        expect(formatBytes(-5)).toBe(nb("0 B"));
+    });
+
+    it("keeps each number with its unit, so no line breaks inside a value", () => {
+        expect(formatBytes(12_345)).toBe("12\u00a0KiB");
+        expect(formatDuration(130_000)).toBe("2\u00a0min\u00a010\u00a0s");
+        expect(formatDuration(9_200)).toBe("9.2\u00a0s");
     });
 });
 
 describe("formatDuration", () => {
     it("shows tenths below 10 s and whole units above", () => {
-        expect(formatDuration(400)).toBe("0.4 s");
-        expect(formatDuration(9_200)).toBe("9.2 s");
-        expect(formatDuration(41_000)).toBe("41 s");
-        expect(formatDuration(243_000)).toBe("4 min 3 s");
-        expect(formatDuration(3_720_000)).toBe("1 h 2 min");
-        expect(formatDuration(-5)).toBe("0 s");
+        expect(formatDuration(400)).toBe(nb("0.4 s"));
+        expect(formatDuration(9_200)).toBe(nb("9.2 s"));
+        expect(formatDuration(41_000)).toBe(nb("41 s"));
+        expect(formatDuration(243_000)).toBe(nb("4 min 3 s"));
+        expect(formatDuration(3_720_000)).toBe(nb("1 h 2 min"));
+        expect(formatDuration(-5)).toBe(nb("0 s"));
     });
 
     it("never rounds up past the time that has passed", () => {
-        expect(formatDuration(9_999)).toBe("9.9 s");
-        expect(formatDuration(59_999)).toBe("59 s");
+        expect(formatDuration(9_999)).toBe(nb("9.9 s"));
+        expect(formatDuration(59_999)).toBe(nb("59 s"));
     });
 });
 

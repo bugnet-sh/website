@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-import { copy } from "../copy.ts";
 import { formatClock } from "../format.ts";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, sampleTx, type ScenarioName } from "../testing/fixtures.ts";
@@ -19,23 +18,26 @@ function nodeOf(model: MapModel, id: string): MapNode {
     return node;
 }
 
-const texts = (node: MapNode) => node.rows.map((r) => [r.event, r.detail, r.tone]);
+// Values hold no-break spaces, which these expectations write as plain ones
+const plain = (s: string) => s.replaceAll("\u00a0", " ");
+const metric = (node: MapNode) => node.metricParts.map((p) => plain(p.text));
+const texts = (node: MapNode) => node.rows.map((r) => [r.event, r.detail.map(plain), r.tone]);
 
 describe("buildMap on the sample sessions", () => {
     it("places ended-full's nodes in order, with their counts and metrics", () => {
         const model = buildMap(recordOf("ended-full"));
-        expect(model.nodes.map((n) => [n.kind, n.side, n.label, n.count, n.metric])).toEqual([
-            ["sandbox", "center", "Sandbox", 4, "2 vCPU · 2 GiB · 15 min"],
-            ["mcp", "left", "Bugnet MCP", 19, "19 tool calls"],
-            ["payments", "left", "Payments", 4, "0.125 USDC paid · 0.02 USDC refunded"],
-            ["secret-host", "right", "api.github.com", 6, "6 requests"],
-            ["x402-host", "right", "search-api.example", 5, "5 calls · 0.024 USDC"],
-            ["secret-host", "right", "huggingface.co", 3, "3 requests"],
-            ["x402-host", "right", "weather-api.example", 3, "3 calls · 0.006 USDC"],
-            ["x402-host", "right", "unregistered.example", 1, "1 call"],
-            ["preview", "bottom", "Preview :3000", 59, "59 requests"],
-            ["ssh", "bottom", "SSH", 1, "1 session"],
-            ["transfers", "bottom", "Transfers", 2, "2 files"],
+        expect(model.nodes.map((n) => [n.kind, n.side, n.label, n.count, metric(n)])).toEqual([
+            ["sandbox", "center", "Sandbox", 4, ["2 vCPU", "2 GiB", "15 min"]],
+            ["mcp", "left", "Bugnet MCP", 19, ["19 tool calls"]],
+            ["payments", "left", "Payments", 4, ["0.125 USDC paid", "0.02 USDC refunded"]],
+            ["secret-host", "right", "api.github.com", 6, ["6 requests"]],
+            ["x402-host", "right", "search-api.example", 5, ["5 calls", "0.024 USDC"]],
+            ["secret-host", "right", "huggingface.co", 3, ["3 requests"]],
+            ["x402-host", "right", "weather-api.example", 3, ["3 calls", "0.006 USDC"]],
+            ["x402-host", "right", "unregistered.example", 1, ["1 call"]],
+            ["preview", "bottom", "Preview :3000", 59, ["59 requests"]],
+            ["ssh", "bottom", "SSH", 1, ["1 session"]],
+            ["transfers", "bottom", "Transfers", 2, ["2 files"]],
         ]);
         expect(model.empty).toBe(false);
         expect(model.eventsDropped).toBe(0);
@@ -64,11 +66,11 @@ describe("buildMap on the sample sessions", () => {
     });
 
     it.each(["ended-full", "ended-crowded", "ended-hostile", "ended-empty"] as const)(
-        "keeps %s's metrics as their parts joined by the page's separator",
+        "keeps %s's metrics and details as whole parts, none of them empty",
         (name) => {
             for (const node of buildMap(recordOf(name)).nodes) {
-                const joined = node.metricParts.map((p) => p.text).join(copy.SEP);
-                expect(node.metric, node.id).toBe(joined);
+                for (const part of node.metricParts) expect(part.text, node.id).not.toBe("");
+                for (const row of node.rows) expect(row.detail, node.id).not.toContain("");
             }
         },
     );
@@ -106,7 +108,7 @@ describe("buildMap on the sample sessions", () => {
                 statuses.filter((s) => s.startsWith("refused_")).length,
             );
             expect(node.paidMicros, node.id).toBe(paid);
-            const details = node.rows.map((r) => r.detail);
+            const details = node.rows.map((r) => r.detail.join(", "));
             expect(details.filter((d) => d === "paid")).toHaveLength(
                 statuses.filter((s) => s === "paid").length,
             );
@@ -118,7 +120,7 @@ describe("buildMap on the sample sessions", () => {
         expect([search.count, search.refused, search.paidMicros]).toEqual([5, 2, 24_000]);
         const weather = nodeOf(model, "x402-host:weather-api.example");
         expect([weather.count, weather.refused, weather.paidMicros]).toEqual([3, 0, 6_000]);
-        expect(weather.rows.map((r) => r.detail)).toEqual(["paid", "paid", "free"]);
+        expect(weather.rows.map((r) => r.detail)).toEqual([["paid"], ["paid"], ["free"]]);
         const unregistered = nodeOf(model, "x402-host:unregistered.example");
         expect([unregistered.count, unregistered.refused]).toEqual([1, 1]);
     });
@@ -142,11 +144,13 @@ describe("buildMap on the sample sessions", () => {
         expect(moreHosts.refused).toBe(5);
         expect(moreHosts.paidMicros).toBeGreaterThan(0);
         // 37 secret host requests and 51 x402 calls, each call being one request
-        expect(moreHosts.metric).toMatch(/^88 requests · \d+(\.\d+)? USDC$/);
+        expect(metric(moreHosts)[0]).toBe("88 requests");
+        expect(metric(moreHosts)[1]).toMatch(/^\d+(\.\d+)? USDC$/);
         expect(moreHosts.metricParts.map((p) => p.money)).toEqual([false, true]);
         // The folded table still names each row's host
-        expect(moreHosts.rows.some((r) => r.detail.startsWith("sentry.io · "))).toBe(true);
-        expect(moreHosts.rows.some((r) => r.detail === "geo.x402.example · paid")).toBe(true);
+        expect(moreHosts.rows.some((r) => r.detail[0] === "sentry.io")).toBe(true);
+        const geo = moreHosts.rows.filter((r) => r.detail[0] === "geo.x402.example");
+        expect(geo.some((r) => r.detail.join(", ") === "geo.x402.example, paid")).toBe(true);
 
         const bottom = model.nodes.filter((n) => n.side === "bottom");
         expect(bottom.map((n) => n.label)).toEqual([
@@ -159,7 +163,7 @@ describe("buildMap on the sample sessions", () => {
         expect(bottom.filter((n) => n.kind === "preview")).toHaveLength(MAX_PREVIEWS);
         const morePorts = bottom.at(-1)!;
         expect(morePorts.kind).toBe("more-bottom");
-        expect(morePorts.rows.some((r) => r.detail.startsWith("port 9229 · "))).toBe(true);
+        expect(morePorts.rows.some((r) => r.detail[0] === "port 9229")).toBe(true);
         expect(model.eventsDropped).toBe(120);
     });
 
@@ -167,7 +171,7 @@ describe("buildMap on the sample sessions", () => {
         const model = buildMap(recordOf("ended-empty"));
         expect(model.empty).toBe(true);
         expect(model.nodes.map((n) => n.kind)).toEqual(["sandbox"]);
-        expect(model.nodes[0]!.metric).toBe("2 vCPU · 2 GiB · 10 min");
+        expect(metric(model.nodes[0]!)).toEqual(["2 vCPU", "2 GiB", "10 min"]);
     });
 
     it("cuts a hostile host label to 24 characters and keeps the full one", () => {
@@ -236,13 +240,13 @@ describe("buildMap row text", () => {
         );
         const sandbox = nodeOf(model, "sandbox");
         expect(texts(sandbox)).toEqual([
-            ["Placed", "2 vCPU · 2 GiB · 10 GiB disk · 10 min", "normal"],
-            ["Ready", "", "normal"],
-            ["Extended", `+5 min, until ${formatClock(deadline, t(1200))}`, "normal"],
-            ["Ended", "reached its deadline", "normal"],
-            ["Ended", "", "normal"],
+            ["Placed", ["2 vCPU", "2 GiB", "10 GiB disk", "10 min"], "normal"],
+            ["Ready", [], "normal"],
+            ["Extended", ["+5 min", `until ${formatClock(deadline, t(1200))}`], "normal"],
+            ["Ended", ["reached its deadline"], "normal"],
+            ["Ended", [], "normal"],
         ]);
-        expect(sandbox.metric).toBe("2 vCPU · 2 GiB · 15 min");
+        expect(metric(sandbox)).toEqual(["2 vCPU", "2 GiB", "15 min"]);
         expect(model.empty).toBe(true);
     });
 
@@ -259,7 +263,7 @@ describe("buildMap row text", () => {
                 },
             ]),
         );
-        expect(nodeOf(model, "sandbox").metric).toBe("1 vCPU · 1536 MiB · 30 min");
+        expect(metric(nodeOf(model, "sandbox"))).toEqual(["1 vCPU", "1536 MiB", "30 min"]);
     });
 
     it("writes the payment rows with amounts and transactions", () => {
@@ -290,14 +294,14 @@ describe("buildMap row text", () => {
         const payments = nodeOf(model, "payments");
         expect(payments.rows.map((r) => [r.event, r.detail, r.amountMicros, r.tx, r.tone])).toEqual(
             [
-                ["Start payment", "", 50_000, tx, "normal"],
-                ["Extension payment", "", 25_000, tx, "normal"],
-                ["Allowance paid", "", 40_000, tx, "normal"],
-                ["Allowance refunded", "", 10_000, "not a signature", "normal"],
+                ["Start payment", [], 50_000, tx, "normal"],
+                ["Extension payment", [], 25_000, tx, "normal"],
+                ["Allowance paid", [], 40_000, tx, "normal"],
+                ["Allowance refunded", [], 10_000, "not a signature", "normal"],
             ],
         );
         expect(payments.paidMicros).toBe(115_000);
-        expect(payments.metric).toBe("0.115 USDC paid · 0.01 USDC refunded");
+        expect(metric(payments)).toEqual(["0.115 USDC paid", "0.01 USDC refunded"]);
     });
 
     it("writes the MCP, job and file rows", () => {
@@ -329,14 +333,14 @@ describe("buildMap row text", () => {
         );
         const mcp = nodeOf(model, "mcp");
         expect(texts(mcp)).toEqual([
-            ["bugnet_exec", "ok · 0.2 s", "normal"],
-            ["bugnet_exec", "timeout · 30 s", "bad"],
-            ["Command #1 started", "", "normal"],
-            ["Command #1 ended", "exit 0 · 9.2 s", "normal"],
-            ["Command #2 ended", "exit 1 · 41 s", "bad"],
-            ["Command #3 ended", "killed: out of memory · 41 s", "bad"],
-            ["Command #4 ended", "2 s", "normal"],
-            ["File write", "/workspace/a.json · 1.5 KiB", "normal"],
+            ["bugnet_exec", ["ok", "0.2 s"], "normal"],
+            ["bugnet_exec", ["timeout", "30 s"], "bad"],
+            ["Command #1 started", [], "normal"],
+            ["Command #1 ended", ["exit 0", "9.2 s"], "normal"],
+            ["Command #2 ended", ["exit 1", "41 s"], "bad"],
+            ["Command #3 ended", ["killed: out of memory", "41 s"], "bad"],
+            ["Command #4 ended", ["2 s"], "normal"],
+            ["File write", ["/workspace/a.json", "1.5 KiB"], "normal"],
         ]);
         expect(mcp.count).toBe(2);
         expect(mcp.rows.every((r) => r.amountMicros === null && r.tx === null)).toBe(true);
@@ -362,17 +366,17 @@ describe("buildMap row text", () => {
             ]),
         );
         expect(texts(nodeOf(model, "preview:3000"))).toEqual([
-            ["Preview issued", "port 3000", "normal"],
-            ["Requests", "42 requests · 168 KiB", "normal"],
-            ["Preview revoked", "port 3000", "normal"],
+            ["Preview issued", ["port 3000"], "normal"],
+            ["Requests", ["42 requests", "168 KiB"], "normal"],
+            ["Preview revoked", ["port 3000"], "normal"],
         ]);
         expect(texts(nodeOf(model, "transfers"))).toEqual([
-            ["Upload", "data.csv · 2.3 MiB", "normal"],
-            ["Download", "r.zip · 793 KiB", "normal"],
+            ["Upload", ["data.csv", "2.3 MiB"], "normal"],
+            ["Download", ["r.zip", "793 KiB"], "normal"],
         ]);
         expect(texts(nodeOf(model, "ssh"))).toEqual([
-            ["SSH session started", "", "normal"],
-            ["SSH session ended", "18 KiB in · 393 KiB out", "normal"],
+            ["SSH session started", [], "normal"],
+            ["SSH session ended", ["18 KiB in", "393 KiB out"], "normal"],
         ]);
     });
 
@@ -381,7 +385,7 @@ describe("buildMap row text", () => {
             record([{ at: t(1), kind: "preview", port: 8080, phase: "issued" }]),
         );
         const preview = nodeOf(model, "preview:8080");
-        expect([preview.count, preview.metric]).toEqual([0, "0 requests"]);
+        expect([preview.count, metric(preview)]).toEqual([0, ["0 requests"]]);
         expect(model.empty).toBe(false);
     });
 
@@ -392,7 +396,7 @@ describe("buildMap row text", () => {
             ]),
         );
         expect(texts(nodeOf(model, "secret-host:api.github.com"))).toEqual([
-            ["Requests", "1 request · 900 B", "normal"],
+            ["Requests", ["1 request", "900 B"], "normal"],
         ]);
     });
 
@@ -411,14 +415,14 @@ describe("buildMap row text", () => {
         );
         const node = nodeOf(model, "x402-host:pay.example");
         expect(texts(node)).toEqual([
-            ["POST /v1/search", "paid", "normal"],
-            ["POST /v1/search", "free", "normal"],
-            ["POST /v1/search", "refused: allowance used up", "warn"],
-            ["POST /v1/search", "refused: price above the cap", "warn"],
-            ["POST /v1/search", "refused: host not registered", "warn"],
-            ["POST /v1/search", "upstream error", "bad"],
-            ["POST /v1/search", "settled_late", "normal"],
-            ["POST /v1/search", "toString", "normal"],
+            ["POST /v1/search", ["paid"], "normal"],
+            ["POST /v1/search", ["free"], "normal"],
+            ["POST /v1/search", ["refused: allowance used up"], "warn"],
+            ["POST /v1/search", ["refused: price above the cap"], "warn"],
+            ["POST /v1/search", ["refused: host not registered"], "warn"],
+            ["POST /v1/search", ["upstream error"], "bad"],
+            ["POST /v1/search", ["settled_late"], "normal"],
+            ["POST /v1/search", ["toString"], "normal"],
         ]);
         expect(node.rows.map((r) => r.amountMicros)).toEqual([
             3_000,
@@ -454,8 +458,8 @@ describe("buildMap row text", () => {
                 return { at: t(1), kind, host, method: "GET", path: "/", ...paid };
             });
         const fold = (events: SessionEvent[]) => nodeOf(buildMap(record(events)), "more-right");
-        expect(fold(hosts("x402")).metric).toBe("2 calls · 0.002 USDC");
-        expect(fold(hosts("secret_host")).metric).toBe("4 requests");
+        expect(metric(fold(hosts("x402")))).toEqual(["2 calls", "0.002 USDC"]);
+        expect(metric(fold(hosts("secret_host")))).toEqual(["4 requests"]);
     });
 
     it("folds one extra port as +1 more port", () => {

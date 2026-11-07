@@ -31,6 +31,7 @@
     --col-bytes: 96px;
     --col-copy: 104px;
     --pulse: 1.6s;
+    --gap-inline: var(--space-4);
     /* Full-bleed blocks pad to the centred column, so hairlines run edge to edge */
     --gutter: max(var(--inset), calc((100% - var(--max)) / 2 + var(--inset)));
 }
@@ -204,6 +205,17 @@ h1 {
 
 .time-part {
     white-space: nowrap;
+}
+
+/* Parts that sit side by side, one fixed gap apart, breaking only between parts */
+.parts {
+    display: flex;
+    flex-wrap: wrap;
+    column-gap: var(--gap-inline);
+}
+
+.parts > * {
+    min-width: 0;
 }
 
 .delete,
@@ -422,7 +434,7 @@ h1 {
 .map-row {
     display: flex;
     align-items: center;
-    gap: var(--space-3);
+    gap: var(--gap-inline);
     width: 100%;
     height: var(--row);
     padding: 0;
@@ -460,6 +472,11 @@ h1 {
 .map-row-refused {
     flex: 0 1 auto;
     font-size: var(--small-size);
+}
+
+.map-row-metric {
+    display: flex;
+    column-gap: var(--gap-inline);
 }
 
 .map-list .map-empty {
@@ -755,7 +772,7 @@ tr.cmd-detail > td {
  */
 .cmd-text,
 .map-row-name,
-.map-row-metric,
+.map-row-metric > span,
 .map-row-refused {
     display: -webkit-box;
     -webkit-box-orient: vertical;

@@ -6,7 +6,7 @@ import { parseGetBody, type SessionRecord } from "../payload.ts";
 import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
 import { layoutMap } from "./layout.ts";
 import { renderMapList } from "./list.ts";
-import { buildMap, type MapModel, type MapNode } from "./model.ts";
+import { accessibleName, buildMap, type MapModel, type MapNode } from "./model.ts";
 import { renderMapSvg } from "./svg.ts";
 import { renderEventTable } from "./table.ts";
 
@@ -38,12 +38,15 @@ const bubble = (root: Element, id: string) => bubbles(root).find((g) => g.datase
 
 const clipboard = () => ({ writeText: vi.fn(async (_text: string) => {}) });
 
-// Each drawn line is a text of its own
-function labelLines(g: Element): string[] {
-    return [...g.querySelectorAll("text.map-label")].map((t) => t.textContent ?? "");
+// Each drawn line is a text of its own, and each part of a line a tspan
+function labelLines(g: Element): string[][] {
+    return [...g.querySelectorAll("text.map-label")].map((t) =>
+        [...t.querySelectorAll("tspan")].map((s) => s.textContent ?? ""),
+    );
 }
 
-// Every line of a label shares its x and anchor, each one line height below the last
+// Every line of a label shares its x and anchor, each one line height below the last, and each
+// part after a line's first starts one 16 px gap after the part before it
 function expectStacked(texts: Element[]): void {
     const first = texts[0]!;
     for (const [i, t] of texts.entries()) {
@@ -51,7 +54,9 @@ function expectStacked(texts: Element[]): void {
         expect(t.getAttribute("text-anchor")).toBe(first.getAttribute("text-anchor"));
         const y = Number(t.getAttribute("y")) - Number(first.getAttribute("y"));
         expect(y).toBeCloseTo(i * 16, 1);
-        expect(t.querySelector("[x], [y], [dx], [dy]")).toBeNull();
+        expect(t.querySelector("[x], [y], [dy]")).toBeNull();
+        const gaps = [...t.querySelectorAll("tspan")].map((s) => s.getAttribute("dx"));
+        expect(gaps).toEqual(gaps.map((_, j) => (j === 0 ? null : "16")));
     }
 }
 
@@ -70,10 +75,12 @@ describe("renderMapSvg", () => {
         for (const g of all) {
             const node = nodeOf(model, g.dataset.nodeId!);
             expect(g.getAttribute("tabindex")).toBe("0");
-            const refused = node.refused > 0 ? `, ${copy.metrics.refused(node.refused)}` : "";
+            const refused = node.refused > 0 ? [copy.metrics.refused(node.refused)] : [];
+            const metric = node.metricParts.map((p) => p.text);
             expect(g.getAttribute("aria-label")).toBe(
-                `${node.fullLabel}, ${node.metric}${refused}`,
+                [node.fullLabel, ...metric, ...refused].join(", "),
             );
+            expect(g.getAttribute("aria-label")).toBe(accessibleName(node));
             expect(g.querySelector("title")!.textContent).toBe(node.fullLabel);
         }
     });
@@ -82,13 +89,13 @@ describe("renderMapSvg", () => {
         const { svg } = svgOf(modelOf("ended-full"));
         const name = (id: string) => bubble(svg, id).getAttribute("aria-label");
         expect(name("x402-host:search-api.example")).toBe(
-            "search-api.example, 5 calls · 0.024 USDC, 2 refused",
+            "search-api.example, 5 calls, 0.024 USDC, 2 refused",
         );
         expect(name("x402-host:unregistered.example")).toBe(
             "unregistered.example, 1 call, 1 refused",
         );
         expect(name("x402-host:weather-api.example")).toBe(
-            "weather-api.example, 3 calls · 0.006 USDC",
+            "weather-api.example, 3 calls, 0.006 USDC",
         );
         expect(name("mcp")).toBe("Bugnet MCP, 19 tool calls");
     });
@@ -99,7 +106,6 @@ describe("renderMapSvg", () => {
         expect(parts(search, ".map-label tspan")).toEqual([
             ["search-api.example", "map-name"],
             ["5 calls", "map-metric muted"],
-            [" · ", "map-metric muted"],
             ["0.024 USDC", "map-metric money"],
         ]);
         expect(parts(bubble(svg, "mcp"), ".map-metric")).toEqual([
@@ -134,19 +140,19 @@ describe("renderMapSvg", () => {
         }
         for (const g of bubbles(svg)) expectStacked([...g.querySelectorAll("text.map-label")]);
         expect(labelLines(bubble(svg, "x402-host:search-api.example"))).toEqual([
-            "search-api.example",
-            "5 calls · 0.024 USDC",
+            ["search-api.example"],
+            ["5 calls", "0.024 USDC"],
         ]);
         expect(labelLines(bubble(svg, "sandbox"))).toEqual([
-            "Sandbox",
-            "2 vCPU",
-            "2 GiB",
-            "15 min",
+            ["Sandbox"],
+            ["2 vCPU"],
+            ["2 GiB"],
+            ["15 min"],
         ]);
         const payments = bubble(svg, "payments");
-        expect(labelLines(payments)).toEqual(["Payments", "0.125 USDC paid"]);
+        expect(labelLines(payments)).toEqual([["Payments"], ["0.125 USDC paid"]]);
         expect(payments.getAttribute("aria-label")).toBe(
-            "Payments, 0.125 USDC paid · 0.02 USDC refunded",
+            "Payments, 0.125 USDC paid, 0.02 USDC refunded",
         );
     });
 
@@ -210,7 +216,7 @@ describe("renderMapSvg", () => {
         expect(label(search).querySelector("text")!.classList.contains("money")).toBe(false);
     });
 
-    it("draws each line of an edge label centred on its own, separators muted", () => {
+    it("draws each line of an edge label centred on its own, its parts a gap apart", () => {
         const { svg } = svgOf(modelOf("ended-full"));
         const g = svg.querySelector(
             '.map-edge-label[data-node-id="x402-host:search-api.example"]',
@@ -226,7 +232,6 @@ describe("renderMapSvg", () => {
         ).toEqual([
             [
                 ["5", "muted"],
-                [" · ", "muted"],
                 ["0.024 USDC", "money"],
             ],
             [["2 refused", "warn"]],
@@ -287,12 +292,13 @@ describe("renderMapList", () => {
         expect(payments.querySelector(".map-row-name")!.textContent).toBe("Payments");
         expect(payments.querySelector(".map-row-metric")!.textContent).toBe("0.125 USDC paid");
         expect(payments.getAttribute("aria-label")).toBe(
-            "Payments, 0.125 USDC paid · 0.02 USDC refunded",
+            "Payments, 0.125 USDC paid, 0.02 USDC refunded",
         );
         const search = rowOf(list, "x402-host:search-api.example");
-        expect(search.querySelector(".map-row-metric")!.textContent).toBe("5 calls · 0.024 USDC");
+        const metric = [...search.querySelectorAll(".map-row-metric > span")];
+        expect(metric.map((s) => s.textContent)).toEqual(["5 calls", "0.024 USDC"]);
         expect(search.getAttribute("aria-label")).toBe(
-            "search-api.example, 5 calls · 0.024 USDC, 2 refused",
+            "search-api.example, 5 calls, 0.024 USDC, 2 refused",
         );
     });
 
@@ -301,7 +307,6 @@ describe("renderMapList", () => {
         const search = rowOf(list, "x402-host:search-api.example");
         expect(parts(search, ".map-row-metric span")).toEqual([
             ["5 calls", "muted"],
-            [" · ", "muted"],
             ["0.024 USDC", "money"],
         ]);
         expect(parts(rowOf(list, "mcp"), ".map-row-metric span")).toEqual([
@@ -342,12 +347,14 @@ describe("renderEventTable", () => {
         expect(th).toEqual(["Time", "Event", "Detail", "Amount", "Transaction"]);
         const rows = [...root.querySelectorAll("tbody tr")];
         expect(rows).toHaveLength(node.rows.length);
-        const cells = [...rows[0]!.querySelectorAll("td")].map((c) => c.textContent);
-        expect(cells.slice(0, 3)).toEqual([
+        const cells = [...rows[0]!.querySelectorAll("td")];
+        expect(cells.slice(0, 2).map((c) => c.textContent)).toEqual([
             formatClock(node.rows[0]!.at, now),
             node.rows[0]!.event,
-            node.rows[0]!.detail,
         ]);
+        const detail = [...cells[2]!.querySelectorAll(".parts > span")].map((p) => p.textContent);
+        expect(detail).toEqual(node.rows[0]!.detail);
+        expect(detail.length).toBeGreaterThan(1);
     });
 
     it("links a valid transaction to the explorer, with a copy button", async () => {

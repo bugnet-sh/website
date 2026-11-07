@@ -148,6 +148,16 @@ describe("buildPage", () => {
         }
     });
 
+    it("ships no middle dot, written out or escaped", async () => {
+        const text = (name: string) => !name.endsWith(".woff2");
+        const names = (await files()).filter(text);
+        expect(names.some((n) => n.endsWith(".js"))).toBe(true);
+        for (const name of names) {
+            const body = await readFile(join(out, name), "utf8");
+            expect(body, name).not.toMatch(/\u00b7|\\x[bB]7|\\u00[bB]7|\\u\{0*[bB]7\}/);
+        }
+    });
+
     it("sets no HTML from script", async () => {
         const src = doc.querySelector("script")?.getAttribute("src");
         expect((await asset(src)).toString("utf8")).not.toContain("innerHTML");

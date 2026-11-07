@@ -44,3 +44,8 @@ export function svgEl<K extends keyof SVGElementTagNameMap>(
     for (const child of children) node.appendChild(child);
     return node;
 }
+
+// Parts that sit side by side, each a span, which the page's CSS sets one fixed gap apart
+export function partSpans(doc: Document, parts: string[], cls?: string): HTMLSpanElement[] {
+    return parts.map((text) => el(doc, "span", { class: cls, text }));
+}

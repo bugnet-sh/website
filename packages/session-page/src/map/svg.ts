@@ -1,6 +1,6 @@
 import { copy } from "../copy.ts";
 import { svgEl } from "../render/dom.ts";
-import { ASCENT, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
+import { ASCENT, GAP, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
 import { accessibleName, type MapSelect } from "./model.ts";
 
 // One decimal keeps the markup short
@@ -25,12 +25,8 @@ interface LineAt {
     anchor: string;
 }
 
-/*
- * One text per line, since Chromium sizes a text as if all its tspans ran on one line, and a
- * label on the left would then read as wider than its box. Each part takes its own class, so a
- * count next to an amount never shows in the money colour.
- */
-function lineTexts(doc: Document, lines: Span[][], at: LineAt, sepClass: string): SVGTextElement[] {
+// One text per line, since Chromium sizes a text as if all its tspans ran on one line
+function lineTexts(doc: Document, lines: Span[][], at: LineAt): SVGTextElement[] {
     return lines.map((line, row) =>
         svgEl(
             doc,
@@ -42,10 +38,13 @@ function lineTexts(doc: Document, lines: Span[][], at: LineAt, sepClass: string)
                 "text-anchor": at.anchor,
                 fill: "currentColor",
             },
-            line.flatMap((part, i) => {
-                const span = tspan(doc, part.text, { class: part.class });
-                return i > 0 ? [tspan(doc, copy.SEP, { class: sepClass }), span] : [span];
-            }),
+            line.map((part, i) =>
+                tspan(
+                    doc,
+                    part.text,
+                    i > 0 ? { class: part.class, dx: num(GAP) } : { class: part.class },
+                ),
+            ),
         ),
     );
 }
@@ -57,12 +56,12 @@ function labelTexts(doc: Document, p: Placed): SVGTextElement[] {
             class: part.money ? "map-metric money" : "map-metric muted",
         })),
     );
-    return lineTexts(
-        doc,
-        [[{ text: p.node.label, class: "map-name" }], ...metric],
-        { class: "map-label", x: p.labelX, y: p.labelY, anchor: p.labelAnchor },
-        "map-metric muted",
-    );
+    return lineTexts(doc, [[{ text: p.node.label, class: "map-name" }], ...metric], {
+        class: "map-label",
+        x: p.labelX,
+        y: p.labelY,
+        anchor: p.labelAnchor,
+    });
 }
 
 function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
@@ -124,7 +123,7 @@ function edgeTexts(doc: Document, e: MapEdge): SVGTextElement[] {
         line.map((part) => ({ text: part.text, class: part.tone })),
     );
     const at = { x: e.box.x + e.box.width / 2, y: e.box.y + ASCENT, anchor: "middle" };
-    return lineTexts(doc, lines, at, "muted");
+    return lineTexts(doc, lines, at);
 }
 
 function edgeLabel(doc: Document, e: MapEdge): SVGGElement {

@@ -71,6 +71,10 @@ const notes = (root: HTMLElement, seq: number) =>
     detail(root, seq).querySelector(".term-notes")!.textContent;
 const expandAll = (root: HTMLElement) =>
     root.querySelector<HTMLButtonElement>("button.expand-all")!;
+// Values hold no-break spaces, which these expectations write as plain ones
+const plain = (s: string | null) => (s ?? "").replaceAll("\u00a0", " ");
+const footer = (root: HTMLElement, seq: number) =>
+    [...detail(root, seq).querySelectorAll(".term-foot > span")].map((s) => plain(s.textContent));
 
 describe("createCommandsView", () => {
     it("shows ended-full as six rows, the last one open with its command, output and exit", () => {
@@ -93,9 +97,7 @@ describe("createCommandsView", () => {
             "Installing collected packages: torch",
             "Successfully installed torch-2.5.1",
         ]);
-        expect(open.querySelector(".term-foot")!.textContent).toBe(
-            "exit 0 · 2 min 10 s · peak 512 MiB",
-        );
+        expect(footer(view.root, 6)).toEqual(["exit 0", "2 min 10 s", "peak 512 MiB"]);
         expect(view.openSeqs()).toEqual([6]);
     });
 
@@ -103,7 +105,7 @@ describe("createCommandsView", () => {
         const { view } = showEnded("ended-full");
         const head = [...view.root.querySelectorAll("thead th")].map((th) => th.textContent);
         expect(head).toEqual(Object.values(copy.commandsHead));
-        expect(cellTexts(view.root, 2)).toEqual([
+        expect(cellTexts(view.root, 2).map(plain)).toEqual([
             "2",
             "npm test -- --grep zz-sample-ended-full",
             "1",
@@ -159,7 +161,7 @@ describe("createCommandsView", () => {
 
     it("puts the cut notice first in a cut job's block", () => {
         const { view } = showEnded("ended-full");
-        expect(notes(view.root, 6)).toBe("Earlier output not kept (1.2 MiB)");
+        expect(plain(notes(view.root, 6))).toBe("Earlier output not kept (1.2 MiB)");
     });
 
     it("says the output is saving or expired in place of the rows", () => {
@@ -265,7 +267,7 @@ describe("createCommandsView", () => {
         const t = make();
         t.view.setJobs(runningJobs(), NOW);
         t.scheduler.flush();
-        const time = (seq: number) => row(t.view.root, seq).cells[3]!.textContent;
+        const time = (seq: number) => plain(row(t.view.root, seq).cells[3]!.textContent);
         expect(time(4)).toBe("30 s");
         expect(time(2)).toBe("9 s");
         t.setNow(new Date(NOW.getTime() + 5_000));
@@ -321,12 +323,24 @@ describe("createCommandsView", () => {
         t.scheduler.flush();
         expect(exitCell(t.view.root, 3).textContent).toBe("2");
         expect(exitCell(t.view.root, 3).classList.contains("bad")).toBe(true);
-        expect(detail(t.view.root, 3).querySelector(".term-foot")!.textContent).toBe(
-            "exit 2 · 1 min 2 s · peak 96 MiB",
-        );
+        expect(footer(t.view.root, 3)).toEqual(["exit 2", "1 min 2 s", "peak 96 MiB"]);
         t.setNow(new Date(NOW.getTime() + 9_000));
         t.scheduler.flush();
-        expect(row(t.view.root, 3).cells[3]!.textContent).toBe("1 min 2 s");
+        expect(plain(row(t.view.root, 3).cells[3]!.textContent)).toBe("1 min 2 s");
+    });
+
+    it("ticks an open running row's last line with its time cell", () => {
+        const t = make();
+        t.view.setJobs(runningJobs(), NOW);
+        toggle(t.view.root, 3).click();
+        t.scheduler.flush();
+        t.scheduler.flush();
+        expect(footer(t.view.root, 3)).toEqual(["running", "1 min 0 s"]);
+        t.setNow(new Date(NOW.getTime() + 2_000));
+        t.scheduler.flush();
+        t.scheduler.flush();
+        expect(footer(t.view.root, 3)).toEqual(["running", "1 min 2 s"]);
+        expect(plain(row(t.view.root, 3).cells[3]!.textContent)).toBe("1 min 2 s");
     });
 
     it("shows the skipped, waiting and limit notices", () => {
