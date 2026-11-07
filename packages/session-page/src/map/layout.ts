@@ -50,7 +50,6 @@ export interface MapEdge {
     y2: number;
     dashed: boolean;
     money: boolean;
-    refusedLabel: string | null;
     // What the map draws, one array of parts per line, none for an edge with no refusals
     lines: EdgePart[][];
     // The background behind the drawn lines, centred on the line's midpoint
@@ -323,7 +322,6 @@ function edgeTo(center: Placed, to: Placed): MapEdge {
         ...ends,
         dashed: node.refused > 0 && node.refused === node.count,
         money: node.paidMicros > 0,
-        refusedLabel: node.refused > 0 ? copy.metrics.refused(node.refused) : null,
         lines,
         box: boxAt(ends, lines),
     };

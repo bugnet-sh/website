@@ -342,7 +342,6 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
                 const { node } = e.to;
                 const want = node.refused > 0 ? [[`${node.refused} refused`]] : [];
                 expect(drawn(e.lines), node.id).toEqual(want);
-                expect(e.refusedLabel, node.id).toBe(node.refused > 0 ? want[0]![0] : null);
                 for (const part of e.lines.flat()) expect(part.tone, node.id).toBe("warn");
             }
         });
@@ -361,25 +360,21 @@ describe("layoutMap edges", () => {
         expect(edge("payments")).toMatchObject({
             money: true,
             dashed: false,
-            refusedLabel: null,
             lines: [],
         });
         expect(edge("x402-host:weather-api.example")).toMatchObject({
             money: true,
             dashed: false,
-            refusedLabel: null,
             lines: [],
         });
         expect(edge("x402-host:search-api.example")).toMatchObject({
             money: true,
             dashed: false,
-            refusedLabel: "3 refused",
             lines: [[{ text: "3 refused", tone: "warn" }]],
         });
         expect(edge("refused-host:unregistered.example")).toMatchObject({
             money: false,
             dashed: true,
-            refusedLabel: "1 refused",
             lines: [[{ text: "1 refused", tone: "warn" }]],
         });
         expect(edge("mcp")).toMatchObject({ money: false, dashed: false, lines: [] });
