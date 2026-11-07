@@ -916,12 +916,50 @@ describe("a running session", () => {
         expect(srv.gets()).toHaveLength(2);
     });
 
-    it("shows the not-found line when a stream answers 404", async () => {
-        const srv = server([runningBody], { live: { status: 404, body: null } });
+    // The route answers a stream 404 from the deadline on, before the record says it ended
+    it("asks again when a stream answers 404, and shows the record it answers", async () => {
+        const srv = server([runningBody, first(scenarios["ended-full"])], {
+            live: { status: 404, body: null },
+        });
         const { app } = open({ scenario: running, fetch: srv.fetch });
+        await settle();
+        await settle();
+        expect(srv.gets()).toHaveLength(2);
+        expect(message(app)).toBeNull();
+        expect(status(app)).toBe(copy.ended("stopped"));
+        expect(q(app, ".map svg.map-svg")).not.toBeNull();
+        expect(stored(running)).toBe(running.key);
+    });
+
+    it("shows the not-found line when the ask after a stream's 404 answers 404", async () => {
+        const srv = server([runningBody, { status: 404, body: null }], {
+            live: { status: 404, body: null },
+        });
+        const { app } = open({ scenario: running, fetch: srv.fetch });
+        await settle();
         await settle();
         expect(message(app)).toBe(copy.notFound);
         expect(stored(running)).toBe("gone:not-found");
+    });
+
+    it("opens no stream again until the next ask when the record still says running", async () => {
+        const srv = server([runningBody], { live: { status: 404, body: null } });
+        const { app } = open({ scenario: running, fetch: srv.fetch });
+        await settle();
+        await settle();
+        expect(srv.gets()).toHaveLength(2);
+        const livesBefore = srv.lives().length;
+        expect(status(app)).toBe(copy.running);
+        await advance(9_999);
+        expect(srv.gets()).toHaveLength(2);
+        expect(srv.lives()).toHaveLength(livesBefore);
+        // The regular ask opens the streams, and their 404s bring one more ask that opens none
+        await advance(1);
+        await settle();
+        expect(srv.lives().length).toBeGreaterThan(livesBefore);
+        expect(srv.gets()).toHaveLength(4);
+        await advance(9_999);
+        expect(srv.gets()).toHaveLength(4);
     });
 });
 

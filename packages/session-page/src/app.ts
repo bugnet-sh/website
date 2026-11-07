@@ -119,6 +119,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
     // Asks for settling payments end before this server time; null when nothing settles
     let settlingUntil: number | null = null;
     let status: { text: string; running: boolean } | null = null;
+    // Set when the streams stopped for the session's end, so the ask that follows opens none
+    let streamsRest = false;
 
     const serverNow = () => new Date(env.now().getTime() + offsetMs);
 
@@ -287,17 +289,26 @@ export function startPage(env: PageEnv): { destroy(): void } {
                 liveSeqs.add(seq);
                 view?.commands.setLive(seq, state);
             },
-            onGone: () => finish(copy.notFound, "not-found"),
+            // A stream answers 404 from the deadline on too, so only the record can tell
+            // ended, expired and not found apart
+            onGone: streamsEnded,
             onSessionEnd: () => {
-                stop();
+                streamsEnded();
                 // Until the record comes with the reason
                 status = { text: copy.sandboxEnded, running: false };
                 paintStatus();
-                void ask();
             },
             setTimer: (cb, ms) => env.setTimer(cb, ms),
             clearTimer: (t) => env.clearTimer(t as number),
         });
+    }
+
+    // The record may say running for a few seconds past the end, and streams opened then would
+    // end again at once, so they wait for the next regular ask
+    function streamsEnded(): void {
+        stop();
+        streamsRest = true;
+        void ask();
     }
 
     async function remove(): Promise<boolean> {
@@ -393,7 +404,8 @@ export function startPage(env: PageEnv): { destroy(): void } {
             .filter((j) => j.state === "running")
             .map((j) => j.seq)
             .sort((a, b) => b - a);
-        live ??= startLive();
+        if (streamsRest) streamsRest = false;
+        else live ??= startLive();
         wantLive();
         askIn(RUNNING_EVERY_MS);
     }

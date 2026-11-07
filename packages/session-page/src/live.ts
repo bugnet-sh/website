@@ -15,7 +15,7 @@ export interface LiveOpts {
     retryMs: number;
     onFrame(seq: number, f: LiveFrame): void;
     onState(seq: number, s: StreamState): void;
-    // A 404 on a stream: the link stopped working
+    // A 404 on a stream: the link stopped working, or the sandbox passed its deadline
     onGone(): void;
     onSessionEnd(reason: "ended" | "closed"): void;
     setTimer(cb: () => void, ms: number): unknown;
