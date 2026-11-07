@@ -17,43 +17,51 @@ interface Span {
     class: string;
 }
 
-// Each part takes its own class, so a count next to an amount never shows in the money colour
-function lineSpans(doc: Document, lines: Span[][], x: string, sepClass: string): SVGTSpanElement[] {
-    return lines.flatMap((line, row) =>
-        line.flatMap((part, i) => {
-            // A tspan with its own x starts a chunk that the anchor places on its own
-            const at: Record<string, string> =
-                i > 0 ? {} : row > 0 ? { x, dy: String(LINE_HEIGHT) } : { x };
-            const span = tspan(doc, part.text, { ...at, class: part.class });
-            return i > 0 ? [tspan(doc, copy.SEP, { class: sepClass }), span] : [span];
-        }),
+interface LineAt {
+    class?: string;
+    x: number;
+    // The baseline of the first line
+    y: number;
+    anchor: string;
+}
+
+/*
+ * One text per line, since Chromium sizes a text as if all its tspans ran on one line, and a
+ * label on the left would then read as wider than its box. Each part takes its own class, so a
+ * count next to an amount never shows in the money colour.
+ */
+function lineTexts(doc: Document, lines: Span[][], at: LineAt, sepClass: string): SVGTextElement[] {
+    return lines.map((line, row) =>
+        svgEl(
+            doc,
+            "text",
+            {
+                ...(at.class === undefined ? {} : { class: at.class }),
+                x: num(at.x),
+                y: num(at.y + row * LINE_HEIGHT),
+                "text-anchor": at.anchor,
+                fill: "currentColor",
+            },
+            line.flatMap((part, i) => {
+                const span = tspan(doc, part.text, { class: part.class });
+                return i > 0 ? [tspan(doc, copy.SEP, { class: sepClass }), span] : [span];
+            }),
+        ),
     );
 }
 
-function labelText(doc: Document, p: Placed): SVGTextElement {
-    const x = num(p.labelX);
+function labelTexts(doc: Document, p: Placed): SVGTextElement[] {
     const metric = p.metricLines.map((line) =>
         line.map((part) => ({
             text: part.text,
             class: part.money ? "map-metric money" : "map-metric muted",
         })),
     );
-    return svgEl(
+    return lineTexts(
         doc,
-        "text",
-        {
-            class: "map-label",
-            x,
-            y: num(p.labelY),
-            "text-anchor": p.labelAnchor,
-            fill: "currentColor",
-        },
-        lineSpans(
-            doc,
-            [[{ text: p.node.label, class: "map-name" }], ...metric],
-            x,
-            "map-metric muted",
-        ),
+        [[{ text: p.node.label, class: "map-name" }], ...metric],
+        { class: "map-label", x: p.labelX, y: p.labelY, anchor: p.labelAnchor },
+        "map-metric muted",
     );
 }
 
@@ -76,7 +84,7 @@ function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
         [
             title,
             svgEl(doc, "circle", { class: "map-bubble", cx: num(p.x), cy: num(p.y), r: num(p.r) }),
-            labelText(doc, p),
+            ...labelTexts(doc, p),
         ],
     );
     g.addEventListener("click", () => opts.onSelect(node.id));
@@ -111,17 +119,12 @@ function edgeLine(doc: Document, e: MapEdge): SVGLineElement {
     return svgEl(doc, "line", attrs);
 }
 
-function edgeText(doc: Document, e: MapEdge): SVGTextElement {
-    const x = num(e.box.x + e.box.width / 2);
+function edgeTexts(doc: Document, e: MapEdge): SVGTextElement[] {
     const lines = e.lines.map((line) =>
         line.map((part) => ({ text: part.text, class: part.tone })),
     );
-    return svgEl(
-        doc,
-        "text",
-        { x, y: num(e.box.y + ASCENT), "text-anchor": "middle", fill: "currentColor" },
-        lineSpans(doc, lines, x, "muted"),
-    );
+    const at = { x: e.box.x + e.box.width / 2, y: e.box.y + ASCENT, anchor: "middle" };
+    return lineTexts(doc, lines, at, "muted");
 }
 
 function edgeLabel(doc: Document, e: MapEdge): SVGGElement {
@@ -133,7 +136,7 @@ function edgeLabel(doc: Document, e: MapEdge): SVGGElement {
             width: num(e.box.width),
             height: num(e.box.height),
         }),
-        edgeText(doc, e),
+        ...edgeTexts(doc, e),
     ]);
 }
 

@@ -38,14 +38,21 @@ const bubble = (root: Element, id: string) => bubbles(root).find((g) => g.datase
 
 const clipboard = () => ({ writeText: vi.fn(async (_text: string) => {}) });
 
-// Each drawn line starts at a tspan with its own x, and runs on through the tspans after it
+// Each drawn line is a text of its own
 function labelLines(g: Element): string[] {
-    const lines: string[] = [];
-    for (const t of g.querySelectorAll(".map-label tspan")) {
-        if (t.hasAttribute("x")) lines.push("");
-        lines[lines.length - 1] += t.textContent;
+    return [...g.querySelectorAll("text.map-label")].map((t) => t.textContent ?? "");
+}
+
+// Every line of a label shares its x and anchor, each one line height below the last
+function expectStacked(texts: Element[]): void {
+    const first = texts[0]!;
+    for (const [i, t] of texts.entries()) {
+        expect(t.getAttribute("x")).toBe(first.getAttribute("x"));
+        expect(t.getAttribute("text-anchor")).toBe(first.getAttribute("text-anchor"));
+        const y = Number(t.getAttribute("y")) - Number(first.getAttribute("y"));
+        expect(y).toBeCloseTo(i * 16, 1);
+        expect(t.querySelector("[x], [y], [dx], [dy]")).toBeNull();
     }
-    return lines;
 }
 
 const parts = (root: Element, selector: string) =>
@@ -125,6 +132,7 @@ describe("renderMapSvg", () => {
         for (const g of bubbles(svg).filter((b) => b.dataset.nodeId !== "sandbox")) {
             expect(labelLines(g), g.dataset.nodeId).toHaveLength(2);
         }
+        for (const g of bubbles(svg)) expectStacked([...g.querySelectorAll("text.map-label")]);
         expect(labelLines(bubble(svg, "x402-host:search-api.example"))).toEqual([
             "search-api.example",
             "5 calls · 0.024 USDC",
@@ -207,21 +215,24 @@ describe("renderMapSvg", () => {
         const g = svg.querySelector(
             '.map-edge-label[data-node-id="x402-host:search-api.example"]',
         )!;
-        const text = g.querySelector("text")!;
-        const spans = [...text.querySelectorAll("tspan")];
-        expect(spans.map((t) => [t.textContent, t.getAttribute("class")])).toEqual([
-            ["5", "muted"],
-            [" · ", "muted"],
-            ["0.024 USDC", "money"],
-            ["2 refused", "warn"],
+        const texts = [...g.querySelectorAll("text")];
+        expect(
+            texts.map((t) =>
+                [...t.querySelectorAll("tspan")].map((s) => [
+                    s.textContent,
+                    s.getAttribute("class"),
+                ]),
+            ),
+        ).toEqual([
+            [
+                ["5", "muted"],
+                [" · ", "muted"],
+                ["0.024 USDC", "money"],
+            ],
+            [["2 refused", "warn"]],
         ]);
-        expect(spans.map((t) => t.getAttribute("x"))).toEqual([
-            text.getAttribute("x"),
-            null,
-            null,
-            text.getAttribute("x"),
-        ]);
-        expect(spans.map((t) => t.getAttribute("dy"))).toEqual([null, null, null, "16"]);
+        expectStacked(texts);
+        expect(texts[0]!.getAttribute("text-anchor")).toBe("middle");
         expect(g.querySelector("rect")!.getAttribute("height")).toBe("32");
     });
 
