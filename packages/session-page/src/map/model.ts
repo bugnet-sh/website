@@ -85,6 +85,12 @@ export const MAX_PREVIEWS = 4;
 export const partsText = (parts: readonly { text: string }[]) =>
     parts.map((p) => p.text).join(copy.SEP);
 
+// The edges that show refusals are hidden from screen readers, so the name says them
+export function accessibleName(node: MapNode): string {
+    const refused = node.refused > 0 ? copy.metrics.refused(node.refused) : null;
+    return [node.fullLabel, node.metric, refused].filter((p) => p !== null && p !== "").join(", ");
+}
+
 function join(parts: (string | null)[]): string {
     return parts.filter((p): p is string => p !== null && p !== "").join(copy.SEP);
 }

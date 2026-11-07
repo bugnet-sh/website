@@ -9,18 +9,21 @@ const COPIED_MS = 1_500;
 let tips = 0;
 
 // The tooltip is absolutely placed by the page's CSS, so showing it moves nothing
-export function tip(doc: Document, text: string, label?: string): HTMLElement {
+export function tip(doc: Document, text: string, label: string): HTMLElement {
     const id = `tip-${++tips}`;
     const bubble = el(doc, "span", { class: "tip-text", text, attrs: { role: "tooltip", id } });
     bubble.hidden = true;
-    const attrs: Record<string, string> = { type: "button", "aria-describedby": id };
-    if (label !== undefined) attrs["aria-label"] = label;
-    const button = el(doc, "button", { class: "tip-button", text: "?", attrs });
+    const button = el(doc, "button", {
+        class: "tip-button",
+        text: copy.tipMark,
+        attrs: { type: "button", "aria-label": label, "aria-describedby": id },
+    });
     const root = el(doc, "span", { class: "tip" }, [button, bubble]);
 
     // Listening on the document lets Escape close a tooltip shown by hover alone
     const onKey = (e: KeyboardEvent) => {
-        if (e.key === "Escape") hide();
+        // A re-render can drop a shown tip, which would otherwise keep this listener forever
+        if (e.key === "Escape" || !button.isConnected) hide();
     };
     const show = () => {
         if (!bubble.hidden) return;
@@ -42,7 +45,9 @@ export function tip(doc: Document, text: string, label?: string): HTMLElement {
     return root;
 }
 
-// Both labels stay in the button and the CSS shows one, so its width never changes
+type CopyState = "idle" | "copied" | "failed";
+
+// All three labels stay in the button and the CSS shows one, so its width never changes
 export function copyButton(
     doc: Document,
     label: string,
@@ -50,35 +55,41 @@ export function copyButton(
     clipboard: Clipboard,
     scheduler?: Scheduler,
 ): HTMLButtonElement {
-    const idle = el(doc, "span", { class: "copy-idle", text: label });
-    const done = el(doc, "span", {
-        class: "copy-done",
-        text: copy.copied,
-        attrs: { "aria-hidden": "true" },
-    });
-    const button = el(doc, "button", { class: "copy-button", attrs: { type: "button" } }, [
-        idle,
-        done,
-    ]);
-    const show = (copied: boolean) => {
-        const run = () => {
-            button.classList.toggle("is-copied", copied);
-            (copied ? done : idle).removeAttribute("aria-hidden");
-            (copied ? idle : done).setAttribute("aria-hidden", "true");
-        };
-        if (scheduler) scheduler.frame(run);
-        else run();
+    const labels: [CopyState, HTMLSpanElement][] = [
+        ["idle", el(doc, "span", { class: "copy-idle", text: label })],
+        ["copied", el(doc, "span", { class: "copy-done", text: copy.copied })],
+        ["failed", el(doc, "span", { class: "copy-failed", text: copy.copyFailed })],
+    ];
+    const button = el(
+        doc,
+        "button",
+        { class: "copy-button", attrs: { type: "button" } },
+        labels.map(([, span]) => span),
+    );
+    const apply = (state: CopyState) => {
+        button.classList.toggle("is-copied", state === "copied");
+        button.classList.toggle("is-failed", state === "failed");
+        for (const [shows, span] of labels) {
+            if (shows === state) span.removeAttribute("aria-hidden");
+            else span.setAttribute("aria-hidden", "true");
+        }
     };
+    const show = (state: CopyState) => {
+        if (scheduler) scheduler.frame(() => apply(state));
+        else apply(state);
+    };
+    apply("idle");
     let timer: ReturnType<typeof setTimeout> | undefined;
+    const flash = (state: CopyState) => {
+        show(state);
+        clearTimeout(timer);
+        timer = setTimeout(() => show("idle"), COPIED_MS);
+    };
     button.addEventListener("click", () => {
         clipboard.writeText(getText()).then(
-            () => {
-                show(true);
-                clearTimeout(timer);
-                timer = setTimeout(() => show(false), COPIED_MS);
-            },
-            // A refused clipboard leaves the label as it was, so nothing claims a copy
-            () => {},
+            () => flash("copied"),
+            // A silent failure would read as a copy, so the button says it failed
+            () => flash("failed"),
         );
     });
     return button;

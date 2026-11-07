@@ -80,6 +80,8 @@ describe("copy", () => {
 
     it("keeps the exact page text", () => {
         expect(copy.title).toBe("Bugnet sandbox session");
+        expect(copy.copyFailed).toBe("Copy failed");
+        expect(copy.tipMark).toBe("?");
         expect(copy.gateTip).toBe(
             "Nothing loads until you click. Share this link only with people who may see its output.",
         );

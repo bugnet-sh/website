@@ -63,9 +63,27 @@ describe("renderMapSvg", () => {
         for (const g of all) {
             const node = nodeOf(model, g.dataset.nodeId!);
             expect(g.getAttribute("tabindex")).toBe("0");
-            expect(g.getAttribute("aria-label")).toBe(`${node.fullLabel}, ${node.metric}`);
+            const refused = node.refused > 0 ? `, ${copy.metrics.refused(node.refused)}` : "";
+            expect(g.getAttribute("aria-label")).toBe(
+                `${node.fullLabel}, ${node.metric}${refused}`,
+            );
             expect(g.querySelector("title")!.textContent).toBe(node.fullLabel);
         }
+    });
+
+    it("names a bubble's refusals, since its edge is hidden from screen readers", () => {
+        const { svg } = svgOf(modelOf("ended-full"));
+        const name = (id: string) => bubble(svg, id).getAttribute("aria-label");
+        expect(name("x402-host:search-api.example")).toBe(
+            "search-api.example, 5 calls · 0.024 USDC, 2 refused",
+        );
+        expect(name("x402-host:unregistered.example")).toBe(
+            "unregistered.example, 1 call, 1 refused",
+        );
+        expect(name("x402-host:weather-api.example")).toBe(
+            "weather-api.example, 3 calls · 0.006 USDC",
+        );
+        expect(name("mcp")).toBe("Bugnet MCP, 19 tool calls");
     });
 
     it("draws only the amounts of a metric in the money colour", () => {
@@ -278,6 +296,16 @@ describe("renderMapList", () => {
         expect(parts(rowOf(list, "mcp"), ".map-row-metric span")).toEqual([
             ["19 tool calls", "muted"],
         ]);
+    });
+
+    it("closes the selected row's table on Escape", () => {
+        const { list, onSelect } = listOf("payments");
+        const escape = () => new KeyboardEvent("keydown", { key: "Escape", bubbles: true });
+        rowOf(list, "mcp").dispatchEvent(escape());
+        expect(onSelect).toHaveBeenCalledExactlyOnceWith("payments");
+        const none = listOf(null);
+        rowOf(none.list, "mcp").dispatchEvent(escape());
+        expect(none.onSelect).not.toHaveBeenCalled();
     });
 
     it("marks refusals, and says when nothing was recorded", () => {

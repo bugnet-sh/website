@@ -1,11 +1,12 @@
 import { copy } from "../copy.ts";
 import { el } from "../render/dom.ts";
-import type { MapModel, MapNode, MapSelect, MetricPart } from "./model.ts";
-
-function rowLabel(node: MapNode): string {
-    const refused = node.refused > 0 ? copy.metrics.refused(node.refused) : null;
-    return [node.fullLabel, node.metric, refused].filter((p) => p !== null && p !== "").join(", ");
-}
+import {
+    accessibleName,
+    type MapModel,
+    type MapNode,
+    type MapSelect,
+    type MetricPart,
+} from "./model.ts";
 
 // The count and the total paid, so Payments leaves its refund to the table and the row's name
 function shown(parts: MetricPart[]): MetricPart[] {
@@ -42,13 +43,16 @@ function row(doc: Document, node: MapNode, opts: MapSelect): HTMLLIElement {
             attrs: {
                 type: "button",
                 "aria-pressed": String(selected),
-                "aria-label": rowLabel(node),
+                "aria-label": accessibleName(node),
                 "data-node-id": node.id,
             },
         },
         parts,
     );
     button.addEventListener("click", () => opts.onSelect(node.id));
+    button.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && opts.selectedId !== null) opts.onSelect(opts.selectedId);
+    });
     return el(doc, "li", {}, [button]);
 }
 

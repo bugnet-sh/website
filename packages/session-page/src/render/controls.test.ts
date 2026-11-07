@@ -4,7 +4,7 @@ import { copy } from "../copy.ts";
 import type { Scheduler } from "../schedule.ts";
 import { copyButton, tip } from "./controls.ts";
 
-function mount(text = "Nothing loads until you click.", label?: string) {
+function mount(text = "Nothing loads until you click.", label = "About this page") {
     const root = tip(document, text, label);
     document.body.replaceChildren(root);
     const button = root.querySelector("button")!;
@@ -51,13 +51,30 @@ describe("tip", () => {
     it("is a round ? button named by its label, with its own tooltip id", () => {
         const { button } = mount("a", "About this page");
         expect(button.type).toBe("button");
-        expect(button.textContent).toBe("?");
+        expect(button.textContent).toBe(copy.tipMark);
         expect(button.getAttribute("aria-label")).toBe("About this page");
-        const other = tip(document, "b");
+        const other = tip(document, "b", "About the map");
+        expect(other.querySelector("button")!.getAttribute("aria-label")).toBe("About the map");
         expect(other.querySelector('[role="tooltip"]')!.id).not.toBe(
             button.getAttribute("aria-describedby"),
         );
-        expect(mount("c").button.hasAttribute("aria-label")).toBe(false);
+    });
+
+    it("stops listening on the document once the page has dropped the tip", () => {
+        const add = vi.spyOn(document, "addEventListener");
+        const remove = vi.spyOn(document, "removeEventListener");
+        try {
+            const { root, bubble } = mount();
+            root.dispatchEvent(new MouseEvent("mouseenter"));
+            const listener = add.mock.calls.find(([type]) => type === "keydown")![1];
+            root.remove();
+            key(document.body, "Tab");
+            expect(remove).toHaveBeenCalledWith("keydown", listener);
+            expect(bubble.hidden).toBe(true);
+        } finally {
+            add.mockRestore();
+            remove.mockRestore();
+        }
     });
 });
 
@@ -88,14 +105,15 @@ describe("copyButton", () => {
         expect(visible(button)).toBe(copy.copySignature);
     });
 
-    it("holds both labels at all times, so its width never changes", async () => {
+    it("holds all three labels at all times, so its width never changes", async () => {
         const button = copyButton(document, copy.copyOutput, () => "x", board());
         const labels = () => [...button.children].map((c) => c.textContent);
-        expect(labels()).toEqual([copy.copyOutput, copy.copied]);
+        const all = [copy.copyOutput, copy.copied, copy.copyFailed];
+        expect(labels()).toEqual(all);
         button.click();
         await vi.advanceTimersByTimeAsync(0);
-        expect(labels()).toEqual([copy.copyOutput, copy.copied]);
-        expect(button.textContent).toBe(`${copy.copyOutput}${copy.copied}`);
+        expect(labels()).toEqual(all);
+        expect(button.textContent).toBe(all.join(""));
     });
 
     it("restarts the 1,500 ms on a second click", async () => {
@@ -109,12 +127,35 @@ describe("copyButton", () => {
         expect(button.classList.contains("is-copied")).toBe(false);
     });
 
-    it("stays as it was when the clipboard refuses", async () => {
+    it("says Copy failed for 1,500 ms when the clipboard refuses, never Copied", async () => {
         const clipboard = { writeText: vi.fn(async () => Promise.reject(new Error("denied"))) };
         const button = copyButton(document, copy.copyOutput, () => "x", clipboard);
         button.click();
         await vi.advanceTimersByTimeAsync(0);
         expect(button.classList.contains("is-copied")).toBe(false);
+        expect(button.classList.contains("is-failed")).toBe(true);
+        expect(visible(button)).toBe(copy.copyFailed);
+        await vi.advanceTimersByTimeAsync(1_499);
+        expect(visible(button)).toBe(copy.copyFailed);
+        await vi.advanceTimersByTimeAsync(1);
+        expect(button.classList.contains("is-failed")).toBe(false);
+        expect(visible(button)).toBe(copy.copyOutput);
+    });
+
+    it("shows only the latest outcome when a copy follows a failed one", async () => {
+        const clipboard = { writeText: vi.fn(async (_text: string) => {}) };
+        clipboard.writeText.mockRejectedValueOnce(new Error("denied"));
+        const button = copyButton(document, copy.copyOutput, () => "x", clipboard);
+        button.click();
+        await vi.advanceTimersByTimeAsync(1_000);
+        button.click();
+        await vi.advanceTimersByTimeAsync(0);
+        expect(button.classList.contains("is-failed")).toBe(false);
+        expect(visible(button)).toBe(copy.copied);
+        await vi.advanceTimersByTimeAsync(1_000);
+        expect(visible(button)).toBe(copy.copied);
+        await vi.advanceTimersByTimeAsync(500);
+        expect(visible(button)).toBe(copy.copyOutput);
     });
 
     it("changes its look inside the scheduler's frames when given one", async () => {

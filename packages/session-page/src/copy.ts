@@ -81,6 +81,8 @@ export const copy = {
     collapseAll: "Collapse all",
     copyOutput: "Copy output",
     copied: "Copied",
+    copyFailed: "Copy failed",
+    tipMark: "?",
     noCommand: "(command not recorded)",
     // Ends the one line a multi-line command shows in its table cell
     moreLines: " …",

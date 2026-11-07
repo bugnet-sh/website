@@ -110,7 +110,7 @@ describe("createCommandsView", () => {
             "9.2 s",
             "148 B",
             "126 B",
-            `${copy.copyOutput}${copy.copied}`,
+            `${copy.copyOutput}${copy.copied}${copy.copyFailed}`,
         ]);
         // The provider lost job 5, so no end event gave its byte counts
         expect(cellTexts(view.root, 5).slice(4, 6)).toEqual([copy.noValue, copy.noValue]);

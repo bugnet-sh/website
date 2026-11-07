@@ -1,14 +1,10 @@
 import { copy } from "../copy.ts";
 import { svgEl } from "../render/dom.ts";
 import { ASCENT, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
-import type { MapSelect } from "./model.ts";
+import { accessibleName, type MapSelect } from "./model.ts";
 
 // One decimal keeps the markup short
 const num = (v: number) => String(Math.round(v * 10) / 10);
-
-function bubbleLabel(p: Placed): string {
-    return p.node.metric === "" ? p.node.fullLabel : `${p.node.fullLabel}, ${p.node.metric}`;
-}
 
 function tspan(doc: Document, value: string, attrs: Record<string, string>): SVGTSpanElement {
     const span = svgEl(doc, "tspan", attrs);
@@ -74,7 +70,7 @@ function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
             role: "button",
             tabindex: "0",
             "aria-pressed": String(selected),
-            "aria-label": bubbleLabel(p),
+            "aria-label": accessibleName(node),
             "data-node-id": node.id,
         },
         [
