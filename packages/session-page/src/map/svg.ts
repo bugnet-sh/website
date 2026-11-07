@@ -1,13 +1,7 @@
 import { copy } from "../copy.ts";
 import { svgEl } from "../render/dom.ts";
 import { ASCENT, LINE_HEIGHT, type MapEdge, type MapLayout, type Placed } from "./layout.ts";
-import { SEPARATOR } from "./model.ts";
-
-export interface MapSelect {
-    selectedId: string | null;
-    // Called with the selected id again on Escape, so the page closes its table
-    onSelect(id: string): void;
-}
+import { SEPARATOR, type MapSelect } from "./model.ts";
 
 // One decimal keeps the markup short
 const num = (v: number) => String(Math.round(v * 10) / 10);

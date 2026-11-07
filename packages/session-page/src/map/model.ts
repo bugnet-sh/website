@@ -64,6 +64,13 @@ export interface MapModel {
     eventsDropped: number;
 }
 
+// The map and its phone list share one selection
+export interface MapSelect {
+    selectedId: string | null;
+    // Called with the selected id again on Escape, so the page closes its table
+    onSelect(id: string): void;
+}
+
 export const MAX_RIGHT = 6;
 export const MAX_PREVIEWS = 4;
 
@@ -233,17 +240,30 @@ interface Group {
     refused: number;
 }
 
-function group(
-    kind: NodeKind,
-    side: Side,
-    fullLabel: string,
-    events: SessionEvent[],
-    count: number,
-    metric: string,
-    paidMicros = 0,
-    id: string = kind,
-): Group {
-    return { id, kind, side, fullLabel, events, count, metric, paidMicros, refused: 0 };
+interface GroupOptions {
+    kind: NodeKind;
+    side: Side;
+    fullLabel: string;
+    events: SessionEvent[];
+    count: number;
+    metric?: string;
+    paidMicros?: number;
+    // The kind, unless several nodes share it
+    id?: string;
+}
+
+function group(o: GroupOptions): Group {
+    return {
+        id: o.id ?? o.kind,
+        kind: o.kind,
+        side: o.side,
+        fullLabel: o.fullLabel,
+        events: o.events,
+        count: o.count,
+        metric: o.metric ?? "",
+        paidMicros: o.paidMicros ?? 0,
+        refused: 0,
+    };
 }
 
 function toNode(g: Group, ctx: RowContext): MapNode {
@@ -351,7 +371,9 @@ function sortEvents(events: SessionEvent[]): Buckets {
             case "x402": {
                 const kind = e.kind === "x402" ? "x402-host" : "secret-host";
                 const id = `${kind}:${e.host}`;
-                const g = b.hosts.get(id) ?? group(kind, "right", e.host, [], 0, "", 0, id);
+                const g =
+                    b.hosts.get(id) ??
+                    group({ id, kind, side: "right", fullLabel: e.host, events: [], count: 0 });
                 b.hosts.set(id, g);
                 g.events.push(e);
                 if (e.kind === "secret_host") {
@@ -386,14 +408,14 @@ export function buildMap(record: SessionRecord): MapModel {
     const b = sortEvents(record.events);
     const { metrics, nodes: names } = copy;
 
-    const sandbox = group(
-        "sandbox",
-        "center",
-        names.sandbox,
-        b.placements,
-        b.placements.length,
-        sandboxMetric(b.placements),
-    );
+    const sandbox = group({
+        kind: "sandbox",
+        side: "center",
+        fullLabel: names.sandbox,
+        events: b.placements,
+        count: b.placements.length,
+        metric: sandboxMetric(b.placements),
+    });
 
     let paid = 0;
     let refunded = 0;
@@ -402,16 +424,23 @@ export function buildMap(record: SessionRecord): MapModel {
         else paid += e.amountMicros;
     }
     const left = [
-        group("mcp", "left", names.mcp, b.tools, b.toolCalls, metrics.toolCalls(b.toolCalls)),
-        group(
-            "payments",
-            "left",
-            names.payments,
-            b.money,
-            b.money.length,
-            metrics.paid(paid, refunded),
-            paid,
-        ),
+        group({
+            kind: "mcp",
+            side: "left",
+            fullLabel: names.mcp,
+            events: b.tools,
+            count: b.toolCalls,
+            metric: metrics.toolCalls(b.toolCalls),
+        }),
+        group({
+            kind: "payments",
+            side: "left",
+            fullLabel: names.payments,
+            events: b.money,
+            count: b.money.length,
+            metric: metrics.paid(paid, refunded),
+            paidMicros: paid,
+        }),
     ];
 
     const right = [...b.hosts.values()].sort(byCountThenName);
@@ -436,18 +465,15 @@ export function buildMap(record: SessionRecord): MapModel {
         .sort(([x], [y]) => x - y)
         .map(([port, events]) => {
             const requests = events.reduce((n, e) => n + (e.requests ?? 0), 0);
-            const label = names.preview(port);
-            const metric = metrics.requests(requests);
-            return group(
-                "preview",
-                "bottom",
-                label,
+            return group({
+                id: `preview:${port}`,
+                kind: "preview",
+                side: "bottom",
+                fullLabel: names.preview(port),
                 events,
-                requests,
-                metric,
-                0,
-                `preview:${port}`,
-            );
+                count: requests,
+                metric: metrics.requests(requests),
+            });
         });
     const bottomNodes = previews.slice(0, MAX_PREVIEWS).map((g) => toNode(g, ctx));
     const extraPorts = previews.slice(MAX_PREVIEWS);
@@ -465,8 +491,22 @@ export function buildMap(record: SessionRecord): MapModel {
     const sessions = b.ssh.filter((e) => e.phase === "start").length;
     const files = b.transfers.length;
     const tail = [
-        group("ssh", "bottom", names.ssh, b.ssh, sessions, metrics.sessions(sessions)),
-        group("transfers", "bottom", names.transfers, b.transfers, files, metrics.files(files)),
+        group({
+            kind: "ssh",
+            side: "bottom",
+            fullLabel: names.ssh,
+            events: b.ssh,
+            count: sessions,
+            metric: metrics.sessions(sessions),
+        }),
+        group({
+            kind: "transfers",
+            side: "bottom",
+            fullLabel: names.transfers,
+            events: b.transfers,
+            count: files,
+            metric: metrics.files(files),
+        }),
     ];
 
     // A node shows while it has rows, so a preview nobody opened still appears with 0 requests

@@ -1,7 +1,6 @@
 import { copy } from "../copy.ts";
 import { el } from "../render/dom.ts";
-import type { MapModel, MapNode } from "./model.ts";
-import type { MapSelect } from "./svg.ts";
+import type { MapModel, MapNode, MapSelect } from "./model.ts";
 
 function rowLabel(node: MapNode): string {
     const refused = node.refused > 0 ? copy.metrics.refused(node.refused) : null;
