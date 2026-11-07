@@ -64,7 +64,7 @@ function oneLine(command: string | null): string {
     if (command === null) return copy.noCommand;
     const text = command.trimEnd();
     const end = text.search(/[\r\n]/);
-    return end < 0 ? text : `${text.slice(0, end)} …`;
+    return end < 0 ? text : `${text.slice(0, end)}${copy.moreLines}`;
 }
 
 function bytes(n: number | null): string {
@@ -228,13 +228,18 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
 
     function paint(row: Row, now: Date): void {
         const { text, tone, dot } = exitCellOf(exitOf(row).info);
-        row.exitCell.className = tone === "" ? "exit" : `exit ${tone}`;
-        const label = doc.createTextNode(text);
-        if (dot) {
-            const mark = el(doc, "span", { class: "dot", attrs: { "aria-hidden": "true" } });
-            row.exitCell.replaceChildren(mark, label);
-        } else {
-            row.exitCell.replaceChildren(label);
+        const cell = row.exitCell;
+        const cls = tone === "" ? "exit" : `exit ${tone}`;
+        if (cell.className !== cls) cell.className = cls;
+        // A new dot would restart its pulse on every snapshot
+        if (cell.textContent !== text || (cell.querySelector("span.dot") !== null) !== dot) {
+            const label = doc.createTextNode(text);
+            if (dot) {
+                const mark = el(doc, "span", { class: "dot", attrs: { "aria-hidden": "true" } });
+                cell.replaceChildren(mark, label);
+            } else {
+                cell.replaceChildren(label);
+            }
         }
         paintTime(row, now);
         row.outCell.textContent = bytes(row.job.outBytes);

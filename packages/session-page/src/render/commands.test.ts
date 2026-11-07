@@ -147,6 +147,16 @@ describe("createCommandsView", () => {
         expect(running.classList.contains("bad")).toBe(false);
     });
 
+    it("keeps a running row's dot across snapshots that do not change it", () => {
+        const t = make();
+        t.view.setJobs(runningJobs(), NOW);
+        const dot = exitCell(t.view.root, 4).querySelector("span.dot");
+        expect(dot).not.toBeNull();
+        t.view.setJobs(runningJobs(), new Date(NOW.getTime() + 10_000));
+        expect(exitCell(t.view.root, 4).querySelector("span.dot")).toBe(dot);
+        expect(exitCell(t.view.root, 4).textContent).toBe(copy.exitCell.running);
+    });
+
     it("puts the cut notice first in a cut job's block", () => {
         const { view } = showEnded("ended-full");
         expect(notes(view.root, 6)).toBe("Earlier output not kept (1.2 MiB)");
@@ -366,7 +376,7 @@ describe("createCommandsView", () => {
             ],
             NOW,
         );
-        expect(toggle(t.view.root, 1).textContent).toBe("cat <<EOF …");
+        expect(toggle(t.view.root, 1).textContent).toBe(`cat <<EOF${copy.moreLines}`);
         expect(toggle(t.view.root, 2).textContent).toBe(copy.noCommand);
     });
 

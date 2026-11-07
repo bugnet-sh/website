@@ -78,6 +78,8 @@ export const copy = {
     copyOutput: "Copy output",
     copied: "Copied",
     noCommand: "(command not recorded)",
+    // Ends the one line a multi-line command shows in its table cell
+    moreLines: " …",
     // A count the page was never given, such as the bytes of a job the provider lost
     noValue: "—",
     exitCell: {
