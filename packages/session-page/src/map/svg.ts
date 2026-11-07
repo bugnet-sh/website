@@ -6,6 +6,9 @@ import { accessibleName, type MapSelect } from "./model.ts";
 // One decimal keeps the markup short
 const num = (v: number) => String(Math.round(v * 10) / 10);
 
+// Half the page's 40 px row, so a small bubble is still a full-size target
+const HIT_R = 20;
+
 function tspan(doc: Document, value: string, attrs: Record<string, string>): SVGTSpanElement {
     const span = svgEl(doc, "tspan", attrs);
     span.textContent = value;
@@ -82,6 +85,12 @@ function bubble(doc: Document, p: Placed, opts: MapSelect): SVGGElement {
         },
         [
             title,
+            svgEl(doc, "circle", {
+                class: "map-hit",
+                cx: num(p.x),
+                cy: num(p.y),
+                r: num(Math.max(p.r, HIT_R)),
+            }),
             svgEl(doc, "circle", { class: "map-bubble", cx: num(p.x), cy: num(p.y), r: num(p.r) }),
             ...labelTexts(doc, p),
         ],
@@ -140,12 +149,12 @@ function edgeLabel(doc: Document, e: MapEdge): SVGGElement {
 }
 
 export function renderMapSvg(doc: Document, layout: MapLayout, opts: MapSelect): SVGSVGElement {
-    const { width, height, center } = layout;
+    const { width, top, height, note } = layout;
     const svg = svgEl(doc, "svg", {
         class: "map-svg",
         role: "group",
         "aria-label": copy.mapLabel,
-        viewBox: `0 0 ${num(width)} ${num(height)}`,
+        viewBox: `0 ${num(top)} ${num(width)} ${num(height)}`,
         width: num(width),
         height: num(height),
     });
@@ -155,18 +164,18 @@ export function renderMapSvg(doc: Document, layout: MapLayout, opts: MapSelect):
             ...layout.edges.map((e) => edgeLine(doc, e)),
             ...layout.edges.filter((e) => e.lines.length > 0).map((e) => edgeLabel(doc, e)),
         ]),
-        ...[center, ...layout.placed].map((p) => bubble(doc, p, opts)),
+        ...[layout.center, ...layout.placed].map((p) => bubble(doc, p, opts)),
     );
-    if (layout.placed.length === 0) {
-        const note = svgEl(doc, "text", {
+    if (note !== null) {
+        const text = svgEl(doc, "text", {
             class: "map-empty muted",
-            x: num(center.x),
-            y: num(center.y + center.r + 28),
+            x: num(note.x),
+            y: num(note.y),
             "text-anchor": "middle",
             fill: "currentColor",
         });
-        note.textContent = copy.noCalls;
-        svg.append(note);
+        text.textContent = copy.noCalls;
+        svg.append(text);
     }
     return svg;
 }

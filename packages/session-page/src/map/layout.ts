@@ -1,15 +1,16 @@
 /**
  * Places the bubble map's nodes at fixed spots, so the same record always draws the same map.
  *
- * The sandbox sits in the centre with its name and size inside. Left and right nodes stack in a
- * column each, with labels on the outer side, and each column moves inward only as far as its
- * longest label needs. Bottom nodes spread along one row under the centre, alternate their labels
+ * The sandbox sits in the centre with its name and size inside. Every other bubble's area grows
+ * with its count on one scale, whose largest radius is set first by the most crowded place. Left
+ * and right nodes stack in a column each, with labels on the outer side starting at one edge, and
+ * each column moves inward only as far as its longest label needs. Bottom nodes spread along one row under the centre, alternate their labels
  * between two rows when one row cannot hold them, and drop lower when their outer edges would cross
  * a column. The centre moves sideways only when an edge label needs the room, first for every
  * edge's shortest label, then for the amounts. Each edge label starts in its shortest form, then
  * takes the fullest form that clears every circle, label and other edge label. Label sizes are
  * estimated at 7.5 px per character on 16 px lines, wider than the page's fonts draw them, plus a
- * fixed gap between the parts of a line.
+ * fixed gap between the parts of a line. The map is then cropped to what it draws.
  */
 import { copy } from "../copy.ts";
 import type { MapModel, MapNode, MetricPart } from "./model.ts";
@@ -60,10 +61,14 @@ export interface MapEdge {
 
 export interface MapLayout {
     width: number;
+    // The drawn area, from the top of its highest mark to the bottom of its lowest
+    top: number;
     height: number;
     center: Placed;
     placed: Placed[];
     edges: MapEdge[];
+    // Where an empty map's "No calls recorded." sits, centred on its baseline
+    note: { x: number; y: number } | null;
 }
 
 const CHAR_WIDTH = 7.5;
@@ -85,16 +90,15 @@ const BOTTOM_TO = 0.66;
 const DROP = 8;
 const MAX_DROP = 120;
 const LABEL_GAP = 12;
+const MAX_R = 40;
+const MIN_R = 8;
+const NOTE_BELOW = 28;
 const MARGIN = 4;
 const SPACE = 8;
 const LINE_CHARS = 24;
 const EDGE_PAD = 4;
 // A fuller edge label keeps this far from everything, so it never sits flush against a neighbour
 const EDGE_CLEAR = 2;
-
-export function radiusFor(count: number): number {
-    return Math.min(40, 16 + 5 * Math.sqrt(Math.max(0, count)));
-}
 
 const chars = (s: string) => Array.from(s).length;
 
@@ -175,23 +179,28 @@ interface Sized {
     width: number;
 }
 
-function sizeAll(nodes: MapNode[], cap: number): Sized[] {
+type Radius = (count: number) => number;
+
+function sizeAll(nodes: MapNode[], radius: Radius): Sized[] {
     return nodes.map((node) => {
         const lines = metricLines(node);
-        return {
-            node,
-            r: Math.min(radiusFor(node.count), cap),
-            metricLines: lines,
-            width: labelWidth(node, lines),
-        };
+        return { node, r: radius(node.count), metricLines: lines, width: labelWidth(node, lines) };
     });
 }
 
-function placeColumn(nodes: MapNode[], side: "left" | "right", width: number): Placed[] {
+const columnCap = (n: number) => COLUMN_SPAN / n / 2 - 6;
+
+function placeColumn(
+    nodes: MapNode[],
+    side: "left" | "right",
+    width: number,
+    radius: Radius,
+): Placed[] {
     if (nodes.length === 0) return [];
     const slot = COLUMN_SPAN / nodes.length;
-    const sized = sizeAll(nodes, slot / 2 - 6);
-    const reach = Math.max(...sized.map((s) => s.width + LABEL_GAP + s.r)) + MARGIN;
+    const sized = sizeAll(nodes, radius);
+    const rMax = Math.max(...sized.map((s) => s.r));
+    const reach = Math.max(...sized.map((s) => s.width)) + LABEL_GAP + rMax + MARGIN;
     const x =
         side === "left"
             ? Math.max(width * LEFT_AT, reach)
@@ -204,7 +213,7 @@ function placeColumn(nodes: MapNode[], side: "left" | "right", width: number): P
             y,
             r: s.r,
             labelAnchor: side === "left" ? "end" : "start",
-            labelX: side === "left" ? x - s.r - LABEL_GAP : x + s.r + LABEL_GAP,
+            labelX: side === "left" ? x - rMax - LABEL_GAP : x + rMax + LABEL_GAP,
             labelY: y - blockHeight(s.metricLines) / 2 + ASCENT,
             metricLines: s.metricLines,
         };
@@ -213,31 +222,49 @@ function placeColumn(nodes: MapNode[], side: "left" | "right", width: number): P
 
 /* Bottom row */
 
-function placeBottom(nodes: MapNode[], cx: number, width: number, rowY: number): Placed[] {
+interface BottomRow {
+    step: number;
+    stagger: boolean;
+}
+
+// The step depends on the labels alone, so the scale's largest radius can be set from it first
+function bottomRow(nodes: MapNode[], width: number): BottomRow {
     const n = nodes.length;
-    if (n === 0) return [];
-    const sized = sizeAll(nodes, 40);
+    if (n < 2) return { step: 0, stagger: false };
+    const widths = nodes.map((node) => labelWidth(node, metricLines(node)));
     const room = width - 2 * MARGIN;
-    const outer = (sized[0]!.width + sized[n - 1]!.width) / 2;
-    const most = n > 1 ? (room - outer) / (n - 1) : 0;
-    const pair = (i: number, step: number) =>
-        (sized[i]!.width + sized[i + step]!.width) / 2 + SPACE;
+    const outer = (widths[0]! + widths[n - 1]!) / 2;
+    const most = (room - outer) / (n - 1);
+    const pair = (i: number, step: number) => (widths[i]! + widths[i + step]!) / 2 + SPACE;
     let flat = 0;
     for (let i = 0; i + 1 < n; i++) flat = Math.max(flat, pair(i, 1));
     let staggered = 0;
     for (let i = 0; i + 2 < n; i++) staggered = Math.max(staggered, pair(i, 2) / 2);
     const stagger = n > 2 && flat > most;
-    const even = n > 1 ? (width * (BOTTOM_TO - BOTTOM_FROM)) / (n - 1) : 0;
+    const even = (width * (BOTTOM_TO - BOTTOM_FROM)) / (n - 1);
     // Edges fanning down meet their labels at about half the step, so those need room too
     const edges = 2 * (Math.max(...nodes.map((node) => edgeBoxWidth(node))) + SPACE);
-    const step = Math.min(most, Math.max(even, edges, stagger ? staggered : flat));
-    const r = sized.map((s) => (n > 1 ? Math.min(s.r, step / 2 - SPACE / 2) : s.r));
+    return { step: Math.min(most, Math.max(even, edges, stagger ? staggered : flat)), stagger };
+}
+
+function placeBottom(
+    nodes: MapNode[],
+    cx: number,
+    width: number,
+    rowY: number,
+    radius: Radius,
+    row: BottomRow,
+): Placed[] {
+    const n = nodes.length;
+    if (n === 0) return [];
+    const sized = sizeAll(nodes, radius);
+    const { step, stagger } = row;
     const half = ((n - 1) * step) / 2;
     const middle = Math.min(
         Math.max(cx, MARGIN + half + sized[0]!.width / 2),
         width - MARGIN - half - sized[n - 1]!.width / 2,
     );
-    const top = rowY + Math.max(...r) + SPACE;
+    const top = rowY + Math.max(...sized.map((s) => s.r)) + SPACE;
     const tier = Math.max(...sized.map((s) => blockHeight(s.metricLines))) + MARGIN;
     return sized.map((s, i) => {
         const x = middle + (i - (n - 1) / 2) * step;
@@ -246,7 +273,7 @@ function placeBottom(nodes: MapNode[], cx: number, width: number, rowY: number):
             node: s.node,
             x,
             y: rowY,
-            r: r[i]!,
+            r: s.r,
             labelAnchor: "middle",
             labelX: x,
             labelY: top + drop + ASCENT,
@@ -272,16 +299,19 @@ function placeBottomClear(
     center: Placed,
     columns: Placed[],
     width: number,
+    radius: Radius,
+    row: BottomRow,
 ): Placed[] {
-    let row = placeBottom(nodes, center.x, width, BOTTOM_Y);
+    const at = (y: number) => placeBottom(nodes, center.x, width, y, radius, row);
+    let placed = at(BOTTOM_Y);
     for (let y = BOTTOM_Y + DROP; y <= BOTTOM_Y + MAX_DROP; y += DROP) {
-        const clear = row.every((b) =>
+        const clear = placed.every((b) =>
             columns.every((c) => clearance(center, b, c) >= LINE_HEIGHT / 2 + SPACE),
         );
         if (clear) break;
-        row = placeBottom(nodes, center.x, width, y);
+        placed = at(y);
     }
-    return row;
+    return placed;
 }
 
 /* Centre and edges */
@@ -387,12 +417,36 @@ function widenLabels(edges: MapEdge[], circles: Placed[], width: number, height:
     return out;
 }
 
+// One square-root scale for every bubble but the centre, so equal counts draw equal bubbles
+function radiusScale(nodes: MapNode[], caps: number[]): Radius {
+    const cap = Math.min(MAX_R, ...caps);
+    const most = Math.max(1, ...nodes.map((n) => n.count));
+    const least = Math.min(MIN_R, cap);
+    return (count) => Math.max(least, cap * Math.sqrt(Math.max(0, count) / most));
+}
+
+const circleBox = (p: Placed): Box => ({
+    x: p.x - p.r,
+    y: p.y - p.r,
+    width: 2 * p.r,
+    height: 2 * p.r,
+});
+
 export function layoutMap(model: MapModel, width: number): MapLayout {
     const sandbox = model.nodes.find((n) => n.side === "center");
     if (!sandbox) throw new Error("the map has no sandbox node");
     const on = (side: MapNode["side"]) => model.nodes.filter((n) => n.side === side);
-    const left = placeColumn(on("left"), "left", width);
-    const right = placeColumn(on("right"), "right", width);
+    const [leftNodes, rightNodes, bottomNodes] = [on("left"), on("right"), on("bottom")];
+    const row = bottomRow(bottomNodes, width);
+    const radius = radiusScale(
+        [...leftNodes, ...rightNodes, ...bottomNodes],
+        [
+            ...[leftNodes, rightNodes].filter((c) => c.length > 0).map((c) => columnCap(c.length)),
+            ...(bottomNodes.length > 1 ? [row.step / 2 - SPACE / 2] : []),
+        ],
+    );
+    const left = placeColumn(leftNodes, "left", width, radius);
+    const right = placeColumn(rightNodes, "right", width, radius);
     const cx = centerX(width, left, right);
     const centerLines = sandbox.metricParts.map((part) => [part]);
     const center: Placed = {
@@ -406,15 +460,28 @@ export function layoutMap(model: MapModel, width: number): MapLayout {
         metricLines: centerLines,
     };
     const columns = [...left, ...right];
-    const placed = [...columns, ...placeBottomClear(on("bottom"), center, columns, width)];
-    // Only a bottom row that had to drop or stagger its labels reaches below the usual height
-    const height = Math.max(HEIGHT, ...placed.map(labelBox).map((b) => b.y + b.height));
-    const edges = placed.map((p) => edgeTo(center, p));
-    return {
+    const placed = [
+        ...columns,
+        ...placeBottomClear(bottomNodes, center, columns, width, radius, row),
+    ];
+    // Edge labels stay inside the usual height, or the dropped bottom row's labels
+    const frame = Math.max(HEIGHT, ...placed.map(labelBox).map((b) => b.y + b.height));
+    const edges = widenLabels(
+        placed.map((p) => edgeTo(center, p)),
+        [center, ...placed],
         width,
-        height,
-        center,
-        placed,
-        edges: widenLabels(edges, [center, ...placed], width, height),
-    };
+        frame,
+    );
+    const note = placed.length === 0 ? { x: cx, y: CENTER_Y + CENTER_R + NOTE_BELOW } : null;
+    const ink = [
+        ...[center, ...placed].map(circleBox),
+        ...placed.map(labelBox),
+        ...edges.filter((e) => e.lines.length > 0).map((e) => e.box),
+        ...(note === null
+            ? []
+            : [{ x: note.x, y: note.y - ASCENT, width: 0, height: LINE_HEIGHT }]),
+    ];
+    const top = Math.min(...ink.map((b) => b.y));
+    const bottom = Math.max(...ink.map((b) => b.y + b.height));
+    return { width, top, height: bottom - top, center, placed, edges, note };
 }

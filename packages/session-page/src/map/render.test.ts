@@ -156,6 +156,31 @@ describe("renderMapSvg", () => {
         );
     });
 
+    it("gives each bubble a hit circle of at least 20 px radius behind it", () => {
+        const layout = layoutMap(modelOf("ended-full"), 900);
+        const svg = renderMapSvg(document, layout, { selectedId: null, onSelect: vi.fn() });
+        for (const p of [layout.center, ...layout.placed]) {
+            const g = bubble(svg, p.node.id);
+            const [hit, drawn] = [...g.querySelectorAll("circle")];
+            expect(hit!.getAttribute("class")).toBe("map-hit");
+            expect(drawn!.getAttribute("class")).toBe("map-bubble");
+            expect(Number(hit!.getAttribute("r"))).toBeCloseTo(Math.max(p.r, 20), 1);
+            expect(hit!.getAttribute("cx")).toBe(drawn!.getAttribute("cx"));
+            expect(hit!.getAttribute("cy")).toBe(drawn!.getAttribute("cy"));
+        }
+    });
+
+    it("crops its view box to the layout's drawn area", () => {
+        const layout = layoutMap(modelOf("ended-full"), 900);
+        const svg = renderMapSvg(document, layout, { selectedId: null, onSelect: vi.fn() });
+        const box = (svg.getAttribute("viewBox") ?? "").split(" ").map(Number);
+        expect(box[0]).toBe(0);
+        expect(box[1]).toBeCloseTo(layout.top, 1);
+        expect(box[2]).toBe(900);
+        expect(box[3]).toBeCloseTo(layout.height, 1);
+        expect(svg.getAttribute("height")).toBe(String(box[3]));
+    });
+
     it("calls onSelect on Enter, Space or a click", () => {
         const { svg, onSelect } = svgOf(modelOf("ended-full"));
         const g = bubble(svg, "payments");

@@ -284,21 +284,21 @@ describe("an ended session", () => {
             const srv = server([first(scenarios["ended-full"])]);
             const { app } = open({ fetch: srv.fetch });
             await settle();
-            const viewBox = () => q(app, "svg.map-svg")?.getAttribute("viewBox");
-            expect(viewBox()).toBe("0 0 720 460");
+            const drawnWidth = () => q(app, "svg.map-svg")?.getAttribute("viewBox")?.split(" ")[2];
+            expect(drawnWidth()).toBe("720");
             const [observer] = observers;
             const ruler = observer!.observed[0] as HTMLElement;
             expect(q(app, ".map")?.contains(ruler)).toBe(true);
             let width = 1152;
             Object.defineProperty(ruler, "clientWidth", { get: () => width });
             observer!.fire();
-            expect(viewBox()).toBe("0 0 1152 460");
+            expect(drawnWidth()).toBe("1152");
             const drawn = q(app, "svg.map-svg");
             observer!.fire();
             expect(q(app, "svg.map-svg")).toBe(drawn);
             width = 900;
             observer!.fire();
-            expect(viewBox()).toBe("0 0 900 460");
+            expect(drawnWidth()).toBe("900");
             pages.pop()!.destroy();
             expect(observer!.disconnected).toBe(true);
         } finally {

@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { parseGetBody, type SessionEvent, type SessionRecord } from "../payload.ts";
 import { makeScenarios, type ScenarioName } from "../testing/fixtures.ts";
 import { formatUsdc } from "../format.ts";
-import { layoutMap, radiusFor, type MapLayout, type Placed } from "./layout.ts";
+import { layoutMap, type MapLayout, type Placed } from "./layout.ts";
 import { buildMap, type MapModel } from "./model.ts";
 
 const scenarios = makeScenarios(new Date("2026-11-06T12:00:00Z"));
@@ -29,7 +29,7 @@ function mapOf(events: SessionEvent[]): MapModel {
 }
 
 // Every place at once, with the longest labels and a part-refused host in the middle row
-function busiest(): MapModel {
+function busiest(paidMicros = 12_345_678): MapModel {
     const long = (i: number) => `${String.fromCharCode(97 + i)}-very-long-registered-host.example`;
     return mapOf([
         { at, kind: "placement", phase: "placed", vcpu: 16, memoryMib: 65_536, minutes: 1_440 },
@@ -40,7 +40,7 @@ function busiest(): MapModel {
             outcome: "ok",
             durationMs: 1,
         })),
-        { at, kind: "payment", payKind: "start", amountMicros: 12_345_678, tx: "x" },
+        { at, kind: "payment", payKind: "start", amountMicros: paidMicros, tx: "x" },
         {
             at,
             kind: "allowance",
@@ -96,16 +96,6 @@ const models: [string, () => MapModel][] = [
     ["busiest", busiest],
 ];
 const widths = [720, 900, 1152] as const;
-
-// Pinned apart from the layout's own sums, so a label that grows past the map fails here
-const heights: Record<string, Record<(typeof widths)[number], number>> = {
-    "ended-full": { 720: 460, 900: 460, 1152: 460 },
-    // Its 24-character fold metric pushes the right column in, so the bottom row drops clear of it
-    "ended-crowded": { 720: 516, 900: 460, 1152: 460 },
-    "ended-hostile": { 720: 460, 900: 460, 1152: 460 },
-    "ended-empty": { 720: 460, 900: 460, 1152: 460 },
-    busiest: { 720: 616, 900: 516, 1152: 460 },
-};
 
 /* Boxes, estimated apart from the layout's own sums */
 
@@ -174,16 +164,39 @@ function circleHitsBox(p: Placed, b: Box): boolean {
 const boxesMeet = (a: Box, b: Box) => a.x0 < b.x1 && b.x0 < a.x1 && a.y0 < b.y1 && b.y0 < a.y1;
 
 function inside(b: Box, layout: MapLayout): boolean {
-    return b.x0 >= 0 && b.y0 >= 0 && b.x1 <= layout.width && b.y1 <= layout.height;
+    const bottom = layout.top + layout.height;
+    return b.x0 >= 0 && b.y0 >= layout.top && b.x1 <= layout.width && b.y1 <= bottom;
 }
 
-describe("radiusFor", () => {
-    it("grows with the count between 16 and 40", () => {
-        expect(radiusFor(0)).toBe(16);
-        expect(radiusFor(4)).toBe(26);
-        expect(radiusFor(1_000)).toBe(40);
-    });
+const circleBox = (p: Placed): Box => ({
+    what: p.node.id,
+    x0: p.x - p.r,
+    y0: p.y - p.r,
+    x1: p.x + p.r,
+    y1: p.y + p.r,
 });
+
+// Everything the map draws: circles, labels beside them, edge labels and the empty map's note
+function inkBoxes(layout: MapLayout): Box[] {
+    const note: Box[] =
+        layout.note === null
+            ? []
+            : [
+                  {
+                      what: "note",
+                      x0: layout.note.x,
+                      y0: layout.note.y - 12,
+                      x1: layout.note.x,
+                      y1: layout.note.y - 12 + LINE,
+                  },
+              ];
+    return [
+        ...[layout.center, ...layout.placed].map(circleBox),
+        ...layout.placed.map(labelBox),
+        ...edgeBoxes(layout),
+        ...note,
+    ];
+}
 
 describe.each(models)("layoutMap(%s)", (name, model) => {
     describe.each(widths)("at %i px", (width) => {
@@ -199,17 +212,46 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
         });
 
         it("keeps every circle and label inside the map", () => {
-            for (const p of circles) {
-                const box = {
-                    what: p.node.id,
-                    x0: p.x - p.r,
-                    y0: p.y - p.r,
-                    x1: p.x + p.r,
-                    y1: p.y + p.r,
-                };
-                expect(inside(box, layout), p.node.id).toBe(true);
-            }
+            for (const p of circles) expect(inside(circleBox(p), layout), p.node.id).toBe(true);
             for (const b of [...labels, ...edges]) expect(inside(b, layout), b.what).toBe(true);
+        });
+
+        it("crops the map to what it draws, with no empty band above or below", () => {
+            const ink = inkBoxes(layout);
+            expect(layout.top).toBeCloseTo(Math.min(...ink.map((b) => b.y0)), 6);
+            const bottom = Math.max(...ink.map((b) => b.y1));
+            expect(layout.top + layout.height).toBeCloseTo(bottom, 6);
+        });
+
+        it("sizes every bubble on one square-root scale, so a larger count is never smaller", () => {
+            const others = layout.placed;
+            if (others.length === 0) return;
+            const cap = Math.max(...others.map((p) => p.r));
+            const most = Math.max(1, ...others.map((p) => p.node.count));
+            for (const p of others) {
+                const r = Math.max(Math.min(8, cap), cap * Math.sqrt(p.node.count / most));
+                expect(p.r, p.node.id).toBeCloseTo(r, 6);
+                expect(p.r, p.node.id).toBeLessThanOrEqual(40);
+            }
+            for (const a of others) {
+                for (const b of others) {
+                    if (a.node.count >= b.node.count) {
+                        expect(a.r, `${a.node.id} and ${b.node.id}`).toBeGreaterThanOrEqual(b.r);
+                    }
+                }
+            }
+        });
+
+        it("starts every label of a column at one shared edge", () => {
+            for (const side of ["left", "right"] as const) {
+                const column = layout.placed.filter((p) => p.node.side === side);
+                if (column.length === 0) continue;
+                const rMax = Math.max(...column.map((p) => p.r));
+                for (const p of column) {
+                    const edge = side === "left" ? p.x - rMax - 12 : p.x + rMax + 12;
+                    expect(p.labelX, p.node.id).toBe(edge);
+                }
+            }
         });
 
         it("keeps circles 8 px apart", () => {
@@ -300,12 +342,6 @@ describe.each(models)("layoutMap(%s)", (name, model) => {
             }
         });
 
-        it("is 460 tall unless the bottom row needs more room, every label inside", () => {
-            const height = heights[name]![width];
-            expect(layout.height).toBe(height);
-            for (const b of [...labels, ...edges]) expect(b.y1, b.what).toBeLessThanOrEqual(height);
-        });
-
         it("gives the same layout for the same input", () => {
             expect(layoutMap(model(), width)).toEqual(layout);
         });
@@ -372,12 +408,14 @@ describe("layoutMap edges", () => {
     });
 
     it("leaves the Payments edge bare when its total has no room, rather than show a count", () => {
-        const tight = layoutMap(busiest(), 720);
-        const payments = tight.edges.find((e) => e.to.node.kind === "payments")!;
-        expect(payments.label).toEqual([{ text: "12.345678 USDC", tone: "money" }]);
-        expect(payments.lines).toEqual([]);
-        const roomy = layoutMap(busiest(), 900).edges.find((e) => e.to.node.kind === "payments")!;
-        expect(drawn(roomy.lines)).toEqual([["12.345678 USDC"]]);
+        const payments = (width: number) =>
+            layoutMap(busiest(123_456_789_012_345), width).edges.find(
+                (e) => e.to.node.kind === "payments",
+            )!;
+        const total = "123456789.012345 USDC";
+        expect(payments(720).label).toEqual([{ text: total, tone: "money" }]);
+        expect(payments(720).lines).toEqual([]);
+        expect(drawn(payments(1152).lines)).toEqual([[total]]);
     });
 
     it("keeps the total paid on a narrow map, dropping the call count first", () => {
@@ -395,14 +433,17 @@ describe("layoutMap edges", () => {
         }
         const left = layout.placed.filter((p) => p.node.side === "left");
         const right = layout.placed.filter((p) => p.node.side === "right");
-        expect(left.every((p) => p.x < layout.center.x && p.labelX === p.x - p.r - 12)).toBe(true);
-        expect(right.every((p) => p.x > layout.center.x && p.labelX === p.x + p.r + 12)).toBe(true);
+        expect(left.every((p) => p.x < layout.center.x && p.labelX < p.x - p.r)).toBe(true);
+        expect(right.every((p) => p.x > layout.center.x && p.labelX > p.x + p.r)).toBe(true);
     });
 
-    it("puts an empty map's sandbox where a full map has it", () => {
+    it("puts an empty map's sandbox where a full map has it, its note under it", () => {
         const empty = layoutMap(buildMap(recordOf("ended-empty")), 900);
-        expect(empty).toMatchObject({ height: 460, placed: [], edges: [] });
+        expect(empty).toMatchObject({ placed: [], edges: [] });
         expect([empty.center.x, empty.center.y]).toEqual([450, 190]);
+        expect(empty.note).toEqual({ x: 450, y: 190 + 56 + 28 });
+        expect([empty.top, empty.height]).toEqual([190 - 56, 56 + 28 + 4 + 56]);
+        expect(layoutMap(buildMap(recordOf("ended-full")), 900).note).toBeNull();
     });
 
     it("draws a Payments metric over 24 characters as its total paid", () => {

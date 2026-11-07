@@ -348,10 +348,12 @@ h1 {
     margin-top: var(--space-6);
 }
 
+/* Cropped to its marks, so the selected ring and the focus outline draw past its box */
 .map-svg {
     display: block;
     width: 100%;
     height: auto;
+    overflow: visible;
     font-family: var(--font-ui);
 }
 
@@ -376,6 +378,10 @@ h1 {
 .map-metric,
 .map-empty {
     font-size: var(--map-metric-size);
+}
+
+.map-hit {
+    fill: transparent;
 }
 
 .map-bubble {
