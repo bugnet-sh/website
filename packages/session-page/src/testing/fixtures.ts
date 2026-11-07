@@ -21,6 +21,10 @@ export type ScenarioName =
     | "ended-empty"
     | "ended-crowded"
     | "ended-hostile"
+    | "ended-x402"
+    | "ended-x402-settling"
+    | "ended-x402-kept"
+    | "ended-x402-reconcile"
     | "running"
     | "expired"
     | "too-new"
@@ -229,6 +233,19 @@ function allowance(at: At, ms: number, phase: string, amountMicros: number, tx: 
     };
 }
 
+// Unspent money under $0.01 stays with Bugnet, as a row with no transaction (x402 spec 8.4)
+function allowanceKept(at: At, ms: number, keptMicros: number) {
+    return {
+        at: at(ms),
+        kind: "allowance",
+        phase: "kept",
+        amountMicros: 0,
+        keptMicros,
+        asset: "USDC",
+        network: NETWORK,
+    };
+}
+
 function mcp(at: At, ms: number, tool: string, outcome: string, durationMs: number) {
     return { at: at(ms), kind: "mcp", tool, outcome, durationMs };
 }
@@ -265,22 +282,61 @@ interface X402Call {
     method: string;
     path: string;
     status: string;
+    reason?: string;
+    count?: number;
+    // The price in the live 402, the amount unless given; 0 when no exact USDC offer came
+    askedMicros?: number;
     amountMicros: number;
+    resolved?: "paid" | "released" | null;
     tx?: string;
+    resent?: true;
+    httpStatus?: number;
+    durationMs?: number;
+    bytesOut?: number;
+    bytesIn?: number;
+    streamCut?: boolean;
     allowanceLeftMicros?: number;
 }
 
+const x402Extras = [
+    "httpStatus",
+    "durationMs",
+    "bytesOut",
+    "bytesIn",
+    "streamCut",
+    "allowanceLeftMicros",
+] as const;
+
+// A served x402 row (session-page.md 7.3.1), with its keys in the router's order
 function x402(at: At, ms: number, call: X402Call): JsonObject {
-    const { tx, allowanceLeftMicros, ...rest } = call;
+    const resolved = call.resolved ?? null;
+    if (call.tx !== undefined && resolved !== "paid") {
+        throw new Error(`${call.path}: the router serves a tx only on a row resolved as paid`);
+    }
+    const askedMicros = call.askedMicros ?? call.amountMicros;
+    // Asset and network come only with an exact USDC offer on Solana, as the price does
+    const offered = askedMicros > 0;
     const event: JsonObject = {
         at: at(ms),
         kind: "x402",
-        ...rest,
-        asset: "USDC",
-        network: NETWORK,
+        host: call.host,
+        method: call.method,
+        path: call.path,
+        status: call.status,
+        reason: call.reason ?? "",
+        count: call.count ?? 1,
+        askedMicros,
+        amountMicros: call.amountMicros,
+        ...(offered ? { asset: "USDC" } : {}),
+        network: offered ? NETWORK : "",
     };
-    if (tx !== undefined) event.tx = tx;
-    if (allowanceLeftMicros !== undefined) event.allowanceLeftMicros = allowanceLeftMicros;
+    for (const key of x402Extras) {
+        const value = call[key];
+        if (value !== undefined) event[key] = value;
+    }
+    event.resolved = resolved;
+    if (call.tx !== undefined) event.tx = call.tx;
+    if (call.resent) event.resent = true;
     return event;
 }
 
@@ -451,6 +507,7 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             path: "/v1/forecast",
             status: "paid",
             amountMicros: 3_000,
+            resolved: "paid",
             tx: sampleTx(`${name}:x402:1`),
             allowanceLeftMicros: 47_000,
         }),
@@ -460,6 +517,7 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             path: "/v1/forecast",
             status: "paid",
             amountMicros: 3_000,
+            resolved: "paid",
             tx: sampleTx(`${name}:x402:2`),
             allowanceLeftMicros: 44_000,
         }),
@@ -477,6 +535,7 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             path: "/v1/search",
             status: "paid",
             amountMicros: 12_000,
+            resolved: "paid",
             tx: sampleTx(`${name}:x402:3`),
             allowanceLeftMicros: 32_000,
         }),
@@ -486,6 +545,7 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             path: "/v1/search",
             status: "paid",
             amountMicros: 12_000,
+            resolved: "paid",
             tx: sampleTx(`${name}:x402:4`, 87),
             allowanceLeftMicros: 20_000,
         }),
@@ -494,6 +554,8 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             method: "POST",
             path: "/v1/search/deep",
             status: "refused_cap",
+            reason: "allowance_spent",
+            askedMicros: 25_000,
             amountMicros: 0,
             allowanceLeftMicros: 20_000,
         }),
@@ -502,6 +564,8 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             method: "POST",
             path: "/v1/rerank",
             status: "refused_price",
+            reason: "price_above_max",
+            askedMicros: 40_000,
             amountMicros: 0,
             allowanceLeftMicros: 20_000,
         }),
@@ -510,13 +574,14 @@ function endedFull(at: At, name: ScenarioName): JsonObject {
             method: "GET",
             path: "/v1/status",
             status: "upstream_error",
+            reason: "upstream_unreachable",
             amountMicros: 0,
             allowanceLeftMicros: 20_000,
         }),
         x402(at, t0 + 200 * SEC, {
             host: "unregistered.example",
-            method: "GET",
-            path: "/",
+            method: "",
+            path: "",
             status: "refused_host",
             amountMicros: 0,
         }),
@@ -667,10 +732,19 @@ function endedCrowded(at: At, name: ScenarioName): JsonObject {
                     host,
                     method: "GET",
                     path: `/v1/${host.split(".")[0]}`,
-                    status: refused ? "refused_price" : "paid",
                     amountMicros,
-                    ...(refused ? {} : { tx: sampleTx(`${name}:x402:${h}:${i}`) }),
                     allowanceLeftMicros: left,
+                    ...(refused
+                        ? {
+                              status: "refused_price",
+                              reason: "price_above_max",
+                              askedMicros: 50_000,
+                          }
+                        : {
+                              status: "paid",
+                              resolved: "paid" as const,
+                              tx: sampleTx(`${name}:x402:${h}:${i}`),
+                          }),
                 });
             }),
         ),
@@ -768,6 +842,7 @@ function endedHostile(at: At, name: ScenarioName): JsonObject {
             path: `/pay/${markup}`,
             status: "paid",
             amountMicros: 25_000,
+            resolved: "paid",
             tx: "0OIl".repeat(22),
             allowanceLeftMicros: 25_000,
         }),
@@ -779,6 +854,321 @@ function endedHostile(at: At, name: ScenarioName): JsonObject {
         { start: t0, end, endedBecause: "stopped", output: "complete", events, jobs },
         at,
     );
+}
+
+/* x402 sessions */
+
+// An x402 session ended by bugnet_stop: the opening, a file and two jobs carry the sentinel
+function x402Record(at: At, name: ScenarioName, t0: number, events: JsonObject[]): JsonObject {
+    const end = t0 + 10 * MIN;
+    return wireRecord(
+        {
+            start: t0,
+            end,
+            endedBecause: "stopped",
+            output: "complete",
+            events: [
+                ...opening(at, name, t0),
+                mcp(at, t0 + 40 * SEC, "bugnet_write_file", "ok", 110),
+                file(at, t0 + 40 * SEC, "write", `/workspace/${sentinel(name)}/notes.md`, 418),
+                ...events,
+                placement(at, end, "ended", { endedBecause: "stopped" }),
+            ],
+            jobs: basicJobs(name, t0),
+        },
+        at,
+    );
+}
+
+// Every kind of row the router serves, from x402 spec 8.2, 8.3 and 8.5
+function endedX402(at: At, name: ScenarioName): JsonObject {
+    const t0 = -20 * MIN;
+    const end = t0 + 10 * MIN;
+    const search = "search-api.example";
+    const weather = "weather-api.example";
+    const data = "data-api.example";
+    const call = (s: number, c: X402Call) => x402(at, t0 + s * SEC, c);
+    const refusedHost = (s: number, host: string, count: number) =>
+        call(s, { host, method: "", path: "", status: "refused_host", count, amountMicros: 0 });
+    const events = [
+        allowance(at, t0 + 2 * SEC, "paid", 100_000, sampleTx(`${name}:allowance`)),
+        call(100, {
+            host: search,
+            method: "POST",
+            path: "/v1/search",
+            status: "paid",
+            amountMicros: 12_000,
+            resolved: "paid",
+            tx: sampleTx(`${name}:x402:search`),
+            httpStatus: 200,
+            durationMs: 1_840,
+            bytesOut: 412,
+            bytesIn: 18_204,
+            streamCut: false,
+            allowanceLeftMicros: 88_000,
+        }),
+        // A resend of the same payment: the router keeps the money on the first row only
+        call(110, {
+            host: weather,
+            method: "GET",
+            path: "/v1/forecast",
+            status: "paid",
+            amountMicros: 3_000,
+            resolved: "paid",
+            tx: sampleTx(`${name}:x402:forecast`, 87),
+            httpStatus: 200,
+            durationMs: 920,
+            allowanceLeftMicros: 85_000,
+        }),
+        call(111, {
+            host: weather,
+            method: "GET",
+            path: "/v1/forecast",
+            status: "paid",
+            askedMicros: 3_000,
+            amountMicros: 0,
+            resolved: "paid",
+            resent: true,
+            httpStatus: 200,
+            durationMs: 610,
+            allowanceLeftMicros: 85_000,
+        }),
+        // The seller says paid, but only Payments' word makes it so
+        call(130, {
+            host: data,
+            method: "POST",
+            path: "/v1/query",
+            status: "paid",
+            amountMicros: 5_000,
+            httpStatus: 200,
+            durationMs: 2_310,
+            allowanceLeftMicros: 80_000,
+        }),
+        call(140, {
+            host: data,
+            method: "POST",
+            path: "/v1/export",
+            status: "payment_failed",
+            reason: "payment_rejected",
+            amountMicros: 4_000,
+            resolved: "released",
+            httpStatus: 402,
+            durationMs: 1_150,
+            allowanceLeftMicros: 80_000,
+        }),
+        call(150, {
+            host: search,
+            method: "POST",
+            path: "/v1/summarize",
+            status: "uncertain",
+            reason: "paid_no_answer",
+            amountMicros: 2_000,
+            durationMs: 30_000,
+            allowanceLeftMicros: 78_000,
+        }),
+        call(160, {
+            host: weather,
+            method: "GET",
+            path: "/v1/alerts",
+            status: "free",
+            amountMicros: 0,
+        }),
+        call(220, {
+            host: weather,
+            method: "GET",
+            path: "/v1/alerts",
+            status: "free",
+            count: 12,
+            amountMicros: 0,
+            bytesIn: 49_152,
+        }),
+        call(170, {
+            host: search,
+            method: "POST",
+            path: "/v1/search/deep",
+            status: "refused_cap",
+            reason: "allowance_spent",
+            askedMicros: 90_000,
+            amountMicros: 0,
+        }),
+        call(230, {
+            host: search,
+            method: "POST",
+            path: "/v1/search/deep",
+            status: "refused_cap",
+            reason: "allowance_spent",
+            count: 40,
+            askedMicros: 90_000,
+            amountMicros: 0,
+        }),
+        call(175, {
+            host: search,
+            method: "POST",
+            path: "/v1/rerank",
+            status: "refused_price",
+            reason: "price_above_max",
+            askedMicros: 50_000,
+            amountMicros: 0,
+        }),
+        call(180, {
+            host: data,
+            method: "POST",
+            path: "/v1/upload",
+            status: "refused_request",
+            reason: "body_too_large",
+            amountMicros: 0,
+        }),
+        call(185, {
+            host: weather,
+            method: "GET",
+            path: "/v1/history",
+            status: "refused_payee",
+            reason: "payee_changed",
+            askedMicros: 3_000,
+            amountMicros: 0,
+        }),
+        call(190, {
+            host: data,
+            method: "GET",
+            path: "/v1/stream",
+            status: "refused_network",
+            reason: "network_unsupported",
+            amountMicros: 0,
+        }),
+        call(195, {
+            host: data,
+            method: "POST",
+            path: "/v1/batch",
+            status: "refused_terms",
+            reason: "splits_unsupported",
+            amountMicros: 0,
+        }),
+        call(200, {
+            host: weather,
+            method: "GET",
+            path: "/v1/radar",
+            status: "not_paid",
+            reason: "payments_unavailable",
+            askedMicros: 3_000,
+            amountMicros: 0,
+        }),
+        call(205, {
+            host: search,
+            method: "GET",
+            path: "/v1/status",
+            status: "upstream_error",
+            reason: "upstream_unreachable",
+            amountMicros: 0,
+        }),
+        refusedHost(240, "pay.unknown-seller.example", 1),
+        refusedHost(245, "mirror.example", 3),
+        refusedHost(250, `${sentinel(name)}.example`, 1),
+        // Names past the per-minute limit, and any name that was not clean, share one empty row
+        refusedHost(260, "", 17),
+        call(265, {
+            host: data,
+            method: "GET",
+            path: "/v1/report",
+            status: "self_paid",
+            amountMicros: 0,
+            httpStatus: 200,
+        }),
+        allowance(at, end + 30 * SEC, "refunded", 78_000, sampleTx(`${name}:refund`)),
+    ];
+    return x402Record(at, name, t0, events);
+}
+
+// Ended two minutes ago with two payments settling; the next answer has them resolved
+function endedX402Settling(at: At, name: ScenarioName, settled: boolean): JsonObject {
+    const t0 = -12 * MIN;
+    const end = t0 + 10 * MIN;
+    const search = "search-api.example";
+    const data = "data-api.example";
+    const events = [
+        allowance(at, t0 + 2 * SEC, "paid", 50_000, sampleTx(`${name}:allowance`)),
+        x402(at, t0 + 100 * SEC, {
+            host: search,
+            method: "POST",
+            path: "/v1/search",
+            status: "paid",
+            amountMicros: 12_000,
+            resolved: "paid",
+            tx: sampleTx(`${name}:x402:1`),
+            allowanceLeftMicros: 38_000,
+        }),
+        x402(at, t0 + 120 * SEC, {
+            host: search,
+            method: "POST",
+            path: "/v1/search/deep",
+            status: "paid",
+            amountMicros: 12_000,
+            ...(settled ? { resolved: "paid", tx: sampleTx(`${name}:x402:2`, 86) } : {}),
+            allowanceLeftMicros: 26_000,
+        }),
+        x402(at, t0 + 140 * SEC, {
+            host: data,
+            method: "POST",
+            path: "/v1/query",
+            status: "uncertain",
+            reason: "paid_no_answer",
+            amountMicros: 5_000,
+            ...(settled ? { resolved: "released" } : {}),
+            allowanceLeftMicros: 21_000,
+        }),
+        // Payments refunds once nothing settles, the released 0.005 included
+        ...(settled
+            ? [allowance(at, end + 60 * SEC, "refunded", 26_000, sampleTx(`${name}:refund`))]
+            : []),
+    ];
+    return x402Record(at, name, t0, events);
+}
+
+// 0.004 USDC left over is under the $0.01 refund minimum, so Bugnet keeps it
+function endedX402Kept(at: At, name: ScenarioName): JsonObject {
+    const t0 = -30 * MIN;
+    const end = t0 + 10 * MIN;
+    const paid = (s: number, host: string, amountMicros: number, left: number) =>
+        x402(at, t0 + s * SEC, {
+            host,
+            method: "GET",
+            path: "/v1/lookup",
+            status: "paid",
+            amountMicros,
+            resolved: "paid",
+            tx: sampleTx(`${name}:x402:${s}`),
+            allowanceLeftMicros: left,
+        });
+    const events = [
+        allowance(at, t0 + 2 * SEC, "paid", 50_000, sampleTx(`${name}:allowance`)),
+        paid(100, "search-api.example", 12_000, 38_000),
+        paid(110, "search-api.example", 12_000, 26_000),
+        paid(120, "search-api.example", 12_000, 14_000),
+        paid(130, "weather-api.example", 5_000, 9_000),
+        paid(140, "weather-api.example", 5_000, 4_000),
+        allowanceKept(at, end + 30 * SEC, 4_000),
+    ];
+    return x402Record(at, name, t0, events);
+}
+
+// Closed and settled, but the refund came 0.01 USDC short of what was left
+function endedX402Reconcile(at: At, name: ScenarioName): JsonObject {
+    const t0 = -50 * MIN;
+    const end = t0 + 10 * MIN;
+    const events = [
+        allowance(at, t0 + 2 * SEC, "paid", 100_000, sampleTx(`${name}:allowance`)),
+        x402(at, t0 + 100 * SEC, {
+            host: "search-api.example",
+            method: "POST",
+            path: "/v1/search",
+            status: "paid",
+            amountMicros: 20_000,
+            resolved: "paid",
+            tx: sampleTx(`${name}:x402:1`),
+            allowanceLeftMicros: 80_000,
+        }),
+        allowance(at, end + 30 * SEC, "refunded", 70_000, sampleTx(`${name}:refund`)),
+    ];
+    return x402Record(at, name, t0, events);
 }
 
 /* running */
@@ -919,6 +1309,15 @@ export function makeScenarios(now: Date): Record<ScenarioName, Scenario> {
         "ended-empty": make("ended-empty", [ended(endedEmpty(at, "ended-empty"))]),
         "ended-crowded": make("ended-crowded", [ended(endedCrowded(at, "ended-crowded"))]),
         "ended-hostile": make("ended-hostile", [ended(endedHostile(at, "ended-hostile"))]),
+        "ended-x402": make("ended-x402", [ended(endedX402(at, "ended-x402"))]),
+        "ended-x402-settling": make("ended-x402-settling", [
+            ended(endedX402Settling(at, "ended-x402-settling", false)),
+            ended(endedX402Settling(at, "ended-x402-settling", true)),
+        ]),
+        "ended-x402-kept": make("ended-x402-kept", [ended(endedX402Kept(at, "ended-x402-kept"))]),
+        "ended-x402-reconcile": make("ended-x402-reconcile", [
+            ended(endedX402Reconcile(at, "ended-x402-reconcile")),
+        ]),
         running: make("running", [{ status: 200, body: running.body }], running.live),
         expired: make("expired", [{ status: 200, body: { state: "expired" } }]),
         "too-new": make("too-new", [

@@ -73,6 +73,47 @@ function withEvents(...events: unknown[]): Record<string, unknown> {
 }
 
 const at = "2026-11-06T10:05:00Z";
+const network = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
+
+// A paid call as the router serves it, with every key of 7.3.1's x402 row
+function servedCall(fields: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+        at,
+        kind: "x402",
+        host: "pay.example",
+        method: "POST",
+        path: "/v1/search",
+        status: "paid",
+        reason: "",
+        count: 1,
+        askedMicros: 3_000,
+        amountMicros: 3_000,
+        asset: "USDC",
+        network,
+        httpStatus: 200,
+        durationMs: 1_840,
+        bytesOut: 412,
+        bytesIn: 18_204,
+        streamCut: false,
+        allowanceLeftMicros: 997_000,
+        resolved: "paid",
+        tx: sig,
+        ...fields,
+    };
+}
+
+function servedAllowance(fields: Record<string, unknown> = {}): Record<string, unknown> {
+    return {
+        at,
+        kind: "allowance",
+        phase: "paid",
+        amountMicros: 1_000_000,
+        asset: "USDC",
+        network,
+        tx: sig,
+        ...fields,
+    };
+}
 
 describe("parseGetBody with the sample scenarios", () => {
     const scenarios = makeScenarios(new Date("2026-11-06T12:00:00Z"));
@@ -284,32 +325,12 @@ describe("parseGetBody", () => {
     });
 
     it("drops a known kind with a bad field", () => {
-        const network = "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp";
         const valid = [
             { at, kind: "payment", payKind: "start", amountMicros: 50_000, tx: sig },
             { at, kind: "file", op: "read", path: "/a", bytes: 1 },
             { at, kind: "preview", port: 3000, phase: "issued" },
-            {
-                at,
-                kind: "x402",
-                host: "pay.example",
-                method: "GET",
-                path: "/",
-                status: "paid",
-                amountMicros: 3_000,
-                asset: "USDC",
-                network,
-                tx: sig,
-            },
-            {
-                at,
-                kind: "allowance",
-                phase: "paid",
-                amountMicros: 1,
-                asset: "USDC",
-                network,
-                tx: sig,
-            },
+            servedCall(),
+            servedAllowance({ amountMicros: 1 }),
         ];
         expect(ended(withEvents(...valid)).events).toHaveLength(valid.length);
         const bad = [
@@ -321,26 +342,21 @@ describe("parseGetBody", () => {
             { ...valid[2], port: "3000" },
             { ...valid[3], status: 7 },
             { ...valid[3], host: undefined },
+            { ...valid[3], count: 2.5 },
+            { ...valid[3], resolved: "refunded" },
+            { ...valid[3], resent: "yes" },
             { ...valid[4], amountMicros: 1.5 },
+            { ...valid[4], phase: "spent" },
         ];
         const record = ended(withEvents(...bad, { at, kind: "ssh", phase: "start" }));
         expect(record.events).toEqual([{ at: new Date(at), kind: "ssh", phase: "start" }]);
     });
 
     it("keeps an x402 call whose status it does not know, so no paid call is lost", () => {
-        const call = {
-            at,
-            kind: "x402",
-            host: "pay.example",
-            method: "GET",
-            path: "/",
-            status: "settled_late",
-            amountMicros: 3_000,
-            asset: "USDC",
-            network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
-            tx: sig,
-        };
-        expect(ended(withEvents(call)).events).toEqual([{ ...call, at: new Date(at) }]);
+        const call = servedCall({ status: "settled_late" });
+        expect(ended(withEvents(call)).events).toEqual([
+            { ...call, at: new Date(at), resent: false },
+        ]);
     });
 
     it("names the payment's own kind payKind, apart from the event's kind", () => {
@@ -377,10 +393,14 @@ describe("parseGetBody", () => {
                     method: "GET",
                     path: "/v1/weather",
                     status: "refused_price",
+                    reason: "price_above_max",
+                    count: 1,
+                    askedMicros: 50_000,
                     amountMicros: 0,
                     asset: "USDC",
-                    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                    network,
                     allowanceLeftMicros: 997_000,
+                    resolved: null,
                 },
                 {
                     at,
@@ -388,7 +408,7 @@ describe("parseGetBody", () => {
                     phase: "refunded",
                     amountMicros: 982_000,
                     asset: "USDC",
-                    network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                    network,
                     tx: sig,
                 },
             ),
@@ -416,10 +436,15 @@ describe("parseGetBody", () => {
                 method: "GET",
                 path: "/v1/weather",
                 status: "refused_price",
+                reason: "price_above_max",
+                count: 1,
+                askedMicros: 50_000,
                 amountMicros: 0,
                 asset: "USDC",
-                network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                network,
                 allowanceLeftMicros: 997_000,
+                resolved: null,
+                resent: false,
             },
             {
                 at: time,
@@ -427,7 +452,7 @@ describe("parseGetBody", () => {
                 phase: "refunded",
                 amountMicros: 982_000,
                 asset: "USDC",
-                network: "solana:5eykt4UsFv8P8NJdTREpY1vzqKqZKvdp",
+                network,
                 tx: sig,
             },
         ]);
@@ -475,6 +500,162 @@ describe("parseGetBody", () => {
             expect(() => ended({ ...exampleRecord(), jobs: [bad] }), JSON.stringify(bad)).toThrow(
                 PayloadError,
             );
+        }
+    });
+});
+
+describe("parseGetBody with served x402 and allowance rows", () => {
+    const one = (event: unknown) => ended(withEvents(event)).events;
+
+    it("reads a paying row and its resent row with every served field", () => {
+        const resent = servedCall({ amountMicros: 0, tx: undefined, resent: true });
+        expect(ended(withEvents(servedCall(), resent)).events).toEqual([
+            {
+                at: new Date(at),
+                kind: "x402",
+                host: "pay.example",
+                method: "POST",
+                path: "/v1/search",
+                status: "paid",
+                reason: "",
+                count: 1,
+                askedMicros: 3_000,
+                amountMicros: 3_000,
+                asset: "USDC",
+                network,
+                httpStatus: 200,
+                durationMs: 1_840,
+                bytesOut: 412,
+                bytesIn: 18_204,
+                streamCut: false,
+                allowanceLeftMicros: 997_000,
+                resolved: "paid",
+                tx: sig,
+                resent: false,
+            },
+            {
+                at: new Date(at),
+                kind: "x402",
+                host: "pay.example",
+                method: "POST",
+                path: "/v1/search",
+                status: "paid",
+                reason: "",
+                count: 1,
+                askedMicros: 3_000,
+                amountMicros: 0,
+                asset: "USDC",
+                network,
+                httpStatus: 200,
+                durationMs: 1_840,
+                bytesOut: 412,
+                bytesIn: 18_204,
+                streamCut: false,
+                allowanceLeftMicros: 997_000,
+                resolved: "paid",
+                resent: true,
+            },
+        ]);
+    });
+
+    it("reads an absent resolved as still settling and an absent resent as not resent", () => {
+        const [call] = one(servedCall({ resolved: undefined, tx: undefined }));
+        expect(call).toMatchObject({ kind: "x402", resolved: null, resent: false });
+        expect(call).not.toHaveProperty("tx");
+        expect(one(servedCall({ resolved: null, tx: undefined }))[0]).toMatchObject({
+            resolved: null,
+        });
+        expect(one(servedCall({ resolved: "released", tx: undefined }))[0]).toMatchObject({
+            resolved: "released",
+        });
+    });
+
+    it("drops a row with no calls in it, and only that row", () => {
+        const events = ended(
+            withEvents(servedCall({ count: 0 }), servedCall({ count: 40, path: "/v1/folded" })),
+        ).events;
+        expect(events).toHaveLength(1);
+        expect(events[0]).toMatchObject({ count: 40, path: "/v1/folded" });
+    });
+
+    it("keeps a status it does not know as its raw word", () => {
+        expect(one(servedCall({ status: "refused_mood" }))[0]).toMatchObject({
+            status: "refused_mood",
+        });
+    });
+
+    it("keeps the empty host, method and path of the overflow refused_host row", () => {
+        const overflow = {
+            at,
+            kind: "x402",
+            host: "",
+            method: "",
+            path: "",
+            status: "refused_host",
+            reason: "",
+            count: 17,
+            askedMicros: 0,
+            amountMicros: 0,
+            network: "",
+        };
+        expect(one(overflow)).toEqual([
+            { ...overflow, at: new Date(at), resolved: null, resent: false },
+        ]);
+    });
+
+    it("allows a row with no asset, which the router leaves out for any mint but USDC", () => {
+        const [call] = one(servedCall({ asset: undefined }));
+        expect(call).toMatchObject({ kind: "x402", amountMicros: 3_000 });
+        expect(call).not.toHaveProperty("asset");
+    });
+
+    it("shows a transaction only on a row resolved as paid", () => {
+        for (const resolved of [null, "released"]) {
+            const [call] = one(servedCall({ resolved }));
+            expect(call, String(resolved)).not.toHaveProperty("tx");
+        }
+    });
+
+    it("reads the amount kept under the minimum, which has no transaction", () => {
+        const kept = servedAllowance({ phase: "kept", amountMicros: 0, keptMicros: 4_000 });
+        delete kept.tx;
+        expect(one(kept)).toEqual([
+            {
+                at: new Date(at),
+                kind: "allowance",
+                phase: "kept",
+                amountMicros: 0,
+                keptMicros: 4_000,
+                asset: "USDC",
+                network,
+            },
+        ]);
+    });
+
+    it("drops an allowance paid in or refunded without its transaction", () => {
+        for (const phase of ["paid", "refunded"]) {
+            const row = servedAllowance({ phase });
+            delete row.tx;
+            const events = ended(withEvents(row, servedAllowance({ phase }))).events;
+            expect(events, phase).toHaveLength(1);
+            expect(events[0], phase).toMatchObject({ phase, tx: sig });
+        }
+    });
+
+    it("leaves off every key the router does not serve", () => {
+        const secret = {
+            payTo: "9xQeWvG816bUx9EPjHmaT23yvVM2ZWbrrpZb9PusVFin",
+            ref: "k3m7q2x7a4b6c5d2",
+            paymentRef: "k3m7q2x7a4b6c5d2",
+            payment_ref: "k3m7q2x7a4b6c5d2",
+            serviceId: "svc_1",
+            scheme: "exact",
+        };
+        const [call] = one(servedCall(secret));
+        const [allowance] = one(servedAllowance(secret));
+        for (const key of Object.keys(secret)) {
+            expect(call, key).not.toHaveProperty(key);
+            expect(allowance, key).not.toHaveProperty(key);
         }
     });
 });

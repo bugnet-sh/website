@@ -174,7 +174,7 @@ function rowFor(e: SessionEvent, ctx: RowContext): EventRow {
         case "allowance":
             row.event = e.phase === "paid" ? t.allowancePaid : t.allowanceRefunded;
             row.amountMicros = e.amountMicros;
-            row.tx = e.tx;
+            row.tx = e.tx ?? null;
             break;
         case "mcp":
             row.event = e.tool;

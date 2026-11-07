@@ -137,9 +137,28 @@ export interface McpEvent {
     durationMs: number;
 }
 
+// x402 spec 8.2
 export type X402Status =
-    "paid" | "free" | "refused_cap" | "refused_price" | "refused_host" | "upstream_error";
+    | "paid"
+    | "uncertain"
+    | "payment_failed"
+    | "free"
+    | "self_paid"
+    | "refused_cap"
+    | "refused_price"
+    | "refused_payee"
+    | "refused_network"
+    | "refused_terms"
+    | "refused_request"
+    | "refused_host"
+    | "not_paid"
+    | "upstream_error";
 
+/**
+ * One served x402 row (x402 spec 8.1 and 8.3). The router has already joined the payment's
+ * resolution in and served one payment's money on one row only, so the page never joins rows.
+ * `host`, `method`, `path` and `reason` may be empty, as on the overflow `refused_host` row.
+ */
 export interface X402Event {
     at: Date;
     kind: "x402";
@@ -148,21 +167,34 @@ export interface X402Event {
     path: string;
     // Kept as its raw word when unknown, since newer statuses may still have paid
     status: X402Status | (string & {});
+    reason: string;
+    // The calls in this row, more than 1 on a folded one
+    count: number;
+    askedMicros: number;
     amountMicros: number;
-    asset: string;
+    asset?: string;
     network: string;
-    tx?: string;
+    httpStatus?: number;
+    durationMs?: number;
+    bytesOut?: number;
+    bytesIn?: number;
+    streamCut?: boolean;
     allowanceLeftMicros?: number;
+    // null while the payment settles; the seller's word in `status` never makes it paid
+    resolved: "paid" | "released" | null;
+    tx?: string;
+    resent: boolean;
 }
 
 export interface AllowanceEvent {
     at: Date;
     kind: "allowance";
-    phase: "paid" | "refunded";
+    phase: "paid" | "refunded" | "kept";
     amountMicros: number;
+    keptMicros?: number;
     asset: string;
     network: string;
-    tx: string;
+    tx?: string;
 }
 
 export type SessionEvent =
@@ -400,31 +432,52 @@ const eventReaders = new Map<string, (d: Doc, at: Date) => SessionEvent>([
     ],
     [
         "x402",
-        (d, at) => ({
-            at,
-            kind: "x402",
-            host: need(d, "host", isText),
-            method: need(d, "method", isText),
-            path: need(d, "path", isText),
-            status: need(d, "status", isText),
-            amountMicros: need(d, "amountMicros", isCount),
-            asset: need(d, "asset", isText),
-            network: need(d, "network", isText),
-            tx: maybe(d, "tx", isText),
-            allowanceLeftMicros: maybe(d, "allowanceLeftMicros", isCount),
-        }),
+        (d, at) => {
+            const resolved = maybe(d, "resolved", oneOf("paid", "released")) ?? null;
+            const tx = maybe(d, "tx", isText);
+            return {
+                at,
+                kind: "x402",
+                host: need(d, "host", isText),
+                method: need(d, "method", isText),
+                path: need(d, "path", isText),
+                status: need(d, "status", isText),
+                reason: need(d, "reason", isText),
+                count: need(d, "count", isSeq),
+                askedMicros: need(d, "askedMicros", isCount),
+                amountMicros: need(d, "amountMicros", isCount),
+                asset: maybe(d, "asset", isText),
+                network: need(d, "network", isText),
+                httpStatus: maybe(d, "httpStatus", isCount),
+                durationMs: maybe(d, "durationMs", isAmount),
+                bytesOut: maybe(d, "bytesOut", isCount),
+                bytesIn: maybe(d, "bytesIn", isCount),
+                streamCut: maybe(d, "streamCut", isFlag),
+                allowanceLeftMicros: maybe(d, "allowanceLeftMicros", isCount),
+                resolved,
+                // Only Payments' confirmation on chain makes a transaction worth linking (R5)
+                tx: resolved === "paid" ? tx : undefined,
+                resent: maybe(d, "resent", isFlag) ?? false,
+            };
+        },
     ],
     [
         "allowance",
-        (d, at) => ({
-            at,
-            kind: "allowance",
-            phase: need(d, "phase", oneOf("paid", "refunded")),
-            amountMicros: need(d, "amountMicros", isCount),
-            asset: need(d, "asset", isText),
-            network: need(d, "network", isText),
-            tx: need(d, "tx", isText),
-        }),
+        (d, at) => {
+            const phase = need(d, "phase", oneOf("paid", "refunded", "kept"));
+            const kept = phase === "kept";
+            return {
+                at,
+                kind: "allowance",
+                phase,
+                amountMicros: need(d, "amountMicros", isCount),
+                keptMicros: kept ? maybe(d, "keptMicros", isCount) : undefined,
+                asset: need(d, "asset", isText),
+                network: need(d, "network", isText),
+                // Money that moved has a transaction; an amount kept under the minimum never moved
+                tx: kept ? undefined : need(d, "tx", isText),
+            };
+        },
     ],
 ]);
 

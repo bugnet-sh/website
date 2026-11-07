@@ -206,10 +206,15 @@ function x402(status: string, amountMicros = 0): SessionEvent {
         method: "POST",
         path: "/v1/search",
         status,
+        reason: "",
+        count: 1,
+        askedMicros: amountMicros,
         amountMicros,
         asset: "USDC",
         network,
+        resolved: amountMicros > 0 ? "paid" : null,
         ...(amountMicros > 0 ? { tx } : {}),
+        resent: false,
     };
 }
 
@@ -449,7 +454,17 @@ describe("buildMap row text", () => {
             Array.from({ length: MAX_RIGHT + 2 }, (_, i): SessionEvent => {
                 const host = `h${i}.example`;
                 if (kind === "secret_host") return { at: t(1), kind, host, requests: 2, bytes: 1 };
-                const paid = { status: "paid", amountMicros: 1_000, asset: "USDC", network };
+                const paid = {
+                    status: "paid",
+                    reason: "",
+                    count: 1,
+                    askedMicros: 1_000,
+                    amountMicros: 1_000,
+                    asset: "USDC",
+                    network,
+                    resolved: "paid" as const,
+                    resent: false,
+                };
                 return { at: t(1), kind, host, method: "GET", path: "/", ...paid };
             });
         const fold = (events: SessionEvent[]) => nodeOf(buildMap(record(events)), "more-right");

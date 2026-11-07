@@ -165,3 +165,166 @@ describe("copy", () => {
         ]);
     });
 });
+
+describe("copy.x402", () => {
+    it("words each status that carries no money", () => {
+        const words: [string, string][] = [
+            ["free", "free"],
+            ["self_paid", "self-paid"],
+            ["refused_cap", "refused"],
+            ["refused_price", "refused"],
+            ["refused_payee", "refused"],
+            ["refused_network", "refused"],
+            ["refused_terms", "refused"],
+            ["refused_request", "refused"],
+            ["refused_host", "unregistered host"],
+            ["not_paid", "not paid"],
+            ["upstream_error", "seller unreachable"],
+        ];
+        for (const [status, text] of words) expect(copy.x402.status(status), status).toBe(text);
+    });
+
+    it("words a money row by how it resolved", () => {
+        expect(copy.x402.status("paid")).toBe("paid");
+        expect(copy.x402.notCharged).toBe("not charged");
+        expect(copy.x402.settling).toBe("settling, confirmed within a few minutes");
+        expect(copy.x402.resent).toBe("resent the same payment, not charged again");
+    });
+
+    it("keeps a status it does not know as its raw word, prototype names included", () => {
+        expect(copy.x402.status("refused_mood")).toBe("refused_mood");
+        expect(copy.x402.status("toString")).toBe("toString");
+        expect(copy.x402.status("__proto__")).toBe("__proto__");
+    });
+
+    it("words every reason code", () => {
+        const words: [string, string][] = [
+            ["path_refused", "path not forwarded"],
+            ["path_not_enabled", "path not enabled"],
+            ["unpaid_cap", "unpaid limit reached"],
+            ["upgrade_refused", "upgrade not forwarded"],
+            ["host_rate", "host too busy"],
+            ["buffer_busy", "Bugnet busy"],
+            ["payments_unavailable", "payment service down"],
+            ["upstream_unreachable", "seller unreachable"],
+            ["x402_disabled", "payments switched off"],
+            ["account_closed", "sandbox ending"],
+            ["service_not_enabled", "service not enabled"],
+            ["ref_conflict", "records did not match"],
+            ["method_not_enabled", "method not enabled"],
+            ["path_not_paid", "path not approved"],
+            ["body_too_large", "body over 1 MiB"],
+            ["body_slow", "body too slow"],
+            ["first_answer_slow", "seller too slow"],
+            ["payment_rejected", "seller refused the payment"],
+            ["paid_no_answer", "seller did not answer"],
+            ["not_x402", "no x402 price"],
+            ["version_unsupported", "old x402 version"],
+            ["network_unsupported", "no USDC on Solana"],
+            ["splits_unsupported", "split payment"],
+            ["flow_unsupported", "unknown payment flow"],
+            ["ata_creation_unsupported", "asks to create an account"],
+            ["fee_payer_refused", "fee payer refused"],
+            ["payee_refused", "payee refused"],
+            ["payee_changed", "payee changed"],
+            ["payee_unreliable", "payee unreliable"],
+            ["payto_blocked", "payee blocked"],
+            ["price_above_max", "price above the approved maximum"],
+            ["allowance_spent", "allowance spent"],
+            ["rate_cap", "per-minute spending limit"],
+            ["too_many_open_payments", "too many payments settling"],
+            ["payto_daily_cap", "payee's daily limit"],
+            ["outflow_cap", "Bugnet's daily limit"],
+            ["outflow_paused", "payments paused"],
+            ["refused_host", "unregistered host"],
+        ];
+        expect(words).toHaveLength(38);
+        for (const [code, text] of words) expect(copy.x402.reason(code), code).toBe(text);
+    });
+
+    it("keeps a reason it does not know as its raw word", () => {
+        expect(copy.x402.reason("moon_phase")).toBe("moon_phase");
+        expect(copy.x402.reason("constructor")).toBe("constructor");
+    });
+
+    it("writes the detail as its words, then a colon and the reason when there is one", () => {
+        expect(copy.x402.detail("refused", "allowance_spent")).toBe("refused: allowance spent");
+        expect(copy.x402.detail(copy.x402.settling, "paid_no_answer")).toBe(
+            "settling, confirmed within a few minutes: seller did not answer",
+        );
+        expect(copy.x402.detail("refused", "moon_phase")).toBe("refused: moon_phase");
+        expect(copy.x402.detail("free", "")).toBe("free");
+    });
+
+    it("counts calls", () => {
+        expect(copy.x402.calls(1)).toBe("1 call");
+        expect(copy.x402.calls(40)).toBe("40 calls");
+        expect(copy.x402.calls(1_200)).toBe("1,200 calls");
+    });
+});
+
+describe("the allowance words", () => {
+    it("names the Allowance bubble, the overflow names and the kept row", () => {
+        expect(copy.nodes.allowance).toBe("Allowance");
+        expect(copy.nodes.otherNames).toBe("other names");
+        expect(copy.rows.allowanceKept).toBe("Kept under the minimum");
+    });
+
+    it("labels the totals", () => {
+        expect(copy.totals.paidIn).toBe("Paid in");
+        expect(copy.totals.spent("search-api.example")).toBe("Spent on search-api.example");
+        expect(copy.totals.settling(1)).toBe("Settling, 1 call");
+        expect(copy.totals.settling(3)).toBe("Settling, 3 calls");
+        expect(copy.totals.refunded).toBe("Refunded");
+        expect(copy.totals.kept).toBe("Kept under the minimum");
+        expect(copy.totals.refused("allowance spent", 40)).toBe("Refused, allowance spent: 40");
+        expect(copy.totals.refused("unregistered host", 1_200)).toBe(
+            "Refused, unregistered host: 1,200",
+        );
+    });
+
+    it("says when the figures do not add up, and explains the allowance in its tip", () => {
+        expect(copy.reconciling).toBe("These figures are being reconciled.");
+        expect(copy.allowanceTipLabel).toBe("About the allowance");
+        expect(copy.allowanceTip).toBe(
+            "Code in the sandbox has no Bugnet wallet. Code that brings its own wallet can pay " +
+                "hosts Bugnet does not see, and on a registered host such calls show as " +
+                "self-paid. Bugnet pays every seller from one shared Bugnet wallet, so sellers " +
+                "see Bugnet's address, not yours. Each transaction link opens on a public " +
+                "explorer, which shows the wallet that signed it.",
+        );
+    });
+
+    it("writes no middle dot in any x402 or allowance word", () => {
+        const words = [
+            ...[
+                "paid",
+                "free",
+                "self_paid",
+                "refused_cap",
+                "refused_host",
+                "not_paid",
+                "upstream_error",
+            ].map((s) => copy.x402.status(s)),
+            copy.x402.reason("allowance_spent"),
+            copy.x402.detail("refused", "payto_daily_cap"),
+            copy.x402.settling,
+            copy.x402.notCharged,
+            copy.x402.resent,
+            copy.x402.calls(2),
+            copy.nodes.allowance,
+            copy.nodes.otherNames,
+            copy.rows.allowanceKept,
+            copy.totals.paidIn,
+            copy.totals.spent("a.example"),
+            copy.totals.settling(2),
+            copy.totals.refunded,
+            copy.totals.kept,
+            copy.totals.refused("payee blocked", 2),
+            copy.reconciling,
+            copy.allowanceTipLabel,
+            copy.allowanceTip,
+        ];
+        for (const w of words) expect(w.includes("\u00b7"), w).toBe(false);
+    });
+});
