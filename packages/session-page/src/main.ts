@@ -12,6 +12,12 @@ function sessionStore(): Storage | null {
     }
 }
 
+// A preload only fetches a font file, so a face the gate does not use would hide its text for a
+// moment when a later view first needs it
+document.fonts?.forEach((face) => {
+    face.load().catch(() => {});
+});
+
 try {
     startPage({
         doc: document,
