@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Deck } from "../../../components/pitch/deck";
-import { PitchSlides } from "../../../components/pitch/slides";
+import { pitchSlides } from "../../../components/pitch/slides";
 import { pageMetadata } from "../../../lib/content/meta";
 
 export const metadata: Metadata = {
@@ -13,9 +13,5 @@ export const metadata: Metadata = {
 };
 
 export default function PitchPage() {
-    return (
-        <Deck>
-            <PitchSlides />
-        </Deck>
-    );
+    return <Deck>{pitchSlides()}</Deck>;
 }
