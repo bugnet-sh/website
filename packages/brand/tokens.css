@@ -229,6 +229,8 @@
     --callout-icon: 16px;
     /* A clip's play button */
     --clip-button: 32px;
+    /* A table cell's narrowest on a phone: a table with more columns than fit scrolls sideways */
+    --prose-cell: 136px;
 
     --max: 1200px;
     --inset: 24px;
