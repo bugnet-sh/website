@@ -24,25 +24,18 @@ export function stepFor(key: string, shift: boolean): number {
     }
 }
 
-/**
- * Turns wheel events into slide steps, one step per gesture. A trackpad keeps firing smaller and
- * smaller events after the fingers lift, so a gesture ends only after a quiet gap, or when a
- * sharply larger event shows a new swipe has begun.
- */
-export function wheelPager({ gap = 180, threshold = 24, lock = 650 } = {}) {
+/** One slide step per wheel gesture; momentum, however it jumps, never starts a second until the wheel goes quiet */
+export function wheelPager({ gap = 180, threshold = 24, lock = 800 } = {}) {
     let last = -Infinity;
-    let lastSize = 0;
     let sum = 0;
     let used = false;
     let lockedUntil = -Infinity;
     return (delta: number, now: number): number => {
-        const size = Math.abs(delta);
-        if (now - last > gap || (size > 20 && size > lastSize * 2)) {
+        if (now - last > gap) {
             sum = 0;
             used = false;
         }
         last = now;
-        lastSize = size;
         sum += delta;
         if (used || now < lockedUntil || Math.abs(sum) < threshold) return 0;
         used = true;
@@ -59,15 +52,26 @@ export function Deck({ children }: { children: ReactNode }) {
     const count = slides.length;
     const [index, setIndex] = useState(0);
     const [paged, setPaged] = useState(false);
+    // The glide stays off until the first slide is placed, so a shared #9 opens on slide 9
+    const [ready, setReady] = useState(false);
 
     useEffect(() => {
         const media = window.matchMedia(PAGED);
         const sync = () => setPaged(media.matches);
         sync();
         media.addEventListener("change", sync);
-        const n = Number(window.location.hash.slice(1));
-        if (Number.isInteger(n) && n >= 1 && n <= count) setIndex(n - 1);
-        return () => media.removeEventListener("change", sync);
+        const fromHash = () => {
+            const n = Number(window.location.hash.slice(1));
+            if (Number.isInteger(n) && n >= 1 && n <= count) setIndex(n - 1);
+        };
+        fromHash();
+        const frame = requestAnimationFrame(() => requestAnimationFrame(() => setReady(true)));
+        window.addEventListener("hashchange", fromHash);
+        return () => {
+            media.removeEventListener("change", sync);
+            window.removeEventListener("hashchange", fromHash);
+            cancelAnimationFrame(frame);
+        };
     }, [count]);
 
     useEffect(() => {
@@ -121,7 +125,7 @@ export function Deck({ children }: { children: ReactNode }) {
     }, [paged, count]);
 
     return (
-        <main data-deck data-paged={paged || undefined}>
+        <main data-deck data-paged={paged || undefined} data-ready={ready || undefined}>
             <div
                 className="deck-track"
                 style={paged ? { transform: `translate3d(0, ${-index * 100}dvh, 0)` } : undefined}

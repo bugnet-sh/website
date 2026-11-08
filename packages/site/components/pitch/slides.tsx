@@ -4,7 +4,7 @@ import { catalogPackages } from "../../lib/landing/catalog";
 import { AllowanceArt } from "../landing/art/pay-art";
 import { OffMachineArt } from "../landing/art/safety-art";
 import { SandboxFigure } from "../landing/figure/sandbox-figure";
-import { ArchitectureDiagram, PaymentDiagram } from "./diagrams";
+import { ArchitectureDiagram, ArchitectureStack, PaymentDiagram, PaymentStack } from "./diagrams";
 import { Slide, Split, solana, type } from "./slide";
 import {
     bad,
@@ -69,6 +69,14 @@ export const today: { head: string; text: string }[] = [
         text: "Tested with Claude Code. Setup for Cursor, VS Code, Codex and Devin is documented.",
     },
 ];
+
+export const founder: { value: string; label: string; accent?: boolean }[] = [
+    { value: "7", label: "years of web" },
+    { value: "3", label: "years of Web3" },
+    { value: "10+", label: "blockchain hackathon wins", accent: true },
+];
+
+export const wins = ["EDU Chain Semester 3", "HackaTRON", "Sui Overflow 2025"];
 
 export const next = [
     "Public launch of the server and the site",
@@ -284,7 +292,7 @@ export function pitchSlides(): ReactElement[] {
                         no API key.
                     </p>
                 </div>
-                <div className="relative h-[46cqi] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,#000_18%),linear-gradient(to_left,transparent,#000_16%)] [mask-composite:intersect] phone:h-[70vw]">
+                <div className="relative h-[46cqi] overflow-hidden [mask-image:linear-gradient(to_bottom,transparent,#000_18%,#000_82%,transparent),linear-gradient(to_left,transparent,#000_16%)] [mask-composite:intersect] phone:h-[70vw]">
                     <SandboxFigure />
                 </div>
             </div>
@@ -407,7 +415,12 @@ export function pitchSlides(): ReactElement[] {
                     "TypeScript gateway and payments, joined over Connect-RPC",
                 ]}
             >
-                <ArchitectureDiagram />
+                <div className="phone:hidden">
+                    <ArchitectureDiagram />
+                </div>
+                <div className="hidden phone:block">
+                    <ArchitectureStack />
+                </div>
             </Split>
         </Slide>,
 
@@ -426,7 +439,12 @@ export function pitchSlides(): ReactElement[] {
                     "A paid order that starts no sandbox is refunded to the wallet that paid",
                 ]}
             >
-                <PaymentDiagram />
+                <div className="phone:hidden">
+                    <PaymentDiagram />
+                </div>
+                <div className="hidden phone:block">
+                    <PaymentStack />
+                </div>
             </Split>
         </Slide>,
 
@@ -512,7 +530,61 @@ export function pitchSlides(): ReactElement[] {
             </Split>
         </Slide>,
 
-        <Slide key="next" n={14} label="Next">
+        <Slide key="team" n={14} label="Team">
+            <div className="grid grid-cols-[minmax(0,0.62fr)_minmax(0,1.38fr)] items-center gap-[5cqi] phone:grid-cols-1 phone:gap-(--space-7)">
+                <img
+                    src="/pitch/ozan.jpg"
+                    alt="Ozan Andaç"
+                    width={900}
+                    height={1163}
+                    className="h-auto max-h-[46cqi] w-full object-cover phone:max-h-none"
+                />
+                <div>
+                    <h2 className={type.title}>Ozan Andaç</h2>
+                    <p className={cx(type.lead, "mt-[1cqi] text-text-muted phone:mt-(--space-2)")}>
+                        Builder, Bugnet
+                    </p>
+                    <div className="mt-[3cqi] grid grid-cols-3 gap-[2.4cqi] phone:mt-(--space-6) phone:gap-(--space-4)">
+                        {founder.map((f) => (
+                            <div key={f.label}>
+                                <p
+                                    className={cx(
+                                        "font-head text-[max(32px,4.6cqi)] leading-none font-extralight",
+                                        f.accent && "text-accent",
+                                    )}
+                                >
+                                    {f.value}
+                                </p>
+                                <p className={cx(type.text, "mt-[0.9cqi] phone:mt-(--space-2)")}>
+                                    {f.label}
+                                </p>
+                            </div>
+                        ))}
+                    </div>
+                    <p className={cx(type.text, "mt-[3cqi] phone:mt-(--space-6)")}>Wins include</p>
+                    <ul className="mt-[1cqi] border-t-(length:--hairline) border-line phone:mt-(--space-2)">
+                        {wins.map((w) => (
+                            <li
+                                key={w}
+                                className="border-b-(length:--hairline) border-line py-[1.1cqi] text-[max(15px,1.6cqi)] leading-[1.3] phone:py-(--space-3)"
+                            >
+                                {w}
+                            </li>
+                        ))}
+                    </ul>
+                    <a
+                        href="https://oynozan.com"
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-[2.2cqi] inline-block text-[max(15px,1.6cqi)] text-accent hover:underline phone:mt-(--space-4)"
+                    >
+                        oynozan.com
+                    </a>
+                </div>
+            </div>
+        </Slide>,
+
+        <Slide key="next" n={15} label="Next">
             <Split title="What comes next." lead="The core works. Next we open it to everyone.">
                 <ul className="border-t-(length:--hairline) border-line">
                     {next.map((item) => (
@@ -527,7 +599,7 @@ export function pitchSlides(): ReactElement[] {
             </Split>
         </Slide>,
 
-        <Slide key="close" n={15} label="Contact" plain>
+        <Slide key="close" n={16} label="Contact" plain>
             <div className="grid flex-1 grid-cols-[minmax(0,1fr)_auto] items-center gap-[4cqi] phone:grid-cols-1">
                 <div>
                     <p className={type.hero}>Bugnet</p>

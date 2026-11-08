@@ -53,27 +53,28 @@ describe("wheelPager", () => {
         expect(wheel(-60, 2000)).toBe(-1);
     });
 
-    it("counts a sharp new swipe during the last one's momentum", () => {
+    it("ignores a long momentum tail, spikes included, until the wheel goes quiet", () => {
         const wheel = wheelPager();
-        expect(wheel(60, 0)).toBe(1);
-        expect(wheel(6, 700)).toBe(0);
-        expect(wheel(80, 716)).toBe(1);
+        const tail = Array.from({ length: 100 }, (_, i) => (i === 60 ? 40 : Math.max(1, 60 - i)));
+        const steps = tail.map((d, i) => wheel(d, i * 16)).filter((s) => s !== 0);
+        expect(steps).toEqual([1]);
+        expect(wheel(60, 100 * 16 + 400)).toBe(1);
     });
 });
 
 describe("pitchSlides", () => {
-    it("numbers 15 slides, with one H1 on the first and a title on every middle one", () => {
+    it("numbers 16 slides, with one H1 on the first and a title on every middle one", () => {
         const { container } = render(<>{pitchSlides()}</>);
         const slides = [...container.querySelectorAll("[data-slide]")];
-        expect(slides).toHaveLength(15);
+        expect(slides).toHaveLength(16);
         expect(container.querySelectorAll("h1")).toHaveLength(1);
         expect(slides.slice(1, -1).every((s) => s.querySelector("h2"))).toBe(true);
     });
 
-    it("has no middle dot and links only to the support address", () => {
+    it("has no middle dot and links only to the founder's site and the support address", () => {
         const { container } = render(<>{pitchSlides()}</>);
         expect(container.textContent).not.toContain("·");
         const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
-        expect(links).toEqual(["mailto:support@bugnet.org"]);
+        expect(links).toEqual(["https://oynozan.com", "mailto:support@bugnet.org"]);
     });
 });

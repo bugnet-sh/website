@@ -14,8 +14,11 @@
     }
 
     .deck-track {
-        transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
         will-change: transform;
+    }
+
+    [data-ready] .deck-track {
+        transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
     }
 
     .deck-slot {
@@ -24,7 +27,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .deck-track {
+    [data-ready] .deck-track {
         transition: none;
     }
 }

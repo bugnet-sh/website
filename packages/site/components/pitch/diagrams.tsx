@@ -97,7 +97,7 @@ function Tips() {
                     key={ink}
                     id={`tip-${ink}`}
                     viewBox="0 0 8 8"
-                    refX={7}
+                    refX={8}
                     refY={4}
                     markerWidth={8}
                     markerHeight={8}
@@ -176,12 +176,12 @@ export function ArchitectureDiagram() {
                 lines={["Pays x402 calls,", "swaps in secrets"]}
             />
 
-            <Arrow d="M210 102 H262" label="MCP" lx={232} ly={92} />
-            <Arrow d="M470 102 H502" />
-            <Arrow d="M370 144 V322" label="orders" lx={378} ly={240} anchor="start" ink="money" />
-            <Arrow d="M610 144 V192" label="start, exec, files" lx={618} ly={174} anchor="start" />
-            <Arrow d="M610 284 V322" />
-            <Arrow d="M510 372 H478" label="pay" lx={494} ly={362} ink="money" />
+            <Arrow d="M210 102 H270" label="MCP" lx={232} ly={92} />
+            <Arrow d="M470 102 H510" />
+            <Arrow d="M370 144 V330" label="orders" lx={378} ly={240} anchor="start" ink="money" />
+            <Arrow d="M610 144 V200" label="start, exec, files" lx={618} ly={174} anchor="start" />
+            <Arrow d="M610 284 V330" />
+            <Arrow d="M510 372 H470" label="pay" lx={494} ly={362} ink="money" />
         </svg>
     );
 }
@@ -193,14 +193,16 @@ const lanes = [
 ];
 
 /** One paid start, message by message */
+const payment: { from: number; to: number; y: number; label: string; ink: Ink; lx?: number }[] = [
+    { from: 0, to: 1, y: 120, label: "bugnet_start, 0.05 USDC", ink: "tool" },
+    { from: 1, to: 0, y: 186, label: "402: pay 0.05 USDC", ink: "money" },
+    { from: 0, to: 2, y: 252, label: "you pay by link or Touch ID", ink: "money", lx: 505 },
+    { from: 2, to: 1, y: 318, label: "settled on mainnet", ink: "money" },
+    { from: 1, to: 0, y: 384, label: "sandbox ready", ink: "ok" },
+];
+
+/** The paid start as a sequence diagram */
 export function PaymentDiagram() {
-    const msgs: { from: number; to: number; y: number; label: string; ink: Ink; lx?: number }[] = [
-        { from: 0, to: 1, y: 120, label: "bugnet_start, 0.05 USDC", ink: "tool" },
-        { from: 1, to: 0, y: 186, label: "402: pay 0.05 USDC", ink: "money" },
-        { from: 0, to: 2, y: 252, label: "you pay by link or Touch ID", ink: "money", lx: 505 },
-        { from: 2, to: 1, y: 318, label: "settled on mainnet", ink: "money" },
-        { from: 1, to: 0, y: 384, label: "sandbox ready", ink: "ok" },
-    ];
     return (
         <svg
             viewBox="0 0 740 430"
@@ -229,7 +231,7 @@ export function PaymentDiagram() {
                     <path d={`M${lane.x} 54 V420`} className="stroke-line" strokeDasharray="4 5" />
                 </g>
             ))}
-            {msgs.map((msg) => {
+            {payment.map((msg) => {
                 const a = lanes[msg.from]?.x ?? 0;
                 const b = lanes[msg.to]?.x ?? 0;
                 const dir = Math.sign(b - a);
@@ -245,5 +247,99 @@ export function PaymentDiagram() {
                 );
             })}
         </svg>
+    );
+}
+
+const border: Record<Ink, string> = {
+    line: "border-line",
+    ok: "border-accent",
+    money: "border-accent-2",
+    tool: "border-accent-3",
+};
+
+const color: Record<Ink, string> = {
+    line: "text-text",
+    ok: "text-accent",
+    money: "text-accent-2",
+    tool: "text-accent-3",
+};
+
+/** The architecture top to bottom, each link named above the part it reaches */
+const parts: { title: string; text: string; ink: Ink; via?: string }[] = [
+    { title: "Your agent", text: "Claude Code or any MCP client", ink: "line" },
+    {
+        title: "MCP gateway",
+        text: "Free check, quotes, exact-price approval",
+        ink: "tool",
+        via: "MCP",
+    },
+    { title: "Router", text: "Picks a provider by cost and health", ink: "line" },
+    {
+        title: "Sandbox",
+        text: "Cloud Linux, deleted at the deadline",
+        ink: "ok",
+        via: "start, exec, files",
+    },
+    { title: "Egress proxy", text: "Pays x402 calls, swaps in secrets", ink: "line" },
+    {
+        title: "Payments",
+        text: "Takes the gateway's orders and pays the proxy's x402 calls, in USDC on Solana",
+        ink: "money",
+        via: "pay",
+    },
+];
+
+/** The architecture for a phone, where the drawing's labels would be too small to read */
+export function ArchitectureStack() {
+    return (
+        <ol className="flex flex-col">
+            {parts.map((part, i) => (
+                <li key={part.title} className="flex flex-col">
+                    {i > 0 && (
+                        <span className="flex h-(--space-6) items-center gap-(--space-3) pl-(--space-5)">
+                            <span
+                                aria-hidden="true"
+                                className="h-full w-(--hairline) bg-text-muted"
+                            />
+                            {part.via && (
+                                <span className="text-[13px] text-text-muted">{part.via}</span>
+                            )}
+                        </span>
+                    )}
+                    <div
+                        className={cx(
+                            "border-(length:--hairline) px-(--space-4) py-(--space-3)",
+                            border[part.ink],
+                        )}
+                    >
+                        <p className={cx("text-[16px] font-semibold", color[part.ink])}>
+                            {part.title}
+                        </p>
+                        <p className="mt-(--space-1) text-[14px] leading-[1.45] text-text-muted">
+                            {part.text}
+                        </p>
+                    </div>
+                </li>
+            ))}
+        </ol>
+    );
+}
+
+/** The paid start for a phone, one message a row */
+export function PaymentStack() {
+    return (
+        <ol className="border-t-(length:--hairline) border-line">
+            {payment.map((msg) => (
+                <li
+                    key={msg.label}
+                    className="border-b-(length:--hairline) border-line py-(--space-3)"
+                >
+                    <p className="text-[13px] text-text-muted">
+                        {lanes[msg.from]?.name} to {lanes[msg.to]?.name.replace("Your", "your")}
+                    </p>
+                    <p className={cx("mt-(--space-1) text-[15px]", color[msg.ink])}>{msg.label}</p>
+                </li>
+            ))}
+        </ol>
     );
 }
