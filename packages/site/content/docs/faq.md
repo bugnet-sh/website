@@ -1,7 +1,5 @@
 ---
 title: FAQ
-sources:
-    - bugnet-gateway/README.md: FAQ
 ---
 
 # FAQ
@@ -19,7 +17,7 @@ No AI runs on Bugnet's side. Bugnet sees only what your agent sends to the sandb
 ## Which agents work?
 
 Any MCP client that speaks Streamable HTTP, and any that runs local stdio servers through the
-[bridge](/docs/#bridge).
+[bridge](/docs/install/#bridge). [Install](/docs/install/) has the setup for each.
 
 ## Will my agent offer Bugnet for everything?
 
@@ -29,11 +27,30 @@ and not to ask again for a task once you say no.
 
 ## What does a run cost?
 
-You see the price before you pay. See [Prices](/docs/paying/#prices).
+You see the price before you pay, and you pay exactly that price. See
+[Prices](/docs/paying/#prices).
+
+## Which wallets can pay?
+
+Any Solana wallet holding USDC can pay a pay link, such as Phantom or Solflare in a browser, or a
+wallet on your phone through the Solana Pay QR code. The `pay` wallet pays from your computer. See
+[Before you pay](/docs/before-you-pay/).
+
+## Can I be charged twice for one order?
+
+No. A paid order is never asked for again, and a second payment for it is never sent to Solana.
+See [Never charged twice](/docs/paying/#never-charged-twice).
+
+## What if the sandbox never starts?
+
+A paid order that starts no sandbox within 30 minutes is refunded, and a sandbox that fails before
+it is ready is refunded in full. See [Refunds](/docs/paying/#refunds).
 
 ## How do I get files out?
 
-Your agent reads them with `bugnet_read_file`, up to 256 KiB per call.
+Your agent reads small files with `bugnet_read_file`, up to 256 KiB per call. For big ones,
+`bugnet_transfer` gives a one-use `curl` link. Downloads go to `./bugnet-downloads/` unless you
+name another file.
 
 ## Can I run it in CI?
 

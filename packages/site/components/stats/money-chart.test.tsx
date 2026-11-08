@@ -5,7 +5,7 @@ import { parseSummary } from "../../lib/stats/parse";
 import { fakeSummary, type Scenario } from "../../lib/stats/testing/fake-data";
 import type { StatsSummary } from "../../lib/stats/types";
 import { axisWidth, niceScale } from "./axis";
-import { endOffsets, MoneyChart, scaleOf } from "./money-chart";
+import { endPlaces, MoneyChart, scaleOf } from "./money-chart";
 import { StatsState } from "./stats-provider";
 
 // jsdom lays nothing out, so the chart is given a size to draw into
@@ -68,7 +68,7 @@ it("labels each line's last point with its value", () => {
     const labels = [...container.querySelectorAll(".recharts-label-list text")].map(
         (t) => t.textContent,
     );
-    expect(labels).toEqual([formatUsdc(today.spentMicros), formatUsdc(today.earnedMicros)]);
+    expect(labels).toEqual([formatUsdc(today.spentMicros ?? 0), formatUsdc(today.earnedMicros)]);
 });
 
 describe("scaleOf", () => {
@@ -97,21 +97,20 @@ describe("scaleOf", () => {
     });
 });
 
-describe("endOffsets", () => {
-    it("puts each label above its own point when the lines end apart", () => {
-        expect(endOffsets(100, 200, 300)).toEqual({ earned: -8, spent: -8 });
+describe("endPlaces", () => {
+    it("centres each label level with its own point when the lines end apart", () => {
+        expect(endPlaces(100, 200, 0, 300)).toEqual({ earned: 100, spent: 200 });
     });
 
-    it("puts the lower line's label under its point when the lines end together", () => {
-        expect(endOffsets(101, 100, 300)).toEqual({ earned: 16, spent: -8 });
-        expect(endOffsets(100, 101, 300)).toEqual({ earned: -8, spent: 16 });
+    it("parts the labels evenly round their middle when the lines end together", () => {
+        expect(endPlaces(100, 102, 0, 300)).toEqual({ earned: 93, spent: 109 });
+        expect(endPlaces(102, 100, 0, 300)).toEqual({ earned: 109, spent: 93 });
     });
 
-    it("lifts the upper label instead when there is no room under the lower point", () => {
-        const { earned, spent } = endOffsets(290, 295, 300);
-        expect(spent).toBe(-8);
-        // The earned baseline sits a label's line box above the spent one
-        expect(290 + earned).toBe(295 - 8 - 16);
+    it("keeps both labels inside the plot at its edges", () => {
+        expect(endPlaces(295, 298, 0, 300)).toEqual({ earned: 276, spent: 292 });
+        expect(endPlaces(2, 0, 0, 300)).toEqual({ earned: 24, spent: 8 });
+        expect(endPlaces(0, 16, 0, 300)).toEqual({ earned: 8, spent: 24 });
     });
 });
 

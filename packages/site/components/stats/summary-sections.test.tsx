@@ -79,7 +79,8 @@ it("lists only the limits the feed sends, in the table's order", () => {
         "Sandboxes running at once, per wallet",
     );
     const buy = screen.getByRole("table", { name: "What you can buy" });
-    expect(within(buy).getByText("4 vCPU, 16 GiB, 1 GPU 20 GiB")).toBeDefined();
+    // The sample feed sells two GPU sizes of that shape, for 10 and for 30 minutes
+    expect(within(buy).getAllByText("4 vCPU, 16 GiB, 1 GPU 20 GiB")).toHaveLength(2);
 });
 
 it("hides the method list when the feed has no methods", () => {

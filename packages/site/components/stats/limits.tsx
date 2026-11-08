@@ -40,7 +40,12 @@ export function Limits() {
                             {limits.map((limit) => (
                                 // Positioned, so a tip opens under its own row
                                 <tr key={limit.key} className="relative">
-                                    <td className={cx(bodyCell(), "whitespace-normal!")}>
+                                    <td
+                                        className={cx(
+                                            bodyCell(),
+                                            "py-(--space-2) whitespace-normal!",
+                                        )}
+                                    >
                                         {limit.label}
                                         {/* After the name, so every value meets the frame's edge */}
                                         {limit.tip && (
@@ -88,13 +93,18 @@ export function Limits() {
                                 <tbody>
                                     {packages.map((p) => (
                                         <tr key={p.id}>
+                                            {/* Wrapped, the row grows round its lines,
+                                                which break only between the parts */}
                                             <td
                                                 className={cx(
                                                     bodyCell(),
-                                                    "phone:whitespace-normal!",
+                                                    "phone:py-(--space-2) phone:whitespace-normal!",
                                                 )}
                                             >
-                                                {sizeText(p)}
+                                                {sizeText(p)
+                                                    .split(", ")
+                                                    .map((part) => part.replaceAll(" ", "\u00a0"))
+                                                    .join(", ")}
                                             </td>
                                             <td className={bodyCell(true)}>
                                                 {formatBytes(p.diskGiB * GiB)}

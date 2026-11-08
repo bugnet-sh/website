@@ -1,12 +1,13 @@
 export type DayMoney = {
     earnedMicros: number;
     refundedMicros: number;
-    spentMicros: number;
+    /** Null while the feed does not know our provider cost yet */
+    spentMicros: number | null;
 };
 
-/** Allowance returned and x402 spent are the users' money and never enter it. */
-export const profit = (day: DayMoney): number =>
-    day.earnedMicros - day.refundedMicros - day.spentMicros;
+/** Allowance returned and x402 spent are the users' money and never enter it; unknown while spent is. */
+export const profit = (day: DayMoney): number | null =>
+    day.spentMicros === null ? null : day.earnedMicros - day.refundedMicros - day.spentMicros;
 
 const group = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 

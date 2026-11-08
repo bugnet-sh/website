@@ -4,14 +4,15 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "tsx scripts/search-index.ts && tsx scripts/images.ts && NEXT_TELEMETRY_DISABLED=1 next dev",
-        "build": "tsx scripts/search-index.ts && tsx scripts/images.ts && NEXT_TELEMETRY_DISABLED=1 next build && tsx scripts/postbuild.ts",
+        "dev": "tsx scripts/search-index.ts && tsx scripts/llms.ts && tsx scripts/images.ts && NEXT_TELEMETRY_DISABLED=1 next dev",
+        "build": "tsx scripts/search-index.ts && tsx scripts/llms.ts && tsx scripts/images.ts && NEXT_TELEMETRY_DISABLED=1 next build && tsx scripts/postbuild.ts",
         "typecheck": "NEXT_TELEMETRY_DISABLED=1 next typegen && tsc -p ."
     },
     "dependencies": {
         "@bugnet/brand": "workspace:*",
         "github-slugger": "2.0.0",
         "lucide-react": "1.70.0",
+        "mermaid": "12.2.0",
         "next": "16.4.5",
         "react": "19.3.1",
         "react-dom": "19.3.1",

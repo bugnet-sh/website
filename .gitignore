@@ -11,6 +11,12 @@ packages/site/AGENTS.md
 packages/site/screens/
 # Written by the build from content/docs
 packages/site/public/search-index.json
+packages/site/public/llms.txt
+packages/site/public/llms-full.txt
+packages/site/public/docs/
 # Written by the build from assets/og.svg and the brand icon
 packages/site/public/og.png
 packages/site/app/apple-icon.png
+
+# Agent working files: plan ledgers and screenshots
+.superpowers/

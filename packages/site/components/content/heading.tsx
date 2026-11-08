@@ -27,7 +27,12 @@ export function Heading({
             id={id}
             // Clears the sticky header when a link jumps here
             className={cx(
-                "group scroll-mt-[calc(var(--nav)+var(--space-6))] text-text first:mt-0",
+                "group scroll-mt-[calc(var(--nav)+var(--space-6))] text-text",
+                // Opening the page, the title rises by its half-leading, so its letters sit near
+                // the top of the search box and the On this page label beside it
+                level === 1
+                    ? "first:-mt-[calc((var(--title-line)-1)*var(--title-size)/2)]"
+                    : "first:mt-0",
                 levels[level],
             )}
         >

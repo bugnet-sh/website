@@ -184,6 +184,7 @@ export function failureRate({
     failed7d,
     sandboxes7d,
 }: Pick<ProviderRow, "failed7d" | "sandboxes7d">): string {
+    if (failed7d === null) return "Unavailable";
     if (failed7d === 0) return "None";
     const rate = sandboxes7d === 0 ? 1 : Math.min(1, failed7d / sandboxes7d);
     return `${percent.format(rate * 100)} %`;

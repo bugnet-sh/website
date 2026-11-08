@@ -4,12 +4,14 @@
  */
 import { spawn, type ChildProcess } from "node:child_process";
 import { existsSync } from "node:fs";
-import { mkdir } from "node:fs/promises";
+import { mkdir, readFile } from "node:fs/promises";
 import { createServer } from "node:net";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import { chromium, type Browser, type Page } from "playwright-core";
+import { docMarkdownPath } from "../lib/content/doc-markdown";
+import { docHref, docs } from "../lib/content/docs";
 import { serveSite, type Site } from "./serve";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -166,6 +168,23 @@ describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("content pages in
             }
         }, 60_000);
     }
+
+    it("copies each docs page's Markdown from the button in its title row", async () => {
+        for (const doc of docs) {
+            const path = docHref(doc);
+            const { page, problems } = await open(1440, "normal", path);
+            await page
+                .context()
+                .grantPermissions(["clipboard-read", "clipboard-write"], { origin: site.url });
+            await page.getByRole("button", { name: "Copy Markdown" }).click();
+            const markdown = await readFile(join(root, "out", docMarkdownPath(doc)), "utf8");
+            await expect
+                .poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 5000 })
+                .toBe(markdown);
+            expect(problems, path).toEqual([]);
+            await page.context().close();
+        }
+    }, 60_000);
 
     it("searches the docs and opens the menu at 375", async () => {
         const wide = await open(1440, "normal", "/docs/");

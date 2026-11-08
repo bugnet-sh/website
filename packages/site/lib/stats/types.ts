@@ -1,4 +1,5 @@
-export type Gpu = { count: number; memoryGiB: number };
+/** `memoryGiB` is each GPU's own memory; `model` is absent from a feed that predates it */
+export type Gpu = { count: number; memoryGiB: number; model?: string | null };
 
 export type DayRow = {
     day: string;
@@ -6,7 +7,7 @@ export type DayRow = {
     refundedMicros: number;
     allowanceReturnedMicros: number;
     x402SpentMicros: number;
-    spentMicros: number;
+    spentMicros: number | null;
     sandboxes: number;
     computeSeconds: number;
     peakActive: number;
@@ -20,7 +21,7 @@ export type ProviderRow = {
     /** Null under 5 samples. */
     startP50Ms: number | null;
     startP95Ms: number | null;
-    failed7d: number;
+    failed7d: number | null;
 };
 
 export type PackageRow = {
@@ -85,7 +86,7 @@ export type StatsSummary = {
         refundedMicros: number;
         allowanceReturnedMicros: number;
         x402SpentMicros: number;
-        spentMicros: number;
+        spentMicros: number | null;
     };
     daily: DayRow[];
     providers: ProviderRow[];

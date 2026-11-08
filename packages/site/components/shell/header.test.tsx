@@ -79,10 +79,10 @@ describe("SiteHeader", () => {
         );
     });
 
-    it("sends Get Started to the install steps", () => {
+    it("sends Get Started to the tutorial", () => {
         render(<SiteHeader />);
         expect(screen.getByRole("link", { name: "Get Started" }).getAttribute("href")).toBe(
-            "/docs/#install",
+            "/docs/",
         );
     });
 });

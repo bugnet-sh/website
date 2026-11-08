@@ -4,7 +4,7 @@ import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "rea
 import { cx } from "../../lib/cx";
 import { Link } from "../content/link";
 import { Band } from "../shell/frame";
-import { SectionTitle } from "../stats/panels";
+import { LandingTitle } from "./title";
 
 export type InstallTab = { id: string; name: string; panel: ReactNode };
 
@@ -37,10 +37,12 @@ export function InstallTabs({ tabs }: { tabs: InstallTab[] }) {
 
     return (
         <>
+            {/* Phones keep the tabs in one row that scrolls edge to edge; the 4 px above and
+                below it hold the tap areas and the focus ring, which the scroll box would clip */}
             <div
                 role="tablist"
                 aria-label="Client"
-                className="flex flex-wrap"
+                className="flex flex-wrap phone:-mx-(--pad) phone:-my-(--space-1) phone:flex-nowrap phone:overflow-x-auto phone:px-(--pad) phone:py-(--space-1) phone:[scrollbar-width:none]"
                 onKeyDown={onKeyDown}
             >
                 {tabs.map((tab, i) => {
@@ -61,7 +63,7 @@ export function InstallTabs({ tabs }: { tabs: InstallTab[] }) {
                             className={cx(
                                 "relative h-(--button) cursor-pointer border-(length:--hairline) px-(--space-3) before:absolute before:inset-x-0 before:-inset-y-[calc((var(--hit)-var(--button))/2)] before:content-[''] text-(length:--ui-size) leading-(--ui-line) whitespace-nowrap",
                                 selected
-                                    ? "border-line text-text"
+                                    ? "border-accent-3 text-accent-3"
                                     : "border-transparent text-text-muted hover:text-text",
                             )}
                         >
@@ -90,10 +92,10 @@ export function InstallTabs({ tabs }: { tabs: InstallTab[] }) {
 export function Install({ tabs }: { tabs: InstallTab[] }) {
     const id = useId();
     return (
-        <Band>
-            <section aria-labelledby={id} className="py-(--space-6)">
-                <SectionTitle id={id}>Install</SectionTitle>
-                <div className="mt-(--space-4)">
+        <Band as="div" id="install">
+            <section aria-labelledby={id} className="py-(--band)">
+                <LandingTitle id={id}>Install</LandingTitle>
+                <div className="mt-(--space-6)">
                     <InstallTabs tabs={tabs} />
                 </div>
                 <p className="mt-(--space-4) text-(length:--ui-size) leading-(--ui-line) text-text-muted">

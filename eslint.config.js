@@ -97,7 +97,10 @@ export default tseslint.config(
     },
     {
         // Vendored from React Bits as published, so it keeps its own @ts-nocheck
-        files: ["packages/site/components/waves/sliced-waves.tsx"],
+        files: [
+            "packages/site/components/waves/sliced-waves.tsx",
+            "packages/site/components/backgrounds/gradient-ascii.tsx",
+        ],
         rules: { "@typescript-eslint/ban-ts-comment": "off" },
     },
 );

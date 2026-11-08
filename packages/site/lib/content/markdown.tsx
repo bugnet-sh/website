@@ -1,9 +1,11 @@
+import type { ReactNode } from "react";
 import ReactMarkdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Blockquote } from "../../components/content/blockquote";
 import { CodeBlock } from "../../components/content/code-block";
 import { Heading } from "../../components/content/heading";
 import { Link } from "../../components/content/link";
+import { Mermaid } from "../../components/content/mermaid";
 import { BodyCell, HeadCell, Table } from "../../components/content/table";
 import { headingIds } from "./heading-ids";
 
@@ -13,6 +15,15 @@ function hastText(node: HastNode): string {
     if (node.type === "text") return node.value;
     if ("children" in node) return node.children.map(hastText).join("");
     return "";
+}
+
+/** The language a fence names, which remark writes as `language-…` on the block's code. */
+function fenceLang(node: ExtraProps["node"]): string | undefined {
+    const code = node?.children[0];
+    if (code?.type !== "element") return undefined;
+    const names = code.properties.className;
+    const name = Array.isArray(names) ? names.find((n) => String(n).startsWith("language-")) : null;
+    return name ? String(name).slice("language-".length) : undefined;
 }
 
 const block = "mt-(--space-4) first:mt-0";
@@ -59,19 +70,47 @@ const components: Components = {
     strong: ({ children }) => <strong className="font-semibold text-text">{children}</strong>,
     a: ({ href, children }) => <Link href={href}>{children}</Link>,
     blockquote: ({ children }) => <Blockquote>{children}</Blockquote>,
-    pre: ({ node }) => <CodeBlock code={node ? hastText(node).replace(/\n$/, "") : ""} />,
+    pre: ({ node }) => {
+        const code = node ? hastText(node).replace(/\n$/, "") : "";
+        const lang = fenceLang(node);
+        return lang === "mermaid" ? (
+            <Mermaid source={code} />
+        ) : (
+            <CodeBlock code={code} lang={lang} />
+        );
+    },
     // Only inline code reaches here: a fenced block is rendered whole by `pre`
-    code: ({ children }) => <code className="bg-surface px-(--space-1) font-mono">{children}</code>,
+    code: ({ children }) => (
+        <code className="bg-code-inline px-(--space-1) py-px font-mono">{children}</code>
+    ),
     table: ({ children }) => <Table>{children}</Table>,
     th: ({ children }) => <HeadCell>{children}</HeadCell>,
     td: ({ children }) => <BodyCell>{children}</BodyCell>,
     hr: () => <hr className="mt-(--space-7) border-line" />,
 };
 
-/** Markdown rendered to React elements at build time, never to an HTML string. */
-export function Markdown({ source }: { source: string }) {
+/**
+ * Markdown rendered to React elements at build time, never to an HTML string. A title action sits
+ * at the right of the H1's row, centred on its first line, and drops under it on phones.
+ */
+export function Markdown({ source, titleAction }: { source: string; titleAction?: ReactNode }) {
+    const parts: Components = titleAction
+        ? {
+              ...components,
+              h1: ({ id, children }) => (
+                  <div className="flex items-start justify-between gap-x-(--space-5) phone:flex-col phone:gap-y-(--space-4)">
+                      <Heading level={1} id={id}>
+                          {children}
+                      </Heading>
+                      <div className="mt-[calc((var(--title-size)-var(--button))/2)] phone:mt-0">
+                          {titleAction}
+                      </div>
+                  </div>
+              ),
+          }
+        : components;
     return (
-        <ReactMarkdown remarkPlugins={[remarkGfm, headingIds]} components={components}>
+        <ReactMarkdown remarkPlugins={[remarkGfm, headingIds]} components={parts}>
             {source}
         </ReactMarkdown>
     );

@@ -3,9 +3,10 @@ import { notFound } from "next/navigation";
 import { OnThisPage } from "../../../../components/content/on-this-page";
 import { PrevNext } from "../../../../components/docs/prev-next";
 import { Sidebar } from "../../../../components/docs/sidebar";
-import { Sources } from "../../../../components/docs/sources";
 import { Band, Frame } from "../../../../components/shell/frame";
+import { CopyButton } from "../../../../components/stats/copy-button";
 import { readDoc } from "../../../../lib/content/doc-file";
+import { cleanMarkdown } from "../../../../lib/content/doc-markdown";
 import { docBySlug, docHref, docs, type Doc } from "../../../../lib/content/docs";
 import { Markdown } from "../../../../lib/content/markdown";
 import { describe, pageMetadata } from "../../../../lib/content/meta";
@@ -36,7 +37,7 @@ const rail =
 
 export default async function DocPage({ params }: Props) {
     const doc = await docOf(params);
-    const { body, sources } = readDoc(doc);
+    const { body } = readDoc(doc);
     const toc = tocOf(body);
     return (
         <main>
@@ -49,11 +50,19 @@ export default async function DocPage({ params }: Props) {
                     </aside>
                     <div className="min-w-0">
                         <article className="max-w-(--article) text-(length:--ui-size) leading-(--prose-line)">
-                            <Markdown source={body} />
+                            <Markdown
+                                source={body}
+                                titleAction={
+                                    <CopyButton
+                                        text={cleanMarkdown(doc, body)}
+                                        label="Copy Markdown"
+                                        form="labelled"
+                                    />
+                                }
+                            />
                         </article>
                         <div className="max-w-(--article) text-(length:--ui-size)">
                             <PrevNext slug={doc.slug} />
-                            <Sources sources={sources} />
                         </div>
                     </div>
                     <aside className={`${rail} overflow-y-auto narrow:hidden`}>

@@ -11,7 +11,8 @@ import { isUnavailable, Unavailable } from "./unavailable";
 
 type Cell = { label: string; value: (s: StatsSummary) => ReactNode };
 
-function Money({ micros, signed = false }: { micros: number; signed?: boolean }) {
+function Money({ micros, signed = false }: { micros: number | null; signed?: boolean }) {
+    if (micros === null) return <span className="text-text-muted">Unavailable</span>;
     const { text, negative } = signed
         ? signedUsdc(micros)
         : { text: formatUsdc(micros), negative: false };

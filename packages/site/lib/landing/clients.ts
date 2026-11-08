@@ -10,7 +10,3 @@ export const clients = [
 ] as const;
 
 export type ClientId = (typeof clients)[number]["id"];
-
-export function clientHref(id: ClientId): string {
-    return `/docs/#${id}`;
-}
