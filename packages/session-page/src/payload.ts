@@ -45,6 +45,8 @@ export interface SessionRecord {
     events: SessionEvent[];
     eventsDropped: number;
     jobs: Job[];
+    // Commands past the router's per-session cap, which have no row
+    jobsDropped: number;
 }
 
 export interface Snapshot {
@@ -52,6 +54,7 @@ export interface Snapshot {
     deadline: Date;
     now: Date;
     jobs: Job[];
+    jobsDropped: number;
 }
 
 export interface PlacementEvent {
@@ -192,7 +195,8 @@ export interface AllowanceEvent {
     phase: "paid" | "refunded" | "kept";
     amountMicros: number;
     keptMicros?: number;
-    asset: string;
+    // Left out for any mint other than USDC, since a base58 key could be a wallet's address
+    asset?: string;
     network: string;
     tx?: string;
 }
@@ -472,7 +476,7 @@ const eventReaders = new Map<string, (d: Doc, at: Date) => SessionEvent>([
                 phase,
                 amountMicros: need(d, "amountMicros", isCount),
                 keptMicros: kept ? maybe(d, "keptMicros", isCount) : undefined,
-                asset: need(d, "asset", isText),
+                asset: maybe(d, "asset", isText),
                 network: need(d, "network", isText),
                 // Money that moved has a transaction; an amount kept under the minimum never moved
                 tx: kept ? undefined : need(d, "tx", isText),
@@ -550,6 +554,7 @@ function readRecord(d: Doc): SessionRecord {
         events,
         eventsDropped: maybe(d, "eventsDropped", isCount) ?? 0,
         jobs,
+        jobsDropped: maybe(d, "jobsDropped", isCount) ?? 0,
     };
 }
 
@@ -559,6 +564,7 @@ function readSnapshot(d: Doc): Snapshot {
         deadline: time(d, "deadline"),
         now: time(d, "now"),
         jobs: (maybe(d, "jobs", isList) ?? []).map(readJob),
+        jobsDropped: maybe(d, "jobsDropped", isCount) ?? 0,
     };
 }
 

@@ -351,6 +351,7 @@ interface RecordSpec {
     events: JsonObject[];
     eventsDropped?: number;
     jobs: SampleJob[];
+    jobsDropped?: number;
 }
 
 function wireRecord(spec: RecordSpec, at: At): JsonObject {
@@ -367,6 +368,7 @@ function wireRecord(spec: RecordSpec, at: At): JsonObject {
         events,
         eventsDropped: spec.eventsDropped ?? 0,
         jobs: spec.jobs.map((j) => wireJob(j, at, withFrames)),
+        jobsDropped: spec.jobsDropped ?? 0,
     };
 }
 
@@ -763,6 +765,7 @@ function endedCrowded(at: At, name: ScenarioName): JsonObject {
             events,
             eventsDropped: 120,
             jobs: basicJobs(name, t0),
+            jobsDropped: 4,
         },
         at,
     );
