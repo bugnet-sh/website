@@ -19,6 +19,8 @@ const INLINE = new Set([
 ]);
 
 function plainText(node: Nodes): string {
+    // A diagram's source is markup, not words a reader searches for
+    if (node.type === "code" && node.lang === "mermaid") return "";
     if ("value" in node) return node.value;
     if (!("children" in node)) return "";
     return node.children.map(plainText).join(INLINE.has(node.type) ? "" : " ");
