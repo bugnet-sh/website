@@ -14,8 +14,8 @@ from a link and a key, and the bugnet.sh site.
 - `packages/site`: the bugnet.sh site, a Next.js static export to `out/`, with `out/headers.txt`
   holding each page's security headers. `pnpm dev:site` runs it; start the fake stats feed with
   `pnpm --filter @bugnet/site exec tsx scripts/fake-stats.ts` (port 8461).
-- `deploy/website`: the Caddy config, systemd unit and deploy script that put bugnet.sh on the
-  VPS (its README).
+- Deploying bugnet.sh: the Caddy config, systemd unit and deploy script live in the private
+  `bugnet-sh/internal` repository, under `deploy/website`.
 
 ## Commands
 
