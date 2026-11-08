@@ -28,7 +28,11 @@ export function Pricing() {
                     {/* Above the cells, so the backdrop can reach a little way over them */}
                     <div className="relative z-10 flex flex-wrap items-end justify-between gap-(--space-4) px-(--pad) pt-(--band) pb-(--space-6)">
                         {/* Fades out on every side, so it never ends on an edge; takes no clicks */}
-                        <AsciiField className="pointer-events-none absolute opacity-(--pricing-field-opacity) inset-x-0 top-0 -bottom-(--pricing-bleed) [mask-image:linear-gradient(to_bottom,transparent,#000_25%,#000_80%,transparent),linear-gradient(to_right,transparent,#000_15%,#000_85%,transparent)] [mask-composite:intersect]" />
+                        <AsciiField
+                            // The founder's settings, 2026-11-08: more bend, grain, flicker, 13 px cells
+                            tuning={{ flow: 1.2, grain: 0.27, flicker: 0.9, cellSize: 13 }}
+                            className="pointer-events-none absolute opacity-(--pricing-field-opacity) inset-x-0 top-0 -bottom-(--pricing-bleed) [mask-image:linear-gradient(to_bottom,transparent,#000_25%,#000_80%,transparent),linear-gradient(to_right,transparent,#000_15%,#000_85%,transparent)] [mask-composite:intersect]"
+                        />
                         <div className="relative">
                             <LandingTitle id={id}>Pricing</LandingTitle>
                         </div>

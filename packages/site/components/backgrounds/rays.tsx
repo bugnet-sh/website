@@ -37,6 +37,8 @@ export function Rays({ className }: { className?: string }) {
                         cursorShadow={false}
                         clickPulse={false}
                         raysSpeed={ready.reduced ? 0 : 1}
+                        // Half strength, so the rays light the band without glaring over the tabs
+                        intensity={0.45}
                     />
                 </WavesBoundary>
             )}

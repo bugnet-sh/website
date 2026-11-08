@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import GradientASCII, { type GradientASCIIShape } from "./gradient-ascii";
+import GradientASCII, { type GradientASCIIProps, type GradientASCIIShape } from "./gradient-ascii";
+
+/** The field's look the caller may tune; colours and the face always come from the tokens. */
+type Tuning = Pick<GradientASCIIProps, "cellSize" | "flow" | "flicker" | "grain">;
 import { WavesBoundary } from "../waves/error-boundary";
 
 function hasWebGL2() {
@@ -21,9 +24,11 @@ function hasWebGL2() {
 export function AsciiField({
     className,
     shape = "horizon",
+    tuning,
 }: {
     className?: string;
     shape?: GradientASCIIShape;
+    tuning?: Tuning;
 }) {
     const [look, setLook] = useState<{ colors: string[]; font: string } | null>(null);
 
@@ -57,6 +62,7 @@ export function AsciiField({
                         glyphOpacity={0.7}
                         mouseInteraction={false}
                         clickEffect="none"
+                        {...tuning}
                     />
                 </WavesBoundary>
             )}
