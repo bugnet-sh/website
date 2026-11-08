@@ -73,7 +73,11 @@ export function CodeTabs({ names, children }: { names: string[]; children?: Reac
                     role="tabpanel"
                     id={`${base}-panel-${i}`}
                     aria-labelledby={`${base}-tab-${i}`}
-                    className={cx(i !== at && "hidden print:block print:mt-(--space-4)")}
+                    // The block sits right under the tabs: its own space above is for prose
+                    className={cx(
+                        "[&>div]:mt-0",
+                        i !== at && "hidden print:block print:mt-(--space-4)",
+                    )}
                 >
                     <p className="hidden text-(length:--fine-size) leading-(--fine-line) text-text-muted print:mb-(--space-1) print:block">
                         {names[i]}

@@ -2,8 +2,9 @@ import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
 import { bodyCell, headCell, tableClass } from "../stats/cells";
 
-// Prose cells wrap, unlike feed cells, and pad above and below for the lines they wrap to
-const prose = "py-(--space-2) whitespace-normal!";
+// Prose cells wrap, unlike feed cells, pad above and below for the lines they wrap to, and start
+// at the top, so a row of cells of different lengths reads across
+const prose = "py-(--space-2) align-top whitespace-normal!";
 
 /** A Markdown table in the stats table's cells, scrolled sideways if a phone is too narrow. */
 export function Table({ children }: { children?: ReactNode }) {
