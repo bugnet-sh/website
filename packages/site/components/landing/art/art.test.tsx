@@ -54,3 +54,16 @@ it("puts a box's front foot straight under its back corner, as the kit's camera 
     expect(corners.left[0]).toBeLessThan(corners.back[0]);
     expect(corners.right[0]).toBeGreaterThan(corners.back[0]);
 });
+
+it("ends the refund line at its arrowhead, inside the drawing, not under the payment line", () => {
+    const { container } = render(<LimitArt />);
+    const refund = [...container.querySelectorAll("path.art-dash")].find((path) =>
+        path.getAttribute("d")?.includes("V 172"),
+    );
+    const end = Number(refund?.getAttribute("d")?.match(/H (-?[\d.]+)$/)?.[1]);
+    expect(end).toBe(28);
+    const arrow = [...container.querySelectorAll("path.art-lit")].find((path) =>
+        path.getAttribute("d")?.startsWith("M 36 167"),
+    );
+    expect(arrow?.getAttribute("d")).toContain("L 28 172");
+});

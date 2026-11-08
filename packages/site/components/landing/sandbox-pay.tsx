@@ -30,6 +30,7 @@ export const payItems: { title: string; text: string; Art: ComponentType }[] = [
 /**
  * Code in the sandbox paying x402 APIs from an allowance the user approves once: a heading in two
  * tones, then three cells, each with its drawing over its text, the drawings joined by one line.
+ * Stacked, the cells no longer meet, so each drawing cuts the line at its own edges.
  */
 export function SandboxPay() {
     const id = useId();
@@ -52,7 +53,7 @@ export function SandboxPay() {
                     <ul className="art-money grid grid-cols-3 gap-(--hairline) border-t-(length:--hairline) border-line bg-line tablet:grid-cols-1">
                         {payItems.map(({ title, text, Art }, i) => (
                             <li key={title} className="flex flex-col bg-bg">
-                                <div className="art-glow flex justify-center overflow-hidden pt-(--space-6)">
+                                <div className="art-glow flex justify-center overflow-hidden pt-(--space-6) tablet:[--art-overflow:hidden]">
                                     <Art />
                                 </div>
                                 <div

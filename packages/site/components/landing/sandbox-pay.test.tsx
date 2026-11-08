@@ -44,3 +44,11 @@ it("keeps protocol jargon and the middle dot out of its words", () => {
     expect(words).not.toMatch(/\b402\b|HTTP|settle/i);
     expect(words).not.toContain("·");
 });
+
+it("cuts each drawing's line at its own edges once the cells stack", () => {
+    render(<SandboxPay />);
+    for (const item of screen.getAllByRole("listitem")) {
+        const art = item.querySelector("svg")?.parentElement;
+        expect(art?.className).toContain("tablet:[--art-overflow:hidden]");
+    }
+});

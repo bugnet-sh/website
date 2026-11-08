@@ -20,12 +20,15 @@
     --art-halo: color-mix(in srgb, var(--accent-2) 45%, transparent);
 }
 
+/* A drawing may draw past its box, as the line of payments does, unless its cell sets
+   --art-overflow to hidden: this file is outside Tailwind's layers, so a utility on the svg would
+   lose to the rule here */
 .art {
     display: block;
     width: var(--art-w);
     max-width: 100%;
     height: auto;
-    overflow: visible;
+    overflow: var(--art-overflow, visible);
 }
 
 .art :is(path, line, rect, circle, ellipse, polyline) {

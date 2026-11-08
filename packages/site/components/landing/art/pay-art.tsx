@@ -99,7 +99,7 @@ export function AllowanceArt() {
 }
 
 // Capped and refunded: what was spent rises in a glass column under the limit, and what is left
-// runs back along the line the other way
+// runs back the other way, ending in an arrowhead inside the drawing
 
 const C3 = camera(144, 135);
 const column = box(C3, [0, 0, 0], [28, 28, 78]);
@@ -111,7 +111,7 @@ export function LimitArt() {
     return (
         <Art>
             <Flow to={144} />
-            <path d={`M ${foot[0]} ${foot[1]} V 172 H ${-FAR}`} className="art-dim art-dash" />
+            <path d={`M ${foot[0]} ${foot[1]} V 172 H 28`} className="art-dim art-dash" />
             <path d="M 36 167 L 28 172 L 36 177" className="art-lit" />
             <path d={`${spent.left}${spent.right}${spent.top}`} className="art-wash" />
             {/* The level reached, a shade brighter than the sides */}
