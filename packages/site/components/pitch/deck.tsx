@@ -24,19 +24,52 @@ export function stepFor(key: string, shift: boolean): number {
     }
 }
 
-/** One slide step per wheel gesture; momentum, however it jumps, never starts a second until the wheel goes quiet */
-export function wheelPager({ gap = 180, threshold = 24, lock = 800 } = {}) {
+/** One slide step per wheel gesture, where a new gesture starts after a pause, a turn, or a rise after momentum fades */
+export function wheelPager({ gap = 180, threshold = 24, lock = 450 } = {}) {
     let last = -Infinity;
     let sum = 0;
     let used = false;
     let lockedUntil = -Infinity;
+    let direction = 0;
+    let peak = 0;
+    let low = Infinity;
+    let recent: number[] = [];
+
+    const restart = (events: number[]) => {
+        sum = events.reduce((a, b) => a + b, 0);
+        used = false;
+        peak = Math.max(...events.map(Math.abs));
+        low = peak;
+        recent = events;
+    };
+
     return (delta: number, now: number): number => {
-        if (now - last > gap) {
-            sum = 0;
-            used = false;
+        const size = Math.abs(delta);
+        const turn = Math.sign(delta);
+        // Momentum only fades, so three rising events after it has halved mean a new swipe, while a spike is one event
+        const lastThree = [...recent, delta].slice(-3).map(Math.abs);
+        const [a = 0, b = 0] = lastThree;
+        const rises =
+            lastThree.length === 3 &&
+            a < b &&
+            b < size &&
+            size >= Math.max(2 * low, 8) &&
+            low <= peak / 2;
+
+        if (now - last > gap) restart([delta]);
+        else if (turn !== 0 && direction !== 0 && turn !== direction && size >= 4) restart([delta]);
+        else if (rises) restart([...recent, delta].slice(-3));
+        else {
+            sum += delta;
+            recent = [...recent, delta].slice(-3);
+            if (size > peak) {
+                peak = size;
+                low = size;
+            } else low = Math.min(low, size);
         }
         last = now;
-        sum += delta;
+        if (turn !== 0) direction = turn;
+
         if (used || now < lockedUntil || Math.abs(sum) < threshold) return 0;
         used = true;
         lockedUntil = now + lock;

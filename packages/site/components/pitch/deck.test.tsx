@@ -60,6 +60,45 @@ describe("wheelPager", () => {
         expect(steps).toEqual([1]);
         expect(wheel(60, 100 * 16 + 400)).toBe(1);
     });
+
+    // A trackpad swipe: fingers speed up, then macOS sends momentum that fades over about a second
+    function swipe(start: number, sign = 1, cutAt = Infinity) {
+        const rise = [6, 14, 26, 40, 52];
+        const fade = Array.from({ length: 80 }, (_, i) =>
+            Math.max(1, Math.round(52 * 0.95 ** (i + 1))),
+        );
+        return [...rise, ...fade]
+            .map((d, i) => ({ d: d * sign, t: start + i * 16 }))
+            .filter((e) => e.t < start + cutAt);
+    }
+    const run = (events: { d: number; t: number }[]) => {
+        const wheel = wheelPager();
+        return events.map((e) => wheel(e.d, e.t)).filter((s) => s !== 0);
+    };
+
+    it("steps again for a second swipe that starts while the first one's momentum is still coming in", () => {
+        expect(run([...swipe(0, 1, 600), ...swipe(690)])).toEqual([1, 1]);
+    });
+
+    it("steps back for a swipe the other way during momentum", () => {
+        expect(run([...swipe(0, 1, 600), ...swipe(660, -1)])).toEqual([1, -1]);
+    });
+
+    it("takes one step for a long swipe that keeps speeding up", () => {
+        const rise = Array.from({ length: 12 }, (_, i) => 5 * (i + 1));
+        const fade = Array.from({ length: 60 }, (_, i) =>
+            Math.max(1, Math.round(60 * 0.94 ** (i + 1))),
+        );
+        expect(run([...rise, ...fade].map((d, i) => ({ d, t: i * 16 })))).toEqual([1]);
+    });
+
+    it("takes one step for momentum that jitters up and down as it fades", () => {
+        const jitter = [0.85, 1, 1.15, 0.9, 1.2];
+        const fade = Array.from({ length: 90 }, (_, i) =>
+            Math.max(1, 60 * 0.96 ** i * (jitter[i % 5] ?? 1)),
+        );
+        expect(run(fade.map((d, i) => ({ d, t: i * 16 })))).toEqual([1]);
+    });
 });
 
 describe("pitchSlides", () => {
