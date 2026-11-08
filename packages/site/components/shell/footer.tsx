@@ -59,9 +59,9 @@ function inset(i: number): string {
 
 /**
  * The closing band, pushed to the bottom of a short page. Its hairline above is the one under the
- * band before it. The brand sits left; the link grid sits against the frame's right rail, its
- * columns' hairlines running down to the waves, and shorter columns end in empty cells so every
- * row's line runs across the grid. Tablets put the grid under the brand; phones stack it.
+ * band before it. The brand sits left; the link grid sits against the frame's right rail and ends
+ * on its last row's line, and shorter columns end in empty cells so every row's line runs across
+ * the grid. Tablets put the grid under the brand; phones stack it.
  */
 export function SiteFooter() {
     return (
@@ -93,7 +93,7 @@ export function SiteFooter() {
                 </div>
                 <nav
                     aria-label="Footer"
-                    className="grid grid-cols-3 border-l-(length:--hairline) border-line tablet:border-t-(length:--hairline) tablet:border-l-0 phone:grid-cols-1"
+                    className="grid grid-cols-3 self-start border-l-(length:--hairline) border-line tablet:border-t-(length:--hairline) tablet:border-l-0 phone:grid-cols-1"
                 >
                     {columns.map((column, i) => (
                         <div
