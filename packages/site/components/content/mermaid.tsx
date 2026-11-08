@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { cx } from "../../lib/cx";
 import { mermaidConfig } from "../../lib/content/mermaid-config";
 
@@ -42,9 +42,23 @@ function toSvg(markup: string): SVGSVGElement | null {
 export function Mermaid({ source }: { source: string }) {
     const id = `mermaid-${useId().replace(/[^\w-]/g, "")}`;
     const box = useRef<HTMLDivElement>(null);
+    const scroller = useRef<HTMLDivElement>(null);
     const stage = useRef<HTMLDivElement>(null);
     const diagram = useRef<HTMLDivElement>(null);
     const [drawn, setDrawn] = useState(false);
+    const [more, setMore] = useState(false);
+
+    // Whether the diagram runs on past the right edge, so a phone shows that it scrolls
+    const measure = useCallback(() => {
+        const el = scroller.current;
+        if (el) setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
+    }, []);
+
+    useEffect(() => {
+        measure();
+        window.addEventListener("resize", measure);
+        return () => window.removeEventListener("resize", measure);
+    }, [drawn, measure]);
 
     useEffect(() => {
         const target = box.current;
@@ -78,16 +92,25 @@ export function Mermaid({ source }: { source: string }) {
         <div
             ref={box}
             className={cx(
-                "relative mt-(--space-4) overflow-x-auto border-(length:--hairline) border-line p-(--space-5) first:mt-0",
+                "relative mt-(--space-4) border-(length:--hairline) border-line first:mt-0",
                 !drawn && "min-h-(--diagram)",
             )}
         >
-            {!drawn && (
-                <pre className="font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre">
-                    <code>{source}</code>
-                </pre>
-            )}
-            <div ref={diagram} className="w-fit min-w-full [&>svg]:mx-auto" />
+            {/* Wider than the box, it scrolls inside the hairline and fades at the right edge
+                until it reaches its end */}
+            <div
+                ref={scroller}
+                onScroll={measure}
+                data-more={more || undefined}
+                className="overflow-x-auto p-(--space-5) data-more:[mask-image:linear-gradient(to_left,transparent,#000_var(--space-7))]"
+            >
+                {!drawn && (
+                    <pre className="font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre">
+                        <code>{source}</code>
+                    </pre>
+                )}
+                <div ref={diagram} className="w-fit min-w-full [&>svg]:mx-auto" />
+            </div>
             <div ref={stage} aria-hidden className="invisible absolute inset-x-0 top-0" />
         </div>
     );
