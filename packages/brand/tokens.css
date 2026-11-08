@@ -140,6 +140,8 @@
     --x402-figure-phone: 400px;
     /* The dithered mark's height at most, centred in its column */
     --dither-logo: 360px;
+    /* The FAQ's plus, which turns into a minus while its answer is open */
+    --faq-mark: 16px;
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */
     --caps-tracking: 0.08em;
 

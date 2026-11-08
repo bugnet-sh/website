@@ -16,6 +16,9 @@ export const github: ShellLink = {
     external: true,
 };
 
+/** The one public address, for questions, abuse and security alike. */
+export const supportEmail = "support@bugnet.org";
+
 export const headerLinks: (ShellLink & { page?: Page })[] = [
     { label: "Home", href: "/", page: "home" },
     { label: "Docs", href: "/docs/", page: "docs" },
