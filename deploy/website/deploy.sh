@@ -126,7 +126,7 @@ for _ in $(seq 90); do
     sleep 2
 done
 if ! $ok; then
-    echo "$unit did not answer 200 on https://bugnet.sh/; stopping it, the old version stays" >&2
+    echo "$unit failed its checks on https://bugnet.sh/; stopping it, the old version stays" >&2
     sudo journalctl -u "$unit" -n 50 --no-pager >&2 || true
     sudo systemctl stop "$unit" || true
     sudo rm -rf "${base:?}/$v"
