@@ -52,8 +52,11 @@ export function CopyButton({
                 aria-label={label}
                 onClick={() => void copy()}
                 className={cx(
-                    "grid h-(--segment) cursor-pointer items-center border-(length:--hairline) border-line font-ui text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap hover:border-accent hover:text-accent",
-                    icon ? "w-(--segment) place-items-center" : "px-(--space-2)",
+                    "relative grid h-(--segment) cursor-pointer items-center border-(length:--hairline) border-line font-ui text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap before:absolute before:content-[''] hover:border-accent hover:text-accent",
+                    // A 40 px tap target round the 28 px button, as every other button has
+                    icon
+                        ? "w-(--segment) place-items-center before:-inset-[calc((var(--hit)-var(--segment))/2)]"
+                        : "px-(--space-2) before:inset-x-0 before:-inset-y-[calc((var(--hit)-var(--segment))/2)]",
                     tone[state],
                 )}
             >
