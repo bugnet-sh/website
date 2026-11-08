@@ -38,6 +38,11 @@
     --accent: #52ffb8;
     --accent-ink: #0a0a0a;
     --accent-2: #fab2ea;
+    /* The secondary colour, a soft violet that nods to Solana's purple: secondary buttons, the
+       chosen install tab, and JSON keys and shell flags. Green stays the primary action, pink
+       stays money */
+    --accent-3: #b4a4ff;
+    --accent-3-ink: #0a0a0a;
     /* The waves' middle stripe, between the two accents; decoration, so no contrast pair */
     --waves-mid: #0ae16d;
     --bad: #ff6b6b;
@@ -103,6 +108,16 @@
     --hero-size: clamp(36px, 5vw, 64px);
     --hero-line: 1.15;
     --hero-measure: 22ch;
+    /* The hero fills the screen under the header, but never less than this on a short laptop */
+    --hero-min: 640px;
+    /* How it works: each step's mock card body, the same height in every column */
+    --how-mock: 96px;
+    /* The x402 band's logo box, and the logo's size inside it until the dither replaces it */
+    --x402-figure: 480px;
+    --x402-figure-phone: 320px;
+    --x402-mark: 200px;
+    /* Uppercase labels, such as the footer's link rows and the step cards' tags */
+    --caps-tracking: 0.08em;
 
     /* Articles: docs, terms and privacy */
     --article: 72ch;

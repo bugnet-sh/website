@@ -54,7 +54,8 @@ describe("checkContrast", () => {
 
 describe("contrastPairs", () => {
     it("covers every text colour on every surface", () => {
-        for (const fg of ["--text", "--text-muted", "--accent", "--accent-2", "--bad", "--warn"]) {
+        const inks = ["--text", "--text-muted", "--accent", "--accent-2", "--accent-3", "--bad"];
+        for (const fg of [...inks, "--warn"]) {
             for (const bg of ["--bg", "--surface", "--surface-hover"]) {
                 expect(contrastPairs).toContainEqual([fg, bg]);
             }
@@ -69,8 +70,9 @@ describe("contrastPairs", () => {
         }
     });
 
-    it("covers the accent ink on the accent", () => {
+    it("covers each accent's ink on its accent", () => {
         expect(contrastPairs).toContainEqual(["--accent-ink", "--accent"]);
+        expect(contrastPairs).toContainEqual(["--accent-3-ink", "--accent-3"]);
     });
 });
 

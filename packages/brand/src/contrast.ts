@@ -2,12 +2,21 @@
 const MINIMUM = 4.5;
 
 const surfaces = ["--bg", "--surface", "--surface-hover"] as const;
-const inks = ["--text", "--text-muted", "--accent", "--accent-2", "--bad", "--warn"] as const;
+const inks = [
+    "--text",
+    "--text-muted",
+    "--accent",
+    "--accent-2",
+    "--accent-3",
+    "--bad",
+    "--warn",
+] as const;
 const fills = ["--chart-profit", "--chart-loss"] as const;
 
 export const contrastPairs: readonly (readonly [string, string])[] = [
     ...[...inks, ...fills].flatMap((fg) => surfaces.map((bg) => [fg, bg] as const)),
     ["--accent-ink", "--accent"],
+    ["--accent-3-ink", "--accent-3"],
 ];
 
 function channel(value: number): number {
