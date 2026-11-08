@@ -7,7 +7,7 @@ import { tocOf } from "./toc";
 // Tests run from the repository root, not the folder `next build` reads from
 const dir = fileURLToPath(new URL("../../content/docs", import.meta.url));
 const read = (doc: Doc) => readDoc(doc, dir);
-const install = docBySlug("") as Doc;
+const install = docBySlug("install") as Doc;
 
 describe("docs content", () => {
     it("names its sources on every page and carries no source comments", () => {

@@ -24,7 +24,7 @@ describe("SiteFooter", () => {
             ["How it works", "/#how"],
             ["Pricing", "/#pricing"],
             ["Stats", "/stats/"],
-            ["Get started", "/docs/#install"],
+            ["Get started", "/docs/"],
             ["Docs", "/docs/"],
             ["Install", "/#install"],
             ["x402 (opens in a new tab)", "https://x402.org"],

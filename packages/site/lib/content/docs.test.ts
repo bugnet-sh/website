@@ -2,9 +2,10 @@ import { describe, expect, it } from "vitest";
 import { docBySlug, docHref, docs, prevNext } from "./docs";
 
 describe("docs", () => {
-    it("serves Install at /docs/ and the rest under their slugs", () => {
+    it("serves Get started at /docs/ and the rest under their slugs", () => {
         expect(docs.map(docHref)).toEqual([
             "/docs/",
+            "/docs/install/",
             "/docs/before-you-pay/",
             "/docs/paying/",
             "/docs/tools/",
@@ -18,7 +19,7 @@ describe("docs", () => {
     });
 
     it("gives the first page no previous and the last no next", () => {
-        expect(prevNext("")).toEqual({ prev: undefined, next: docBySlug("before-you-pay") });
+        expect(prevNext("")).toEqual({ prev: undefined, next: docBySlug("install") });
         expect(prevNext("faq")).toEqual({ prev: docBySlug("watching-a-run"), next: undefined });
     });
 

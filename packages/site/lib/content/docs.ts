@@ -1,8 +1,9 @@
 export type Doc = { title: string; slug: string; file: string };
 
-/** The docs in reading order. Install is the docs' front page, so its slug is empty. */
+/** The docs in reading order. Get started is the docs' front page, so its slug is empty. */
 export const docs: readonly Doc[] = [
-    { title: "Install", slug: "", file: "install.md" },
+    { title: "Get started", slug: "", file: "get-started.md" },
+    { title: "Install", slug: "install", file: "install.md" },
     { title: "Before you pay", slug: "before-you-pay", file: "before-you-pay.md" },
     { title: "Paying", slug: "paying", file: "paying.md" },
     { title: "Tools", slug: "tools", file: "tools.md" },

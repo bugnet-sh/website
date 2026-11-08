@@ -18,7 +18,7 @@ export const metadata = pageMetadata(
 );
 
 export default function HomePage() {
-    const lines = installLines(readDoc(docBySlug("") as Doc).body);
+    const lines = installLines(readDoc(docBySlug("install") as Doc).body);
     const tabs = lines.clients.map((client) => ({
         id: client.id,
         name: client.name,

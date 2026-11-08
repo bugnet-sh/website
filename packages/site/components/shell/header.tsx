@@ -30,7 +30,7 @@ export function SiteHeader({ current }: { current?: Page }) {
                 <div className="ml-auto flex items-center gap-(--space-2)">
                     <Menu current={current} />
                     <a
-                        href="/docs/#install"
+                        href="/docs/"
                         className="relative inline-flex h-(--button) items-center bg-accent before:absolute before:inset-x-0 before:-inset-y-[calc((var(--hit)-var(--button))/2)] before:content-[''] px-(--space-4) text-(length:--ui-size) leading-(--ui-line) font-semibold text-accent-ink"
                     >
                         Get Started
