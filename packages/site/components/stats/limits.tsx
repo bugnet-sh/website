@@ -1,6 +1,6 @@
 "use client";
 
-import { useId } from "react";
+import { Fragment, useId } from "react";
 import { cx } from "../../lib/cx";
 import { formatDuration } from "../../lib/stats/format";
 import { formatBytes, limitRows, sizeText } from "../../lib/stats/labels";
@@ -40,7 +40,12 @@ export function Limits() {
                             {limits.map((limit) => (
                                 // Positioned, so a tip opens under its own row
                                 <tr key={limit.key} className="relative">
-                                    <td className={cx(bodyCell(), "whitespace-normal!")}>
+                                    <td
+                                        className={cx(
+                                            bodyCell(),
+                                            "py-(--space-2) whitespace-normal!",
+                                        )}
+                                    >
                                         {limit.label}
                                         {/* After the name, so every value meets the frame's edge */}
                                         {limit.tip && (
@@ -88,13 +93,24 @@ export function Limits() {
                                 <tbody>
                                     {packages.map((p) => (
                                         <tr key={p.id}>
+                                            {/* Wrapped, the row grows round its lines,
+                                                and breaks only between the parts */}
                                             <td
                                                 className={cx(
                                                     bodyCell(),
-                                                    "phone:whitespace-normal!",
+                                                    "phone:py-(--space-2) phone:whitespace-normal!",
                                                 )}
                                             >
-                                                {sizeText(p)}
+                                                {sizeText(p)
+                                                    .split(", ")
+                                                    .map((part, i) => (
+                                                        <Fragment key={part}>
+                                                            {i > 0 && ", "}
+                                                            <span className="whitespace-nowrap">
+                                                                {part}
+                                                            </span>
+                                                        </Fragment>
+                                                    ))}
                                             </td>
                                             <td className={bodyCell(true)}>
                                                 {formatBytes(p.diskGiB * GiB)}
