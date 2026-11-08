@@ -7,11 +7,6 @@ export function priceText(micros: number): string {
     return formatUsdc(micros, { decimals: 6 }).replace(/(\.\d\d\d*?)0+$/, "$1");
 }
 
-/** A package's rate per minute, rounded to the micro-USDC: 50 000 micros for 10 minutes is "0.005". */
-export function perMinuteText(p: Pick<PackageRow, "priceMicros" | "minutes">): string {
-    return priceText(Math.round(p.priceMicros / Math.max(1, p.minutes)));
-}
-
 const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
 const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
 
@@ -29,13 +24,24 @@ export function pricingPackages(rows: readonly PackageRow[], max = 8): PackageRo
 const MiB = 1024 ** 2;
 const GiB = 1024 ** 3;
 
-/** What a package holds, as its pricing cell lists it; the GPU row only when it has one. */
+/** What a package's price buys: "/ 10 min" */
+export function lengthText(p: Pick<PackageRow, "minutes">): string {
+    return `/ ${formatDuration(p.minutes * 60)}`;
+}
+
+/** What a package holds, as its pricing cell lists it: a GPU's model and VRAM first, when it has one. */
 export function packageFacts(p: PackageRow): { label: string; value: string }[] {
+    const gpu = p.gpu;
+    const times = gpu && gpu.count > 1 ? `${gpu.count} × ` : "";
     return [
+        ...(gpu
+            ? [
+                  { label: "GPU", value: gpu.model ? `${times}${gpu.model}` : String(gpu.count) },
+                  { label: "VRAM", value: `${times}${gpu.memoryGiB} GiB` },
+              ]
+            : []),
         { label: "vCPU", value: String(p.vcpu) },
         { label: "Memory", value: formatBytes(p.memoryMiB * MiB) },
         { label: "Disk", value: formatBytes(p.diskGiB * GiB) },
-        ...(p.gpu ? [{ label: "GPU", value: `${p.gpu.count} × ${p.gpu.memoryGiB} GiB` }] : []),
-        { label: "Length", value: formatDuration(p.minutes * 60) },
     ];
 }

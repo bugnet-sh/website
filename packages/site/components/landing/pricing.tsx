@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { cx } from "../../lib/cx";
-import { packageFacts, perMinuteText, pricingPackages } from "../../lib/landing/price";
+import { lengthText, packageFacts, priceText, pricingPackages } from "../../lib/landing/price";
 import { Band, Frame } from "../shell/frame";
 import { useStats } from "../stats/stats-provider";
 import { isUnavailable, Unavailable } from "../stats/unavailable";
@@ -12,7 +12,7 @@ import { LandingTitle } from "./title";
 
 /**
  * Up to eight packages on sale, from the live feed, so no price here is ever invented, each at its
- * rate per minute: four to a row, two on tablets, one on phones. Each cell draws its own hairlines,
+ * price for its length: four to a row, two on tablets, one on phones. Each cell draws its own hairlines,
  * so a last row that is not full shows no line where no cell is.
  */
 export function Pricing() {
@@ -42,10 +42,10 @@ export function Pricing() {
                                     >
                                         <p className="flex items-baseline gap-(--space-2)">
                                             <span className="font-mono text-(length:--stat-size) leading-(--stat-line) text-accent">
-                                                {perMinuteText(p)}
+                                                {priceText(p.priceMicros)}
                                             </span>
                                             <span className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
-                                                USDC / min
+                                                USDC {lengthText(p)}
                                             </span>
                                         </p>
                                         <dl className="mt-(--space-4) text-(length:--ui-size) leading-(--ui-line)">

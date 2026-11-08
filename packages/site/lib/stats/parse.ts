@@ -61,7 +61,8 @@ function oneOf<T extends string>(list: readonly T[], v: unknown): T {
 function gpu(v: unknown): Gpu | null {
     return orNull(v, (g) => {
         const o = obj(g);
-        return { count: int(o.count), memoryGiB: int(o.memoryGiB) };
+        const model = typeof o.model === "string" && o.model.trim() ? o.model.trim() : null;
+        return { count: int(o.count), memoryGiB: int(o.memoryGiB), model };
     });
 }
 

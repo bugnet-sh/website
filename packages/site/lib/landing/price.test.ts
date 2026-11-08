@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { packageFacts, perMinuteText, priceText, pricingPackages } from "./price";
+import { lengthText, packageFacts, priceText, pricingPackages } from "./price";
 import type { PackageRow } from "../stats/types";
 
 it("shows a price with the decimals it needs and at least two", () => {
@@ -8,28 +8,33 @@ it("shows a price with the decimals it needs and at least two", () => {
     expect(priceText(2_000_000)).toBe("2.00");
 });
 
-it("lists a package's parts, with a GPU row only when it has a GPU", () => {
+it("lists a package's parts, a GPU's model and VRAM first when it has one", () => {
     const cpu = { id: "c", vcpu: 2, memoryMiB: 2048, diskGiB: 10, gpu: null, minutes: 10 };
     expect(packageFacts({ ...cpu, priceMicros: 50_000 })).toEqual([
         { label: "vCPU", value: "2" },
         { label: "Memory", value: "2 GiB" },
         { label: "Disk", value: "10 GiB" },
-        { label: "Length", value: "10 min" },
     ]);
-    const gpu = { ...cpu, memoryMiB: 1536, gpu: { count: 1, memoryGiB: 20 }, minutes: 90 };
-    expect(packageFacts({ ...gpu, priceMicros: 400_000 })).toEqual([
+    const l4 = { count: 1, memoryGiB: 24, model: "NVIDIA L4" };
+    expect(packageFacts({ ...cpu, memoryMiB: 1536, gpu: l4, priceMicros: 400_000 })).toEqual([
+        { label: "GPU", value: "NVIDIA L4" },
+        { label: "VRAM", value: "24 GiB" },
         { label: "vCPU", value: "2" },
         { label: "Memory", value: "1.5 GiB" },
         { label: "Disk", value: "10 GiB" },
-        { label: "GPU", value: "1 × 20 GiB" },
-        { label: "Length", value: "1 h 30 min" },
     ]);
+    const two = { ...cpu, gpu: { ...l4, count: 2 }, priceMicros: 1 };
+    expect(packageFacts(two).slice(0, 2)).toEqual([
+        { label: "GPU", value: "2 × NVIDIA L4" },
+        { label: "VRAM", value: "2 × 24 GiB" },
+    ]);
+    const unnamed = { ...cpu, gpu: { count: 1, memoryGiB: 24 }, priceMicros: 1 };
+    expect(packageFacts(unnamed)[0]).toEqual({ label: "GPU", value: "1" });
 });
 
-it("shows the rate per minute, rounded to the micro-USDC", () => {
-    expect(perMinuteText({ priceMicros: 50_000, minutes: 10 })).toBe("0.005");
-    expect(perMinuteText({ priceMicros: 1_500_000, minutes: 30 })).toBe("0.05");
-    expect(perMinuteText({ priceMicros: 200_000, minutes: 30 })).toBe("0.006667");
+it("says what a package's price buys", () => {
+    expect(lengthText({ minutes: 10 })).toBe("/ 10 min");
+    expect(lengthText({ minutes: 90 })).toBe("/ 1 h 30 min");
 });
 
 describe("pricingPackages", () => {

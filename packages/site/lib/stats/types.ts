@@ -1,4 +1,5 @@
-export type Gpu = { count: number; memoryGiB: number };
+/** `memoryGiB` is each GPU's own memory; `model` is absent from a feed that predates it */
+export type Gpu = { count: number; memoryGiB: number; model?: string | null };
 
 export type DayRow = {
     day: string;
