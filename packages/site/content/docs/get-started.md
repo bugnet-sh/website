@@ -69,15 +69,15 @@ pay topup
 ### From a wallet file {#ready-wallet-file}
 
 The bridge signs Bugnet orders itself from a wallet file, with no extra confirmation, within the
-limits you set. It needs the bridge from step 1, `npx -y @bugnet/mcp`, not the URL entry. It works
-on macOS and Linux. On Windows, payments go to the pay.sh wallet or the pay link.
+limits you set. It needs the bridge from step 1, `npx -y @bugnet/mcp@0.1.0`, not the URL entry. It
+works on macOS and Linux. On Windows, payments go to the pay.sh wallet or the pay link.
 
-1. Run `bugnet-mcp key new` in your own terminal. It creates `~/.config/bugnet/wallet.json` and
-   prints only its address. To move a key you already have from a `.env` file instead, run this,
-   then delete that line as it tells you:
+1. Run `npx -y @bugnet/mcp@0.1.0 key new` in your own terminal. It creates
+   `~/.config/bugnet/wallet.json` and prints only its address. To move a key you already have from a
+   `.env` file instead, run this, then delete that line as it tells you:
 
     ```sh
-    bugnet-mcp key import --from ./.env --var NAME
+    npx -y @bugnet/mcp@0.1.0 key import --from ./.env --var NAME
     ```
 
 2. Send that address a little USDC on Solana. It needs no SOL: Bugnet pays the fee.

@@ -10,12 +10,12 @@ wallet file. Set one up before your first run.
 
 ## Three ways to pay {#three-ways-to-pay}
 
-|                | By link                                                   | From the pay.sh wallet                                 | From a wallet file                                    |
-| -------------- | --------------------------------------------------------- | ------------------------------------------------------ | ----------------------------------------------------- |
-| You need       | A browser wallet such as Phantom or Solflare holding USDC | [`pay`](https://pay.sh) set up on this computer        | A wallet file from `bugnet-mcp key new`, holding USDC |
-| You approve in | Your wallet, or Phantom or Solflare on your phone         | Touch ID, Windows Hello or polkit                      | No extra confirmation, within limits you set          |
-| Clients        | Every client, claude.ai included                          | The `bugnet-wallet` plugin, the bridge, Claude Desktop | The bridge, on macOS and Linux                        |
-| Setup          | None                                                      | About 5 to 10 minutes, once                            | A key, a little USDC and `mcp.toml`, once             |
+|                | By link                                                   | From the pay.sh wallet                                 | From a wallet file                           |
+| -------------- | --------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------- |
+| You need       | A browser wallet such as Phantom or Solflare holding USDC | [`pay`](https://pay.sh) set up on this computer        | A wallet file holding USDC                   |
+| You approve in | Your wallet, or Phantom or Solflare on your phone         | Touch ID, Windows Hello or polkit                      | No extra confirmation, within limits you set |
+| Clients        | Every client, claude.ai included                          | The `bugnet-wallet` plugin, the bridge, Claude Desktop | The bridge, on macOS and Linux               |
+| Setup          | None                                                      | About 5 to 10 minutes, once                            | A key, a little USDC and `mcp.toml`, once    |
 
 ## Paying by link {#paying-by-link}
 
@@ -53,15 +53,15 @@ and hides Bugnet.
 
 Instead of `pay`, the [bridge](/docs/install/#bridge) can sign Bugnet orders itself from a wallet
 file, with no extra confirmation, within the limits you set. It needs the bridge,
-`npx -y @bugnet/mcp`, not the URL entry. The wallet file works on macOS and Linux. On Windows it
-cannot be loaded yet, so every payment goes to the pay.sh wallet or the pay link.
+`npx -y @bugnet/mcp@0.1.0`, not the URL entry. The wallet file works on macOS and Linux. On Windows
+it cannot be loaded yet, so every payment goes to the pay.sh wallet or the pay link.
 
-1. Run `bugnet-mcp key new` in your own terminal. It creates `~/.config/bugnet/wallet.json` and
-   prints only its address. To move a key you already have from a `.env` file instead, run this,
-   then delete that line as it tells you:
+1. Run `npx -y @bugnet/mcp@0.1.0 key new` in your own terminal. It creates
+   `~/.config/bugnet/wallet.json` and prints only its address. To move a key you already have from a
+   `.env` file instead, run this, then delete that line as it tells you:
 
     ```sh
-    bugnet-mcp key import --from ./.env --var NAME
+    npx -y @bugnet/mcp@0.1.0 key import --from ./.env --var NAME
     ```
 
 2. Send that address a little USDC on Solana. It needs no SOL: Bugnet pays the fee.
