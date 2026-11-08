@@ -37,10 +37,12 @@ export function InstallTabs({ tabs }: { tabs: InstallTab[] }) {
 
     return (
         <>
+            {/* Phones keep the tabs in one row that scrolls edge to edge; the 4 px above and
+                below it hold the tap areas and the focus ring, which the scroll box would clip */}
             <div
                 role="tablist"
                 aria-label="Client"
-                className="flex flex-wrap"
+                className="flex flex-wrap phone:-mx-(--pad) phone:-my-(--space-1) phone:flex-nowrap phone:overflow-x-auto phone:px-(--pad) phone:py-(--space-1) phone:[scrollbar-width:none]"
                 onKeyDown={onKeyDown}
             >
                 {tabs.map((tab, i) => {
