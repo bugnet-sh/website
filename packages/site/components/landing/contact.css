@@ -1,0 +1,62 @@
+/* The Contact rows' icons: the docs' book turns a page and the GitHub mark waves while the row is
+   hovered or focused. Each drawing returns to where it started, so nothing jumps at the end. */
+
+.contact-page {
+    transform-box: fill-box;
+    transform-origin: left center;
+    opacity: 0;
+}
+
+.contact-wave {
+    transform-box: fill-box;
+    transform-origin: 50% 90%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    .contact-row:hover .contact-page,
+    .contact-row:focus-visible .contact-page {
+        animation: contact-page 0.8s ease-in-out;
+    }
+
+    .contact-row:hover .contact-wave,
+    .contact-row:focus-visible .contact-wave {
+        animation: contact-wave 0.9s ease-in-out;
+    }
+}
+
+/* A copy of the right page lifts at the spine, turns over to the left and settles out of sight */
+@keyframes contact-page {
+    0% {
+        opacity: 1;
+        transform: scaleX(1);
+    }
+
+    70% {
+        opacity: 1;
+        transform: scaleX(-1);
+    }
+
+    100% {
+        opacity: 0;
+        transform: scaleX(-1);
+    }
+}
+
+@keyframes contact-wave {
+    0%,
+    100% {
+        transform: rotate(0);
+    }
+
+    25% {
+        transform: rotate(-14deg);
+    }
+
+    50% {
+        transform: rotate(10deg);
+    }
+
+    75% {
+        transform: rotate(-6deg);
+    }
+}

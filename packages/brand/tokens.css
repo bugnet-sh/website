@@ -147,7 +147,11 @@
     /* Contact: each small link row on the left and its arrow, and the arrow after "Contact us",
        a little under the hero's size that the words are set in */
     --contact-row: clamp(80px, 8vw, 120px);
-    --contact-row-arrow: 16px;
+    --contact-row-arrow: 20px;
+    /* The Contact rows' words and the animated icon before them */
+    --contact-row-size: 20px;
+    --contact-row-line: 28px;
+    --contact-row-icon: 24px;
     --contact-arrow: clamp(32px, 4.4vw, 56px);
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */
     --caps-tracking: 0.08em;
