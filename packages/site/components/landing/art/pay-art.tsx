@@ -1,23 +1,30 @@
-import { cylinder, frontMatrix, iso, type SolidPaths } from "../../iso/iso-kit";
+import { cylinder, frontMatrix, iso, pathOf, type SolidPaths } from "../../iso/iso-kit";
 import { Art, GlassBox } from "./art";
-import { ART_W, box, camera, plate } from "./line-art";
+import { box, camera } from "./line-art";
 
-// The three drawings share one line at the same height, so side by side they read as one flow
-// of payments across the band. The line runs far past the drawing, and each cell cuts it at its
-// own edges, however wide the cell is
-const FLOW = 160;
-const FAR = 800;
+// Each drawing stands alone in its cell: no line runs from one cell into the next
 
-function Flow({ from = -FAR, to = ART_W + FAR }: { from?: number; to?: number }) {
-    return <path d={`M ${from} ${FLOW} H ${to}`} className="art-dim art-flow" />;
-}
-
-function Coin({ paths }: { paths: SolidPaths }) {
+/** A coin, solid so no line shows through it; a dim one is a coin already paid out */
+function Coin({ paths, dim = false }: { paths: SolidPaths; dim?: boolean }) {
     return (
         <g>
             <path d={paths.fill} className="art-ground" />
             <path d={paths.top} className="art-wash" />
-            <path d={`${paths.outline}${paths.crease}`} className="art-lit" />
+            <path d={`${paths.outline}${paths.crease}`} className={dim ? "art-dim" : "art-lit"} />
+        </g>
+    );
+}
+
+/** A dashed run that ends in an arrowhead at (x, y), pointing left or right */
+function Arrow({ from, to, y }: { from: number; to: number; y: number }) {
+    const back = to > from ? -6 : 6;
+    return (
+        <g>
+            <path d={`M ${from} ${y} H ${to}`} className="art-dim art-dash" />
+            <path
+                d={`M ${to + back} ${y - 5} L ${to} ${y} L ${to + back} ${y + 5}`}
+                className="art-lit"
+            />
         </g>
     );
 }
@@ -32,7 +39,6 @@ const apis = ["search", "chat", "translate"];
 export function FindArt() {
     return (
         <Art>
-            <Flow from={70} />
             <path d="M 106 120 H 130 V 92.5 H 152" className="art-dim art-dash" />
             <GlassBox paths={sandbox} />
             <g transform={prompt}>
@@ -71,55 +77,61 @@ export function FindArt() {
     );
 }
 
-// Paid call by call: the allowance as a stack of coins, approved once, paying out along the line
+// Paid call by call: the allowance as a stack of coins, approved once, paying out one coin a
+// call along a short run that ends in its arrowhead
 
-const C2 = camera(96, 146);
+const C2 = camera(80, 140);
 const stack = Array.from({ length: 5 }, (_, i) => cylinder(0, 0, 22, i * 4.5, 3.5, C2, 48));
-const sent = [160, 196, 232].map((x) => cylinder(0, 0, 7, 0, 2.5, camera(x, 155.5), 24));
+const PAY_Y = 156;
+// The top coin's far rim, where the approval's line comes down to meet the stack
+const STACK_TOP = 140 - 4 * 4.5 - 3.5 - 11;
+const sent = [140, 176, 212].map((x) => cylinder(0, 0, 7, 0, 2.5, camera(x, PAY_Y - 4), 24));
 
 export function AllowanceArt() {
     return (
         <Art>
-            <Flow />
-            <path d="M 140 70.5 H 96 V 104" className="art-dim art-dash" />
+            <path d={`M 124 64.5 H 80 V ${STACK_TOP}`} className="art-dim art-dash" />
             {stack.map((coin, i) => (
                 <Coin key={i} paths={coin} />
             ))}
+            <Arrow from={108} to={246} y={PAY_Y} />
             {sent.map((coin, i) => (
-                <g key={i} opacity={1 - i * 0.3}>
-                    <Coin paths={coin} />
-                </g>
+                <Coin key={i} paths={coin} dim={i > 0} />
             ))}
             {/* One approval */}
-            <rect x="140.5" y="59.5" width="22" height="22" className="art-wash" />
-            <rect x="140.5" y="59.5" width="22" height="22" className="art-lit art-halo" />
-            <path d="M 145.5 70.5 l 4 4 l 8 -9" className="art-lit" />
+            <rect x="124.5" y="53.5" width="22" height="22" className="art-wash" />
+            <rect x="124.5" y="53.5" width="22" height="22" className="art-lit art-halo" />
+            <path d="M 129.5 64.5 l 4 4 l 8 -9" className="art-lit" />
         </Art>
     );
 }
 
-// Capped and refunded: what was spent rises in a glass column under the limit, and what is left
-// runs back the other way, ending in an arrowhead inside the drawing
+// Capped and refunded: what was spent fills a glass column up to the ring of the limit, and what
+// is left runs back to the coins it came from
 
-const C3 = camera(144, 135);
+const C3 = camera(182, 132);
 const column = box(C3, [0, 0, 0], [28, 28, 78]);
 const spent = box(C3, [2, 2, 0], [24, 24, 46]);
-const limit = plate(C3, [-7, -7, 60], [42, 42]);
-const foot = iso([0, 28, 0], C3);
+const at = (x: number, y: number, z: number) => iso([x, y, z], C3);
+// The limit is a line round the column's two front faces, flush with the glass
+const LIMIT = 60;
+const ring = pathOf([at(0, 28, LIMIT), at(28, 28, LIMIT), at(28, 0, LIMIT)]);
+const leftFoot = at(0, 28, 0);
+const REFUND_Y = Math.round(leftFoot[1]) + 0.5;
+const back = [0, 4.5].map((z) => cylinder(0, 0, 10, z, 3.5, camera(84, REFUND_Y + 2), 32));
 
 export function LimitArt() {
     return (
         <Art>
-            <Flow to={144} />
-            <path d={`M ${foot[0]} ${foot[1]} V 172 H 28`} className="art-dim art-dash" />
-            <path d="M 36 167 L 28 172 L 36 177" className="art-lit" />
             <path d={`${spent.left}${spent.right}${spent.top}`} className="art-wash" />
-            {/* The level reached, a shade brighter than the sides */}
-            <path d={spent.top} className="art-wash" />
             <path d={spent.edges} className="art-dim" />
             <path d={spent.top} className="art-lit" />
             <GlassBox paths={column} />
-            <path d={limit} className="art-lit art-dash art-halo" />
+            <path d={ring} className="art-lit art-halo" />
+            <Arrow from={Math.round(leftFoot[0]) - 4} to={102} y={REFUND_Y} />
+            {back.map((coin, i) => (
+                <Coin key={i} paths={coin} />
+            ))}
         </Art>
     );
 }

@@ -55,15 +55,26 @@ it("puts a box's front foot straight under its back corner, as the kit's camera 
     expect(corners.right[0]).toBeGreaterThan(corners.back[0]);
 });
 
-it("ends the refund line at its arrowhead, inside the drawing, not under the payment line", () => {
+it("keeps every paying drawing inside its own box, with no line running into the next cell", () => {
+    for (const Art of [FindArt, AllowanceArt, LimitArt]) {
+        const { container, unmount } = render(<Art />);
+        for (const path of container.querySelectorAll("path")) {
+            const xs = [...(path.getAttribute("d") ?? "").matchAll(/[MLH] (-?[\d.]+)/g)].map((m) =>
+                Number(m[1]),
+            );
+            for (const x of xs) {
+                expect(x).toBeGreaterThanOrEqual(0);
+                expect(x).toBeLessThanOrEqual(280);
+            }
+        }
+        unmount();
+    }
+});
+
+it("ends the refund at the coins it goes back to, with its arrowhead inside the drawing", () => {
     const { container } = render(<LimitArt />);
-    const refund = [...container.querySelectorAll("path.art-dash")].find((path) =>
-        path.getAttribute("d")?.includes("V 172"),
-    );
-    const end = Number(refund?.getAttribute("d")?.match(/H (-?[\d.]+)$/)?.[1]);
-    expect(end).toBe(28);
-    const arrow = [...container.querySelectorAll("path.art-lit")].find((path) =>
-        path.getAttribute("d")?.startsWith("M 36 167"),
-    );
-    expect(arrow?.getAttribute("d")).toContain("L 28 172");
+    const heads = [...container.querySelectorAll("path.art-lit")]
+        .map((path) => path.getAttribute("d") ?? "")
+        .filter((d) => / L 102 /.test(d));
+    expect(heads).toHaveLength(1);
 });

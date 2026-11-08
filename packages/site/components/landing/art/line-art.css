@@ -71,10 +71,6 @@
     stroke-dasharray: var(--art-dash);
 }
 
-.art-flow {
-    stroke-dasharray: var(--art-flow-dash);
-}
-
 /* The lit lines glow a little, as light on glass */
 .art-halo {
     filter: drop-shadow(0 0 var(--art-halo-blur) var(--art-halo));
@@ -110,11 +106,9 @@
     fill: var(--text);
 }
 
-/* A control code the output arrived with, struck out in green */
+/* A control code the output arrived with, greyed under the drawn line that strikes it out */
 .art-struck {
     fill: var(--art-off);
-    text-decoration: line-through;
-    text-decoration-color: var(--art-ink);
 }
 
 .art-tag {
@@ -129,11 +123,6 @@
     .art-drift {
         animation: art-drift 3.2s ease-out infinite;
         animation-delay: calc(var(--i, 0) * -0.37s);
-    }
-
-    /* Payments run along the line from cell to cell */
-    .art-flow {
-        animation: art-flow 1.6s linear infinite;
     }
 }
 
@@ -150,11 +139,5 @@
     100% {
         opacity: 0;
         transform: translate(var(--art-drift-x), var(--art-drift-y));
-    }
-}
-
-@keyframes art-flow {
-    to {
-        stroke-dashoffset: calc(-1 * var(--art-flow-step));
     }
 }

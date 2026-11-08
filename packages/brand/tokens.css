@@ -164,10 +164,8 @@
     --art-glow: color-mix(in srgb, var(--accent) 11%, transparent);
     --art-halo: color-mix(in srgb, var(--accent) 45%, transparent);
     --art-halo-blur: 4px;
-    /* Dashed lines: a hidden edge, and the flow of payments, which moves one dash and gap a beat */
+    /* Dashed lines: hidden edges and the runs between parts */
     --art-dash: 3px 4px;
-    --art-flow-dash: 6px 8px;
-    --art-flow-step: 14px;
     /* How far a bit of a deleted sandbox drifts before it fades */
     --art-drift-x: 8px;
     --art-drift-y: -16px;

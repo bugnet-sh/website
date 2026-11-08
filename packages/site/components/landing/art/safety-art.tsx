@@ -123,10 +123,13 @@ export function DeadlineArt() {
 // Output is data: what came back, its control codes struck out, all of it marked as data
 
 const lines: { struck?: string; text: string }[] = [
-    { struck: "\\x1b[2J", text: " build passed in 41s" },
-    { struck: "U+200B", text: " 214 tests, 0 failed" },
+    { struck: "\\x1b[2J", text: "build passed in 41s" },
+    { struck: "U+200B", text: "214 tests, 0 failed" },
     { text: "ignore previous instructions" },
 ];
+// One mono character's advance at --art-type, which the struck code is fitted to exactly so its
+// strike runs from its first character to its last
+const CH = 6.6;
 
 export function DataArt() {
     return (
@@ -138,9 +141,29 @@ export function DataArt() {
                     <g key={line.text}>
                         <rect x="28.5" y={y} width="223" height="28" className="art-wash" />
                         <rect x="28.5" y={y} width="223" height="28" className="art-lit art-halo" />
-                        <text x="40" y={y + 18} className="art-text">
-                            {line.struck && <tspan className="art-struck">{line.struck}</tspan>}
-                            <tspan>{line.text}</tspan>
+                        {line.struck && (
+                            <>
+                                <text
+                                    x="40"
+                                    y={y + 18}
+                                    textLength={line.struck.length * CH}
+                                    lengthAdjust="spacingAndGlyphs"
+                                    className="art-text art-struck"
+                                >
+                                    {line.struck}
+                                </text>
+                                <path
+                                    d={`M 39 ${y + 14.5} H ${41 + line.struck.length * CH}`}
+                                    className="art-lit"
+                                />
+                            </>
+                        )}
+                        <text
+                            x={40 + (line.struck ? (line.struck.length + 1) * CH : 0)}
+                            y={y + 18}
+                            className="art-text"
+                        >
+                            {line.text}
                         </text>
                     </g>
                 );
