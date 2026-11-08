@@ -22,7 +22,7 @@ export function Sidebar({ current }: { current: string }) {
                 aria-expanded={open}
                 aria-controls={panelId}
                 onClick={() => setOpen((was) => !was)}
-                className="hidden h-(--button) items-center justify-between border-(length:--hairline) border-line px-(--space-3) text-(length:--ui-size) leading-(--ui-line) text-text tablet:flex"
+                className="relative hidden h-(--button) items-center justify-between border-(length:--hairline) border-line px-(--space-3) text-(length:--ui-size) leading-(--ui-line) text-text before:absolute before:inset-x-0 before:-inset-y-[calc((var(--hit)-var(--button))/2)] before:content-[''] tablet:flex"
             >
                 Docs menu
                 <ChevronIcon open={open} />

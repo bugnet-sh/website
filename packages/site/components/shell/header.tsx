@@ -11,7 +11,7 @@ export function SiteHeader({ current }: { current?: Page }) {
         // tall and every item centred in the row still sits on a whole pixel
         <header className="sticky top-0 z-10 bg-bg shadow-[inset_0_calc(var(--hairline)*-1)_0_var(--line)]">
             <Frame className="flex h-(--nav) items-center">
-                <a href="/" className="flex shrink-0">
+                <a href="/" className="flex h-(--hit) shrink-0 items-center">
                     <Logo />
                 </a>
                 <nav aria-label="Main" className="ml-(--space-6) phone:hidden">
