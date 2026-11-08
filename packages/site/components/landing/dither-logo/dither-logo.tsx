@@ -5,12 +5,12 @@ import DitherVeil from "./dither-veil";
 import { LogoBoundary } from "./error-boundary";
 import { LOGO, logoSource } from "./logo-source";
 
-/** The third accent, for a stylesheet without the token. */
-const ACCENT_3 = "#b4a4ff";
+/** The text colour, for a stylesheet without the token. */
+const WHITE = "#ededed";
 /** The veil's radius as a share of the drawn mark's height. */
 const REVEAL = 0.24;
 
-type Dither = { source: HTMLCanvasElement; rim: string };
+type Dither = { source: HTMLCanvasElement };
 
 function hasWebGL2() {
     try {
@@ -22,11 +22,11 @@ function hasWebGL2() {
     }
 }
 
+/** The mark in white only (founder, 2026-11-08). */
 function prepare(): Dither {
-    const style = getComputedStyle(document.documentElement);
-    const accent = style.getPropertyValue("--accent").trim();
-    const accent3 = style.getPropertyValue("--accent-3").trim() || ACCENT_3;
-    return { source: logoSource(accent, accent3), rim: accent3 };
+    const white =
+        getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || WHITE;
+    return { source: logoSource(white, white) };
 }
 
 function StaticLogo() {
@@ -35,7 +35,7 @@ function StaticLogo() {
         <svg
             xmlns="http://www.w3.org/2000/svg"
             viewBox={`${x} ${y} ${w} ${h}`}
-            className="block h-full w-full text-accent"
+            className="block h-full w-full text-text"
             focusable="false"
             data-testid="static-logo"
         >
@@ -63,10 +63,11 @@ function StaticLogo() {
 }
 
 /**
- * The Bugnet mark drawn by a dither veil: dots in the accent shading into the third accent, a
- * wandering veil that shows the mark smooth where it passes. It fills its parent and keeps the
- * mark's aspect. The plain mark stands in until the browser shows it can draw the dither, and
- * stays when it cannot.
+ * The Bugnet mark drawn by a dither veil: white dots, and a wandering veil that shows the mark
+ * smooth where it passes. It sits centred in its parent, at most `--dither-logo` tall, in a box of
+ * the mark's own aspect: a wider box leaves a strip beside the mark that the veil reads as
+ * outside the picture and paints. The plain mark stands in until the browser shows it can draw
+ * the dither, and stays when it cannot.
  */
 export function DitherLogo({ className }: { className?: string }) {
     const slot = useRef<HTMLDivElement>(null);
@@ -116,33 +117,33 @@ export function DitherLogo({ className }: { className?: string }) {
 
     return (
         <div
-            ref={slot}
             aria-hidden="true"
             data-testid="dither-logo"
-            className={`relative h-full w-full ${className ?? ""}`.trim()}
+            className={`absolute inset-0 grid place-items-center ${className ?? ""}`.trim()}
         >
-            {dither && !failed ? (
-                <LogoBoundary fallback={<StaticLogo />}>
-                    <DitherVeil
-                        source={dither.source}
-                        palette="tint"
-                        pattern="floyd"
-                        inkColor="transparent"
-                        rimColor={dither.rim}
-                        rim={0.3}
-                        contrast={1}
-                        pixelSize={2}
-                        revealRadius={Math.max(40, Math.round(markHeight * REVEAL))}
-                        wander
-                        maxDpr={1.5}
-                        intro={!reduced}
-                        paused={reduced || !onScreen || tabHidden}
-                        onError={() => setFailed(true)}
-                    />
-                </LogoBoundary>
-            ) : (
-                <StaticLogo />
-            )}
+            <div ref={slot} className="relative aspect-[608/693] h-[min(72%,var(--dither-logo))]">
+                {dither && !failed ? (
+                    <LogoBoundary fallback={<StaticLogo />}>
+                        <DitherVeil
+                            source={dither.source}
+                            palette="tint"
+                            pattern="floyd"
+                            inkColor="transparent"
+                            rim={0}
+                            contrast={1}
+                            pixelSize={2}
+                            revealRadius={Math.max(40, Math.round(markHeight * REVEAL))}
+                            wander
+                            maxDpr={1.5}
+                            intro={!reduced}
+                            paused={reduced || !onScreen || tabHidden}
+                            onError={() => setFailed(true)}
+                        />
+                    </LogoBoundary>
+                ) : (
+                    <StaticLogo />
+                )}
+            </div>
         </div>
     );
 }

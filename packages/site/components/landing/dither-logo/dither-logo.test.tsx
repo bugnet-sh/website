@@ -57,14 +57,14 @@ describe("DitherLogo", () => {
         expect(screen.queryByTestId("canvas")).toBeNull();
     });
 
-    it("dithers the mark in the accents, with the third accent's default when it is unset", () => {
+    it("dithers the mark in white only, with the text colour's default when it is unset", () => {
         withWebGL();
         render(<DitherLogo />);
-        expect(logoSource).toHaveBeenLastCalledWith("#52ffb8", "#b4a4ff");
+        expect(logoSource).toHaveBeenLastCalledWith("#ededed", "#ededed");
         expect(props).toHaveBeenLastCalledWith(
             expect.objectContaining({
                 inkColor: "transparent",
-                rimColor: "#b4a4ff",
+                rim: 0,
                 maxDpr: 1.5,
                 intro: true,
                 paused: false,
