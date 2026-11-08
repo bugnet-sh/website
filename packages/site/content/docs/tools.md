@@ -50,7 +50,6 @@ stateDiagram-v2
     Paid --> Starting: bugnet_redeem
     Starting --> Refunded: fails to start
     Starting --> Running: ready
-    Running --> Running: bugnet_extend
     Running --> Deleted: bugnet_stop or deadline
     Deleted --> [*]
 ```

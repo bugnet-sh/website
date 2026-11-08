@@ -20,7 +20,7 @@ sequenceDiagram
     participant Agent
     participant Bugnet
     participant Pay as pay.bugnet.sh
-    Agent->>You: approval prompt, price
+    Agent->>You: approval prompt
     You->>Agent: approve
     Agent->>Bugnet: bugnet_start
     Bugnet-->>Agent: order, pay link, claim

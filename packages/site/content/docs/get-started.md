@@ -20,16 +20,15 @@ sequenceDiagram
     participant You
     participant Agent
     participant Bugnet
-    participant Pay as pay.bugnet.sh
     participant Sandbox
     You->>Agent: Try this repo
-    Agent->>Bugnet: bugnet_assess (free)
+    Agent->>Bugnet: bugnet_assess
     Bugnet-->>Agent: findings, price
     Agent->>You: findings, price
-    You->>Agent: approve bugnet_start
+    You->>Agent: approve
     Agent->>Bugnet: bugnet_start
     Bugnet-->>Agent: pay link, claim
-    You->>Pay: pay in USDC
+    You->>Bugnet: pay in USDC
     Agent->>Bugnet: bugnet_redeem
     Bugnet->>Sandbox: start
     Agent->>Bugnet: bugnet_exec, files

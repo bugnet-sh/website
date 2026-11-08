@@ -13,7 +13,7 @@ Code in the sandbox runs on a cloud machine, not yours. It cannot reach your fil
 your local network, and Bugnet sees only the tool calls your agent sends.
 
 ```mermaid
-flowchart LR
+flowchart TD
     subgraph pc["Your computer"]
         agent["Your agent"]
         local["Files, keys, local network"]
@@ -22,7 +22,7 @@ flowchart LR
     agent -->|tool calls| mcp["Bugnet server"]
     wallet -->|signed payment| pay["pay.bugnet.sh"]
     mcp -->|commands, files| box["Sandbox"]
-    box -.-x|cannot reach| local
+    local x-.-x|cannot reach| box
 ```
 
 ## No AI on Bugnet's side {#no-ai-on-bugnets-side}
