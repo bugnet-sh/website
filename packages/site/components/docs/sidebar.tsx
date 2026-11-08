@@ -8,7 +8,8 @@ import { Search } from "./search";
 
 /**
  * Search and the docs pages in their groups, the current one a filled row. At tablet width and
- * under it folds into the Docs menu button above the article.
+ * under it folds into the Docs menu button above the article. The list scrolls, so a row draws its
+ * focus ring inside itself; the filled row's is ink, set in from its edge so it reads as a ring.
  */
 export function Sidebar({ current }: { current: string }) {
     const [open, setOpen] = useState(false);
@@ -53,9 +54,9 @@ export function Sidebar({ current }: { current: string }) {
                                                 href={docHref(doc)}
                                                 aria-current={here ? "page" : undefined}
                                                 className={cx(
-                                                    "flex min-h-(--nav-row) items-center px-(--space-3) py-(--space-1) text-(length:--ui-size) leading-(--ui-line)",
+                                                    "flex min-h-(--nav-row) items-center px-(--space-3) py-(--space-1) text-(length:--ui-size) leading-(--ui-line) focus-visible:-outline-offset-(--ring)",
                                                     here
-                                                        ? "bg-accent text-accent-ink"
+                                                        ? "bg-accent text-accent-ink focus-visible:-outline-offset-[calc(var(--ring)*2)] focus-visible:outline-accent-ink"
                                                         : "text-text-muted hover:bg-surface hover:text-text",
                                                 )}
                                             >
