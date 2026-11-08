@@ -1,4 +1,4 @@
-import { ArrowUpRight, Menu, X } from "lucide-react";
+import { ArrowUpRight, ChevronDown, Menu, X } from "lucide-react";
 
 // Sizes come from CSS tokens; the class outranks the width and height lucide writes as attributes
 
@@ -13,4 +13,14 @@ export function MenuIcon() {
 
 export function CloseIcon() {
     return <X aria-hidden="true" className="block size-(--menu-icon)" />;
+}
+
+/** The Docs menu's fold mark, turned over while the menu is open. */
+export function ChevronIcon({ open }: { open: boolean }) {
+    return (
+        <ChevronDown
+            aria-hidden="true"
+            className={`block size-(--chevron) shrink-0 ${open ? "rotate-180" : ""}`}
+        />
+    );
 }

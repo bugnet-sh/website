@@ -9,3 +9,5 @@ packages/site/next-env.d.ts
 # Written by next dev on every start
 packages/site/AGENTS.md
 packages/site/screens/
+# Written by the build from content/docs
+packages/site/public/search-index.json

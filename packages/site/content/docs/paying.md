@@ -1,0 +1,6 @@
+---
+title: Paying
+sources: []
+---
+
+# Paying

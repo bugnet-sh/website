@@ -65,6 +65,12 @@ body {
     outline-offset: var(--ring);
 }
 
+/* A text field matches :focus-visible on a click as well, so it marks focus with its border */
+input:focus-visible {
+    outline: none;
+    border-color: var(--accent);
+}
+
 /* A click or a tap never draws an outline, the browser's own ring on SVG and buttons included */
 :focus:not(:focus-visible) {
     outline: none;

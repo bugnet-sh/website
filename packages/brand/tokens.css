@@ -102,6 +102,8 @@
     /* Articles: docs, terms and privacy */
     --article: 72ch;
     --toc: 200px;
+    --sidebar: 240px;
+    --chevron: 16px;
     --prose-line: 1.65;
     --h2-size: 20px;
     --h2-line: 28px;
