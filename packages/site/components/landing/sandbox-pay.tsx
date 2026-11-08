@@ -49,7 +49,7 @@ export function SandboxPay() {
                             </span>
                         </LandingTitle>
                     </div>
-                    <ul className="grid grid-cols-3 gap-(--hairline) border-t-(length:--hairline) border-line bg-line tablet:grid-cols-1">
+                    <ul className="art-money grid grid-cols-3 gap-(--hairline) border-t-(length:--hairline) border-line bg-line tablet:grid-cols-1">
                         {payItems.map(({ title, text, Art }, i) => (
                             <li key={title} className="flex flex-col bg-bg">
                                 <div className="art-glow flex justify-center overflow-hidden pt-(--space-6)">

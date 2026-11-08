@@ -2,6 +2,24 @@
    with a soft green light behind. Each draws at 1 px a unit and shrinks only when its cell is
    narrower than it. */
 
+/* Every drawing takes its colour from its ink: green, or pink in a cell that holds money */
+.art {
+    --art-ink: var(--accent);
+    --art-ink-on: var(--accent-ink);
+}
+
+/* Paying from the sandbox draws in the money colour (founder, 2026-11-08) */
+.art-money,
+.art-money .art {
+    --art-ink: var(--accent-2);
+    --art-ink-on: var(--bg);
+    --art-dim: color-mix(in srgb, var(--accent-2) 45%, transparent);
+    --art-faint: color-mix(in srgb, var(--accent-2) 18%, transparent);
+    --art-wash: color-mix(in srgb, var(--accent-2) 9%, transparent);
+    --art-glow: color-mix(in srgb, var(--accent-2) 11%, transparent);
+    --art-halo: color-mix(in srgb, var(--accent-2) 45%, transparent);
+}
+
 .art {
     display: block;
     width: var(--art-w);
@@ -31,7 +49,7 @@
 }
 
 .art-lit {
-    stroke: var(--accent);
+    stroke: var(--art-ink);
 }
 
 .art-dim {
@@ -70,12 +88,12 @@
 }
 
 .art-solid {
-    fill: var(--accent);
+    fill: var(--art-ink);
     stroke: none;
 }
 
 .art-stop {
-    stop-color: var(--accent);
+    stop-color: var(--art-ink);
 }
 
 .art-text {
@@ -93,14 +111,14 @@
 .art-struck {
     fill: var(--art-off);
     text-decoration: line-through;
-    text-decoration-color: var(--accent);
+    text-decoration-color: var(--art-ink);
 }
 
 .art-tag {
     font-family: var(--font-mono);
     font-size: var(--art-type);
     font-weight: 600;
-    fill: var(--accent-ink);
+    fill: var(--art-ink-on);
 }
 
 @media (prefers-reduced-motion: no-preference) {
