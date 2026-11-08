@@ -9,14 +9,15 @@ export type FaqItem = { id: string; question: string; answer: string };
 
 /**
  * The questions a visitor asks first, by the ids the docs' FAQ page gives their headings. Which
- * agents work is left to the Install band, since its docs answer is protocol talk.
+ * agents work is left to the Install band, since its docs answer is protocol talk, and what a run
+ * costs to Pricing, just above.
  */
 export const landingQuestions = [
     "do-i-need-an-account-or-an-api-key",
-    "what-does-a-run-cost",
     "which-wallets-can-pay",
     "can-i-be-charged-twice-for-one-order",
     "what-if-the-sandbox-never-starts",
+    "how-do-i-get-files-out",
     "does-bugnet-use-ai-or-read-my-code",
     "will-my-agent-offer-bugnet-for-everything",
     "is-it-open-source",

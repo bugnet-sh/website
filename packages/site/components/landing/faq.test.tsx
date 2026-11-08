@@ -51,15 +51,37 @@ describe("FaqBand", () => {
         expect(screen.getAllByRole("heading", { level: 3 })).toHaveLength(landingQuestions.length);
     });
 
-    it("renders each answer from the docs, links included", () => {
+    it("renders each answer from the docs, links and code included", () => {
         render(<FaqBand items={items} />);
-        const cost = screen.getByRole("button", { name: "What does a run cost?" });
-        press(cost, "Enter");
-        const answer = answerOf(cost);
-        expect(answer.textContent).toContain("You see the price before you pay");
-        expect(within(answer).getByRole("link", { name: "Prices" }).getAttribute("href")).toBe(
-            "/docs/paying/#prices",
+        const never = screen.getByRole("button", { name: "What if the sandbox never starts?" });
+        press(never, "Enter");
+        const answer = answerOf(never);
+        expect(answer.textContent).toContain("is refunded in full");
+        expect(within(answer).getByRole("link", { name: "Refunds" }).getAttribute("href")).toBe(
+            "/docs/paying/#refunds",
         );
+        const files = screen.getByRole("button", { name: "How do I get files out?" });
+        press(files, "Enter");
+        const codes = [...answerOf(files).querySelectorAll("code")].map((c) => c.textContent);
+        expect(codes).toContain("bugnet_transfer");
+    });
+
+    it("leaves what a run costs to Pricing, just above", () => {
+        render(<FaqBand items={items} />);
+        expect(screen.queryByRole("button", { name: "What does a run cost?" })).toBeNull();
+    });
+
+    it("splits its columns with the same 1 px grid gap as Contact, not a border", () => {
+        render(<FaqBand items={items} />);
+        const section = screen.getByRole("region", { name: "FAQ" });
+        expect(section.className).toContain("gap-(--hairline)");
+        expect(section.className).toContain("bg-line");
+        for (const column of section.children) {
+            expect(column.className).toContain("bg-bg");
+            expect(column.className).not.toContain("border-l");
+        }
+        const intro = screen.getByRole("heading", { level: 2 }).nextElementSibling as HTMLElement;
+        expect(intro.className).not.toContain("max-w");
     });
 
     it("starts with every answer closed", () => {
