@@ -29,10 +29,13 @@ async function freePort(): Promise<number> {
 
 beforeAll(async () => {
     const port = await freePort();
-    fake = spawn("pnpm", ["exec", "tsx", "scripts/fake-stats.ts"], {
+    // Spawned directly and detached, so afterAll can stop the whole group; killing a pnpm
+    // wrapper leaves the tsx child running
+    fake = spawn(join(root, "..", "..", "node_modules", ".bin", "tsx"), ["scripts/fake-stats.ts"], {
         cwd: root,
         env: { ...process.env, STATS_PORT: String(port) },
         stdio: "ignore",
+        detached: true,
     });
     for (let tries = 0; tries < 100; tries++) {
         const up = await fetch(`http://127.0.0.1:${port}/api/stats`).then(
@@ -53,7 +56,11 @@ beforeAll(async () => {
 afterAll(async () => {
     await browser?.close();
     await site?.close();
-    fake?.kill();
+    try {
+        if (fake?.pid) process.kill(-fake.pid, "SIGTERM");
+    } catch (error) {
+        if ((error as NodeJS.ErrnoException).code !== "ESRCH") throw error;
+    }
 });
 
 interface Opened {
@@ -61,7 +68,7 @@ interface Opened {
     problems: string[];
 }
 
-async function open(width: number, scenario = "normal"): Promise<Opened> {
+async function open(width: number, scenario = "normal", path = "/stats/"): Promise<Opened> {
     site.scenario = scenario;
     const page = await (await browser.newContext()).newPage();
     await page.setViewportSize({ width, height: 900 });
@@ -73,8 +80,8 @@ async function open(width: number, scenario = "normal"): Promise<Opened> {
             console.error(`CSP: ${e.violatedDirective} ${e.blockedURI}`),
         );
     });
-    await page.goto(`${site.url}/stats/`);
-    await page.locator("time").first().waitFor();
+    await page.goto(`${site.url}${path}`);
+    if (path === "/stats/") await page.locator("time").first().waitFor();
     return { page, problems };
 }
 
@@ -131,4 +138,53 @@ describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("stats page in Ch
             await page.context().close();
         }
     }, 60_000);
+});
+
+const pages = ["/", "/docs/", "/docs/paying/", "/privacy/"];
+
+describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("content pages in Chromium", () => {
+    for (const width of [1440, 375]) {
+        it(`are quiet and fit at ${width}`, async () => {
+            for (const path of pages) {
+                const { page, problems } = await open(width, "normal", path);
+                await page.waitForLoadState("networkidle");
+                const wide = await page.evaluate(() => document.documentElement.scrollWidth);
+                expect(wide, path).toBeLessThanOrEqual(width);
+                if (width === 1440) {
+                    const logo = await left(page, "header a[href='/']");
+                    // Docs pages open with the sidebar in the first column, the H1 in the next
+                    const first = path.startsWith("/docs/") ? "[aria-label='Docs']" : "h1";
+                    expect(await left(page, first), path).toBe(logo);
+                    expect(await left(page, "footer svg"), path).toBe(logo);
+                }
+                expect(problems, path).toEqual([]);
+                const dir = join(root, "screens");
+                await mkdir(dir, { recursive: true });
+                const name = path.replaceAll("/", "-").replace(/^-|-$/g, "") || "home";
+                await page.screenshot({ path: join(dir, `${name}-${width}.png`), fullPage: true });
+                await page.context().close();
+            }
+        }, 60_000);
+    }
+
+    it("searches the docs and opens the menu at 375", async () => {
+        const wide = await open(1440, "normal", "/docs/");
+        const box = wide.page.getByRole("combobox", { name: "Search the docs" });
+        await box.fill("refund");
+        await wide.page.getByRole("option").first().waitFor();
+        await Promise.all([
+            wide.page.waitForURL((url) => url.pathname !== "/docs/"),
+            box.press("Enter"),
+        ]);
+        expect(wide.problems).toEqual([]);
+        await wide.page.context().close();
+
+        const { page, problems } = await open(375, "normal", "/docs/");
+        const menu = page.getByRole("button", { name: "Docs menu" });
+        await menu.click();
+        expect(await menu.getAttribute("aria-expanded")).toBe("true");
+        await page.getByRole("combobox", { name: "Search the docs" }).waitFor({ state: "visible" });
+        expect(problems).toEqual([]);
+        await page.context().close();
+    });
 });

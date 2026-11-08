@@ -223,4 +223,34 @@ describe("next build", () => {
             }
         }
     });
+
+    it("links only to files and anchors that exist", async () => {
+        const ids = new Map<string, Set<string>>();
+        const idsOf = async (file: string) => {
+            if (!ids.has(file)) {
+                const doc = await page(file);
+                ids.set(file, new Set([...doc.querySelectorAll("[id]")].map((e) => e.id)));
+            }
+            return ids.get(file) as Set<string>;
+        };
+        let checked = 0;
+        for (const file of html()) {
+            const doc = await page(file);
+            for (const a of doc.querySelectorAll("a[href^='/']")) {
+                const href = a.getAttribute("href") ?? "";
+                if (href.startsWith("//")) continue;
+                const { pathname, hash } = new URL(href, "https://bugnet.sh");
+                const target = pathname.endsWith("/")
+                    ? `${pathname.slice(1)}index.html`
+                    : pathname.slice(1);
+                expect(files, `${file}: ${href}`).toContain(target);
+                if (hash.length > 1 && target.endsWith(".html")) {
+                    const id = decodeURIComponent(hash.slice(1));
+                    expect([...(await idsOf(target))], `${file}: ${href}`).toContain(id);
+                }
+                checked++;
+            }
+        }
+        expect(checked).toBeGreaterThan(20);
+    });
 });

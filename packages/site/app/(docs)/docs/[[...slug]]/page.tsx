@@ -49,7 +49,7 @@ export default async function DocPage({ params }: Props) {
                         <article className="max-w-(--article) text-(length:--ui-size) leading-(--prose-line)">
                             <Markdown source={body} />
                         </article>
-                        <div className="max-w-(--article)">
+                        <div className="max-w-(--article) text-(length:--ui-size)">
                             <PrevNext slug={doc.slug} />
                             <Sources sources={sources} />
                         </div>
