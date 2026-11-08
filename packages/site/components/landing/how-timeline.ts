@@ -1,27 +1,15 @@
-/** The time between two lines of a terminal */
-export const LINE_MS = 350;
-/** How long a finished terminal stays still before the next step plays */
-export const PAUSE_MS = 1200;
-/** How long the four finished terminals stay still before the story clears and starts again */
-export const HOLD_MS = 2500;
+/** How long each step stays lit, its bar sweeping the top of its terminal */
+export const STEP_MS = 2400;
+/** How long the four steps rest unlit before the first lights again */
+export const HOLD_MS = 1600;
 
-/** One moment of the story, with `bar` on a step's first moment set to the whole step's length */
-export type Frame = { step: number; shown: number[]; ms: number; bar?: number };
+/** One moment of the story: the lit step, or -1 for none, and how long it lasts */
+export type Frame = { step: number; ms: number };
 
-/** The story's moments, each step in turn, then the hold and the clear */
-export function timeline(counts: readonly number[]): Frame[] {
-    const frames: Frame[] = [];
-    counts.forEach((count, step) => {
-        for (let line = 1; line <= count; line++) {
-            frames.push({
-                step,
-                shown: counts.map((n, i) => (i < step ? n : i === step ? line : 0)),
-                ms: line < count ? LINE_MS : PAUSE_MS,
-                ...(line === 1 && { bar: (count - 1) * LINE_MS + PAUSE_MS }),
-            });
-        }
-    });
-    frames.push({ step: -1, shown: [...counts], ms: HOLD_MS });
-    frames.push({ step: -1, shown: counts.map(() => 0), ms: LINE_MS });
-    return frames;
+/** Each step lit in turn, then a rest with none lit */
+export function timeline(steps: number): Frame[] {
+    return [
+        ...Array.from({ length: steps }, (_, step) => ({ step, ms: STEP_MS })),
+        { step: -1, ms: HOLD_MS },
+    ];
 }

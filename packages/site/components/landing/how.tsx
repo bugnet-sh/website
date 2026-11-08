@@ -118,7 +118,7 @@ function Terminal({ lines, inset }: { lines: Line[]; inset: string }) {
                     <p
                         key={j}
                         data-how-line={line.length > 0 ? "" : undefined}
-                        className="h-(--how-code-line) data-caret:after:text-text-muted data-caret:after:content-['█'] data-off:invisible"
+                        className="h-(--how-code-line) data-caret:after:text-text-muted data-caret:after:content-['█']"
                     >
                         {line.map((r, k) => (
                             <span
