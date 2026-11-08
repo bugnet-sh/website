@@ -1,32 +1,68 @@
+import { cx } from "../../lib/cx";
 import { Logo } from "../brand/logo";
 import { FooterWaves } from "../waves/waves";
 import { Frame } from "./frame";
-import { github, linkText, ShellAnchor, type ShellLink } from "./links";
+import { github, ShellAnchor, type ShellLink } from "./links";
 
-const columns: ShellLink[][] = [
-    [
-        { label: "Home", href: "/" },
-        { label: "Docs", href: "/docs/" },
-        { label: "Stats", href: "/stats/" },
-    ],
-    [
-        { label: "Terms", href: "/terms/" },
-        { label: "Privacy", href: "/privacy/" },
-        github,
-        { label: "X", href: "https://x.com/bugnetsh", external: true },
-    ],
+const columns: { heading: string; links: ShellLink[] }[] = [
+    {
+        heading: "Site",
+        links: [
+            { label: "Home", href: "/" },
+            { label: "How it works", href: "/#how" },
+            { label: "Pricing", href: "/#pricing" },
+            { label: "Stats", href: "/stats/" },
+            { label: "Get started", href: "/docs/#install" },
+        ],
+    },
+    {
+        heading: "Developers",
+        links: [
+            { label: "Docs", href: "/docs/" },
+            { label: "Install", href: "/#install" },
+            github,
+            { label: "x402", href: "https://x402.org", external: true },
+        ],
+    },
+    {
+        heading: "Legal",
+        links: [
+            { label: "Terms", href: "/terms/" },
+            { label: "Privacy", href: "/privacy/" },
+            { label: "X", href: "https://x.com/bugnetsh", external: true },
+        ],
+    },
 ];
+
+const rows = Math.max(...columns.map((column) => column.links.length));
+
+/** One cell of the link grid, a row tall with its hairline under it. */
+const cell =
+    "flex h-(--row) items-center gap-(--space-1) border-b-(length:--hairline) border-line text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) uppercase";
+
+/**
+ * The last column's text always meets the frame's right edge, and the first column's meets the
+ * left edge once the grid no longer sits beside the brand, as every band's text does.
+ */
+function inset(i: number): string {
+    return cx(
+        "pl-(--space-4) phone:pr-(--pad) phone:pl-(--pad)",
+        i === columns.length - 1 ? "pr-(--pad)" : "pr-(--space-4)",
+        i === 0 && "tablet:pl-(--pad)",
+    );
+}
 
 /**
  * The closing band, pushed to the bottom of a short page. Its hairline above is the one under the
- * band before it. The two link columns form one group against the frame's right edge; tablets
- * put them under the logo, and phones stack everything on the left.
+ * band before it. The brand sits left; the link grid sits against the frame's right rail, its
+ * columns' hairlines running down to the waves, and shorter columns end in empty cells so every
+ * row's line runs across the grid. Tablets put the grid under the brand; phones stack it.
  */
 export function SiteFooter() {
     return (
         <footer className="mt-auto">
-            <Frame className="grid grid-cols-[1fr_auto_auto] gap-x-(--space-8) gap-y-(--space-6) pt-(--space-7) pb-(--space-8) tablet:grid-cols-2 phone:grid-cols-1">
-                <div className="tablet:col-span-2 phone:col-span-1">
+            <Frame padded={false} className="grid grid-cols-[1fr_auto] tablet:grid-cols-1">
+                <div className="px-(--pad) pt-(--space-7) pb-(--space-8)">
                     <Logo />
                     <p className="mt-(--space-4) max-w-[34ch] text-(length:--ui-size) leading-(--ui-line) text-text-muted">
                         Pay-per-run sandboxes for AI agents, paid in USDC on Solana.
@@ -35,23 +71,42 @@ export function SiteFooter() {
                         © 2026 Bugnet
                     </p>
                 </div>
-                {columns.map((column) => (
-                    // Pushed down half the gap between the logo's line and a link's, so the first
-                    // link centres on the logo; on phones each link is a whole tap target tall
-                    <ul
-                        key={column[0]?.href}
-                        className="flex flex-col gap-(--space-3) pt-[calc((var(--wordmark-line)-var(--ui-line))/2)] tablet:pt-0 phone:gap-0"
-                    >
-                        {column.map((link) => (
-                            <li key={link.href} className="flex">
-                                <ShellAnchor
-                                    link={link}
-                                    className={`inline-flex items-center gap-(--space-1) phone:h-(--hit) ${linkText}`}
-                                />
-                            </li>
-                        ))}
-                    </ul>
-                ))}
+                <nav
+                    aria-label="Footer"
+                    className="grid grid-cols-3 border-l-(length:--hairline) border-line tablet:border-t-(length:--hairline) tablet:border-l-0 phone:grid-cols-1"
+                >
+                    {columns.map((column, i) => (
+                        <div
+                            key={column.heading}
+                            className={cx(
+                                "w-(--footer-col) tablet:w-auto",
+                                i > 0 &&
+                                    "border-l-(length:--hairline) border-line phone:border-l-0",
+                            )}
+                        >
+                            <h2 className={cx(cell, inset(i), "font-semibold text-text-muted")}>
+                                {column.heading}
+                            </h2>
+                            <ul>
+                                {column.links.map((link) => (
+                                    <li key={link.label} className="flex">
+                                        <ShellAnchor
+                                            link={link}
+                                            className={cx(
+                                                cell,
+                                                inset(i),
+                                                "flex-1 text-text hover:bg-surface-hover focus-visible:-outline-offset-(--ring) [&>svg]:ml-auto",
+                                            )}
+                                        />
+                                    </li>
+                                ))}
+                                {Array.from({ length: rows - column.links.length }, (_, n) => (
+                                    <li key={n} aria-hidden className={cx(cell, "phone:hidden")} />
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
+                </nav>
             </Frame>
             <Frame padded={false}>
                 <FooterWaves />

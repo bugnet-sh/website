@@ -73,6 +73,8 @@
     --menu-row: 48px;
     --arrow: 12px;
     --menu-icon: 24px;
+    /* A footer link column's width beside the brand */
+    --footer-col: 200px;
     /* The footer's closing band, as tall as rewall's */
     --waves: clamp(140px, 15vw, 240px);
 

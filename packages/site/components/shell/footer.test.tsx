@@ -9,23 +9,29 @@ function footer() {
 }
 
 describe("SiteFooter", () => {
-    it("links every page and both outside profiles", () => {
+    it("links the site, the developer pages and the legal pages, column by column", () => {
         render(<SiteFooter />);
         const links = within(footer()).getAllByRole("link");
         expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
             ["Home", "/"],
-            ["Docs", "/docs/"],
+            ["How it works", "/#how"],
+            ["Pricing", "/#pricing"],
             ["Stats", "/stats/"],
+            ["Get started", "/docs/#install"],
+            ["Docs", "/docs/"],
+            ["Install", "/#install"],
+            ["GitHub (opens in a new tab)", "https://github.com/bugnet-sh/bugnet"],
+            ["x402 (opens in a new tab)", "https://x402.org"],
             ["Terms", "/terms/"],
             ["Privacy", "/privacy/"],
-            ["GitHub (opens in a new tab)", "https://github.com/bugnet-sh/bugnet"],
             ["X (opens in a new tab)", "https://x.com/bugnetsh"],
         ]);
     });
 
-    it("opens GitHub and X in a new tab without a referrer", () => {
+    it("opens GitHub, x402 and X in a new tab without a referrer", () => {
         render(<SiteFooter />);
-        for (const name of ["GitHub (opens in a new tab)", "X (opens in a new tab)"]) {
+        const outside = ["GitHub", "x402", "X"].map((name) => `${name} (opens in a new tab)`);
+        for (const name of outside) {
             const link = within(footer()).getByRole("link", { name });
             expect(link.getAttribute("target"), name).toBe("_blank");
             expect(link.getAttribute("rel"), name).toBe("noreferrer");
@@ -43,31 +49,17 @@ describe("SiteFooter", () => {
         expect(within(footer()).getByText("© 2026 Bugnet")).toBeDefined();
     });
 
-    it("lays the brand and the two link columns on one grid at every width", () => {
+    it("heads each link column and fills the shorter ones to the longest with hidden cells", () => {
         render(<SiteFooter />);
-        const grid = within(footer()).getByText("© 2026 Bugnet").closest("div")?.parentElement;
-        expect(grid?.className.split(" ")).toEqual(
-            expect.arrayContaining([
-                "grid-cols-[1fr_auto_auto]",
-                "gap-x-(--space-8)",
-                "gap-y-(--space-6)",
-                "pt-(--space-7)",
-                "pb-(--space-8)",
-                "px-(--pad)",
-                "tablet:grid-cols-2",
-                "phone:grid-cols-1",
-            ]),
-        );
-        const [brand, ...columns] = [...(grid?.children ?? [])];
-        expect(brand?.className.split(" ")).toEqual(
-            expect.arrayContaining(["tablet:col-span-2", "phone:col-span-1"]),
-        );
-        expect(columns).toHaveLength(2);
-        // One group against the right edge on desktop, each column's links starting on one line
-        for (const column of columns) {
-            const classes = column.className.split(" ");
-            expect(classes).not.toContain("justify-self-end");
-            expect(classes).toContain("tablet:pt-0");
+        const nav = within(footer()).getByRole("navigation", { name: "Footer" });
+        const headings = within(nav).getAllByRole("heading", { level: 2 });
+        expect(headings.map((h) => h.textContent)).toEqual(["Site", "Developers", "Legal"]);
+        for (const list of nav.querySelectorAll("ul")) {
+            expect(list.children).toHaveLength(5);
+            for (const filler of [...list.children].filter((li) => !li.querySelector("a"))) {
+                expect(filler.getAttribute("aria-hidden")).toBe("true");
+                expect(filler.className.split(" ")).toContain("phone:hidden");
+            }
         }
     });
 
