@@ -1,0 +1,36 @@
+# bugnet.sh's Caddy as data-plane 15.3 runs services, one versioned directory per instance
+[Unit]
+Description=Bugnet website %i
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=bugnet-website
+Group=bugnet-website
+WorkingDirectory=/opt/bugnet/website/%i
+ExecStart=/usr/bin/caddy run --config /opt/bugnet/website/%i/Caddyfile --adapter caddyfile
+# Caddy's storage is set in the Caddyfile; these keep anything else it writes in its state
+Environment=XDG_DATA_HOME=/var/lib/bugnet-website XDG_CONFIG_HOME=/var/lib/bugnet-website
+StateDirectory=bugnet-website
+ReadWritePaths=/var/lib/bugnet-website
+# 8446 is not a privileged port
+CapabilityBoundingSet=
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+LimitNOFILE=65536
+LimitCORE=0
+TimeoutStopSec=30
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
