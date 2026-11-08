@@ -25,6 +25,13 @@ describe("Band", () => {
         expect(frame?.querySelector("p")?.textContent).toBe("content");
     });
 
+    it("takes an id that other pages link to, clear of the sticky header", () => {
+        const { container } = render(<Band id="limits">x</Band>);
+        const band = container.firstElementChild;
+        expect(band?.id).toBe("limits");
+        expect(classes(band)).toContain("scroll-mt-(--nav)");
+    });
+
     it("places its children directly when it builds no rail", () => {
         const { container } = render(
             <Band as="div" rail={false}>

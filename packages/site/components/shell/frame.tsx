@@ -37,17 +37,27 @@ export function Frame({
  */
 export function Band({
     as: Tag = "section",
+    id,
     className,
     children,
     rail = true,
 }: {
     as?: "section" | "header" | "footer" | "div";
+    id?: string;
     className?: string;
     children?: ReactNode;
     rail?: boolean;
 }) {
     return (
-        <Tag className={cx("border-b-(length:--hairline) border-line", className)}>
+        <Tag
+            id={id}
+            // A link to the band lands under the sticky header, not behind it
+            className={cx(
+                "border-b-(length:--hairline) border-line",
+                id && "scroll-mt-(--nav)",
+                className,
+            )}
+        >
             {rail ? <Frame>{children}</Frame> : children}
         </Tag>
     );

@@ -21,7 +21,7 @@ export function Limits() {
     const limits = stats.data ? limitRows(stats.data.limits) : [];
     const packages = stats.data?.packages ?? [];
     return (
-        <Band>
+        <Band id="limits">
             <div className="relative min-h-(--box) py-(--space-6)">
                 <SectionTitle id={limitsId}>Limits</SectionTitle>
                 {limits.length > 0 && (
