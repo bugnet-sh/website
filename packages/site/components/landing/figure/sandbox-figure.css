@@ -1,0 +1,132 @@
+/* The sandbox cabinet: sized from its slot, so the parts that carry the meaning stay in view */
+
+.sbx {
+    position: absolute;
+    inset: 0;
+    container-type: size;
+    pointer-events: none;
+}
+
+.sbx-svg {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: min(
+        calc(100cqw / var(--sbx-keep-x)),
+        calc(100cqh / var(--sbx-keep-y) * var(--sbx-ratio))
+    );
+    aspect-ratio: var(--sbx-ratio);
+    height: auto;
+}
+
+.sbx-dark {
+    fill: #000;
+}
+
+.sbx-well {
+    fill: var(--anatomy-shade-1);
+}
+
+.sbx-cavity {
+    --anatomy-top: var(--anatomy-shade-2);
+}
+
+.sbx-grid {
+    fill: none;
+    stroke: var(--anatomy-dot);
+    stroke-width: 1px;
+    stroke-linecap: round;
+    opacity: 0.14;
+}
+
+.sbx-glass {
+    fill: var(--text);
+    opacity: 0.025;
+}
+
+.sbx-glass-screen {
+    fill: color-mix(in srgb, var(--accent) 5%, var(--bg));
+}
+
+.sbx-glow {
+    fill: var(--accent);
+    opacity: 0.1;
+    filter: blur(4px);
+}
+
+.sbx-term {
+    fill: var(--anatomy-lit);
+    font-family: var(--font-mono);
+    font-size: 4.6px;
+}
+
+.sbx-cursor {
+    opacity: 0;
+}
+
+.sbx-cursor[data-on] {
+    opacity: 1;
+    animation: sbx-blink 1.06s steps(1, end) infinite;
+}
+
+.sbx-needle {
+    fill: var(--anatomy-hi);
+}
+
+.sbx-deadline {
+    stroke: var(--anatomy-hi);
+    stroke-width: 1.6px;
+    stroke-linecap: butt;
+}
+
+.sbx-left {
+    stroke: var(--anatomy-hi);
+    stroke-width: 1.2px;
+    stroke-linecap: butt;
+}
+
+.sbx-cable {
+    fill: none;
+    stroke: var(--anatomy-mid);
+    stroke-width: 1.6px;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+}
+
+.sbx-coin .iso-shade {
+    fill: color-mix(in srgb, var(--anatomy-hi) 26%, var(--bg));
+}
+
+.sbx-curtain {
+    fill: var(--anatomy-shade-2);
+}
+
+.sbx-foot {
+    fill: var(--anatomy-top);
+    stroke: var(--anatomy-mid);
+    stroke-width: var(--anatomy-weight);
+}
+
+.sbx-lamp[data-on] .iso-top {
+    fill: var(--anatomy-hi);
+}
+
+.sbx-lamp[data-on] .iso-line {
+    stroke: var(--anatomy-hi);
+}
+
+.sbx-led[data-on] circle {
+    opacity: 1;
+}
+
+@keyframes sbx-blink {
+    50% {
+        opacity: 0;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .sbx-cursor[data-on] {
+        animation: none;
+    }
+}
