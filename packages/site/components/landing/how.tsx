@@ -8,14 +8,15 @@ const muted = "text-text-muted";
 
 /**
  * A terminal joined to the foot of its step: no heading and no margin, so the cell's hairlines are
- * its edges, and its lines start where the step's text does.
+ * its edges, and its lines start where the step's text does. Top-aligned, so the first lines of a
+ * row share one baseline whatever each terminal holds.
  */
 function Card({ inset, children }: { inset: string; children: ReactNode }) {
     return (
         // A picture of the step; the title and sentence above it say the same in words
         <div
             aria-hidden
-            className={`mt-auto flex h-(--how-mock) flex-col justify-center gap-(--space-2) overflow-hidden border-t-(length:--hairline) border-line bg-surface font-mono text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap ${inset}`}
+            className={`mt-auto flex h-(--how-mock) flex-col gap-(--space-2) pt-(--space-3) overflow-hidden border-t-(length:--hairline) border-line bg-surface font-mono text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap ${inset}`}
         >
             {children}
         </div>
