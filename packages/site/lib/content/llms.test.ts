@@ -31,7 +31,9 @@ describe("llms.txt", () => {
         expect(lines[2]).toMatch(/^> .*sandboxes for AI agents.*USDC on Solana.*no API key\.$/);
         const { hero } = installLines(readDoc(docBySlug("install") as Doc, dir).body);
         expect(hero).toMatch(/^claude mcp add /);
-        expect(txt).toContain(`\`\`\`sh\n${hero}\n\`\`\``);
+        const everywhere = hero.replace("claude mcp add ", "claude mcp add --scope user ");
+        expect(everywhere).toContain("--scope user");
+        expect(txt).toContain(`\`\`\`sh\n${everywhere}\n\`\`\``);
         expect(lines.filter((line) => /^#{1,6} /.test(line))).toEqual([
             "# Bugnet",
             "## Docs",

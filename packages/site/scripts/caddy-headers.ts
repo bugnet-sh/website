@@ -79,10 +79,14 @@ export function caddyHeaders(blocks: readonly HeaderBlock[]): string {
         }
         lines.push("}");
     });
-    // llms.txt and the docs as Markdown are UTF-8, and Caddy's type for .md comes from the host
+    // llms.txt and the docs as Markdown are UTF-8, and Caddy's type for .md comes from the host.
+    // Only files that exist: a missing address keeps its HTML 404 page
     lines.push(
         "",
-        `@text path ${textFiles.map((p) => quote(p, "path")).join(" ")}`,
+        "@text {",
+        `    path ${textFiles.map((p) => quote(p, "path")).join(" ")}`,
+        "    file",
+        "}",
         "header @text {",
         ...textHeaders.map(([name, value]) => `    ${name} ${quote(value, name)}`),
         "}",

@@ -31,6 +31,9 @@ function summary(doc: Doc): string {
 export function llmsTxt(dir?: string): string {
     const install = docBySlug("install") as Doc;
     const { hero } = installLines(readDoc(install, dir).body);
+    // The form Get started uses: in every project, not only the folder it was run in
+    const command = hero.replace("claude mcp add ", "claude mcp add --scope user ");
+    if (command === hero) throw new Error("llms.txt: the install command is not claude mcp add");
     return [
         "# Bugnet",
         "",
@@ -39,7 +42,7 @@ export function llmsTxt(dir?: string): string {
         "Bugnet is one MCP server at https://mcp.bugnet.sh/mcp. Add it to Claude Code with:",
         "",
         "```sh",
-        hero,
+        command,
         "```",
         "",
         `[Install](${url(docMarkdownPath(install))}) has every other client.`,

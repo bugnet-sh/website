@@ -28,11 +28,27 @@ function readBack(caddy: string): Map<string, Map<string, string>> {
     const matchers = new Map<string, string[]>();
     const pages = new Map<string, Map<string, string>>();
     let current: Map<string, string> | undefined;
+    let block: string | undefined;
     for (const line of caddy.split("\n")) {
         const matcher = /^(@\w+) path ((?:"[^"]*" ?)+)$/.exec(line);
         if (matcher) {
             const paths = [...(matcher[2] ?? "").matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? "");
             matchers.set(matcher[1] ?? "", paths);
+            continue;
+        }
+        // A block matcher: its path line, and `file`, so only existing files match
+        const opens = /^(@\w+) \{$/.exec(line);
+        if (opens) {
+            block = opens[1];
+            continue;
+        }
+        if (block) {
+            const inner = /^ {4}path ((?:"[^"]*" ?)+)$/.exec(line);
+            if (inner) {
+                const paths = [...(inner[1] ?? "").matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? "");
+                matchers.set(block, paths);
+            } else if (line === "}") block = undefined;
+            else expect(line, `unexpected matcher line: ${line}`).toBe("    file");
             continue;
         }
         const open = /^header (@\w+) \{$/.exec(line);
@@ -77,6 +93,11 @@ describe("caddyHeaders", () => {
             expect([...(pages.get(files) ?? [])], files).toEqual(textHeaders);
         }
         expect(Object.fromEntries(textHeaders)["Content-Type"]).toBe("text/plain; charset=utf-8");
+    });
+
+    it("types only text files that exist, so a missing address keeps its HTML 404 page", () => {
+        const caddy = caddyHeaders(parseHeadersTxt(sample));
+        expect(caddy).toMatch(/@text \{\n {4}path "\*\.md" "\*\.txt"\n {4}file\n\}/);
     });
 
     it("keeps a file page at its own path only", () => {
