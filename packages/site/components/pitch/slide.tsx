@@ -46,7 +46,7 @@ export function Slide({
                     )}
                     <div
                         className={cx(
-                            "flex min-h-0 flex-1 flex-col",
+                            "flex min-h-0 flex-1 flex-col justify-center",
                             title !== undefined && "mt-[3cqi] phone:mt-(--space-6)",
                         )}
                     >
@@ -54,8 +54,10 @@ export function Slide({
                     </div>
                     {!plain && (
                         <div className="mt-[2cqi] flex items-center justify-between phone:mt-(--space-6)">
-                            <Logo />
-                            <span className="font-mono text-[max(12px,0.9cqi)] text-text-muted">
+                            <span className="[--mark:max(16px,1.7cqi)] [--wordmark-line:1.2] [--wordmark-size:max(14px,1.4cqi)]">
+                                <Logo />
+                            </span>
+                            <span className="font-mono text-[max(12px,1.2cqi)] text-text-muted">
                                 {String(n).padStart(2, "0")}
                             </span>
                         </div>

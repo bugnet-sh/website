@@ -64,7 +64,7 @@ export const comparison: { row: string; cells: [string, string, string] }[] = [
 export const solanaFacts = [
     {
         head: "Agents can't sign up",
-        text: "With x402 the server answers 402 with a price, the agent pays over HTTP, and the work runs.",
+        text: "Your agent asks for a sandbox, Bugnet names the price, and the sandbox starts once you pay. That's x402, an open standard for paying on the web.",
     },
     {
         head: "Small payments work",
@@ -116,7 +116,7 @@ export const business = [
     },
     {
         head: "API calls at cost",
-        text: "No margin on x402 calls, and a 0.003\u00a0USDC fee once per sandbox.",
+        text: "No margin on x402 calls. A sandbox that buys an allowance pays a 0.003\u00a0USDC fee once.",
     },
     {
         head: "No chargebacks",
@@ -233,8 +233,8 @@ export function PitchSlides() {
             </Slide>
 
             <Slide n={6} title="Compared">
-                <div className="overflow-x-auto">
-                    <table className="w-full min-w-[560px] border-collapse text-left">
+                <div className="phone:hidden">
+                    <table className="w-full border-collapse text-left">
                         <thead>
                             <tr className="border-b-(length:--hairline) border-line">
                                 <th className="w-[28%]" />
@@ -280,6 +280,36 @@ export function PitchSlides() {
                             ))}
                         </tbody>
                     </table>
+                </div>
+                <div className="hidden flex-col gap-(--space-5) phone:flex">
+                    {columns.map((c, i) => (
+                        <div
+                            key={c}
+                            className="border-t-(length:--hairline) border-line pt-(--space-4)"
+                        >
+                            <p
+                                className={cx(
+                                    type.head,
+                                    i === 0 ? "text-accent" : "text-text-muted",
+                                )}
+                            >
+                                {c}
+                            </p>
+                            <ul className="mt-(--space-2)">
+                                {comparison.map(({ row, cells }) => (
+                                    <li
+                                        key={row}
+                                        className={cx(
+                                            "text-[15px] leading-[1.6]",
+                                            i === 0 ? "text-text" : "text-text-muted",
+                                        )}
+                                    >
+                                        {row}: {cells[i]}
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ))}
                 </div>
             </Slide>
 
