@@ -67,6 +67,12 @@ body {
     background: var(--bg);
 }
 
+/* While a diagram is still to draw, an in-page link jumps instead of gliding: a glide aims at where
+   its heading was, and the diagram growing above moves the heading on */
+html:has([data-drawing]) {
+    scroll-behavior: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
     html {
         scroll-behavior: auto;
