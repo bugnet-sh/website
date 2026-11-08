@@ -2,6 +2,7 @@
 
 import { useId } from "react";
 import { cx } from "../../lib/cx";
+import { catalogPackages } from "../../lib/landing/catalog";
 import {
     packageFacts,
     pricingCells,
@@ -11,7 +12,6 @@ import {
 } from "../../lib/landing/price";
 import { Band, Frame } from "../shell/frame";
 import { useStats } from "../stats/stats-provider";
-import { isUnavailable, Unavailable } from "../stats/unavailable";
 import { secondaryButton } from "../ui/button";
 import { cellInset } from "./inset";
 import { LandingTitle } from "./title";
@@ -54,8 +54,10 @@ const facts = (cell: PricingCell) =>
 export function Pricing() {
     const stats = useStats();
     const id = useId();
-    const packages = stats.data?.packages ?? [];
-    const cells = packages.length > 0 ? pricingCells(packages) : [];
+    // The live feed's packages when it answers, the router's catalog copy otherwise, so a price
+    // shows even while the feed is off and is never one the router does not sell
+    const live = stats.data?.packages ?? [];
+    const cells = pricingCells(live.length > 0 ? live : catalogPackages());
     return (
         <Band as="div" id="pricing" rail={false}>
             <Frame padded={false}>
@@ -101,9 +103,6 @@ export function Pricing() {
                                     </li>
                                 ))}
                             </ul>
-                        )}
-                        {isUnavailable(stats) && (
-                            <Unavailable text="Prices are unavailable right now." />
                         )}
                     </div>
                 </section>
