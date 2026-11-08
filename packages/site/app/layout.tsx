@@ -7,6 +7,7 @@ import "./globals.css";
 // The same files tokens.css names, so each preload is the request the stylesheet then makes
 const fonts = [
     new URL("@bugnet/brand/fonts/manrope-400.woff2", import.meta.url),
+    new URL("@bugnet/brand/fonts/manrope-500.woff2", import.meta.url),
     new URL("@bugnet/brand/fonts/manrope-600.woff2", import.meta.url),
     new URL("@bugnet/brand/fonts/lexend-deca-200.woff2", import.meta.url),
     new URL("@bugnet/brand/fonts/obel-mono-400.woff2", import.meta.url),
