@@ -4,8 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "tsx scripts/search-index.ts && NEXT_TELEMETRY_DISABLED=1 next dev",
-        "build": "tsx scripts/search-index.ts && NEXT_TELEMETRY_DISABLED=1 next build && tsx scripts/postbuild.ts",
+        "dev": "tsx scripts/search-index.ts && tsx scripts/images.ts && NEXT_TELEMETRY_DISABLED=1 next dev",
+        "build": "tsx scripts/search-index.ts && tsx scripts/images.ts && NEXT_TELEMETRY_DISABLED=1 next build && tsx scripts/postbuild.ts",
         "typecheck": "NEXT_TELEMETRY_DISABLED=1 next typegen && tsc -p ."
     },
     "dependencies": {
@@ -28,6 +28,7 @@
         "@types/mdast": "4.0.4",
         "@types/react": "19.3.0",
         "@types/react-dom": "19.3.0",
+        "sharp": "0.35.5",
         "tailwindcss": "4.3.5"
     }
 }
