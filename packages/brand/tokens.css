@@ -45,6 +45,9 @@
     --accent-3-ink: #0a0a0a;
     /* The waves' middle stripe, between the two accents; decoration, so no contrast pair */
     --waves-mid: #0ae16d;
+    /* Solana's brand gradient, for the word "Solana" in the hero; brand colour, so no contrast pair */
+    --solana-purple: #9945ff;
+    --solana-green: #14f195;
     --bad: #ff6b6b;
     --warn: #f5c451;
 
@@ -72,6 +75,8 @@
     --hit: 40px;
     --menu-row: 48px;
     --arrow: 12px;
+    --copy-icon: 14px;
+    --social-icon: 16px;
     --menu-icon: 24px;
     /* A footer link column's width beside the brand */
     --footer-col: 200px;
@@ -110,6 +115,10 @@
     --hero-size: clamp(36px, 5vw, 64px);
     --hero-line: 1.15;
     --hero-measure: 22ch;
+    /* The 404 page's number */
+    --not-found-size: clamp(96px, 16vw, 200px);
+    /* How far the pricing title's ASCII backdrop reaches over the cells under it */
+    --pricing-bleed: 72px;
     /* The hero fills the screen under the header, but never less than this on a short laptop */
     --hero-min: 640px;
     /* How it works: each step's mock card body, the same height in every column */
