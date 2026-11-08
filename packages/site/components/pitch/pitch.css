@@ -1,0 +1,37 @@
+/* Each slide snaps to the screen, and prints on a page of its own */
+html:has([data-deck]) {
+    scroll-snap-type: y mandatory;
+}
+
+[data-slide] {
+    scroll-snap-align: start;
+}
+
+@media (max-width: 720px) {
+    html:has([data-deck]) {
+        scroll-snap-type: none;
+    }
+}
+
+@media print {
+    @page {
+        size: 1600px 900px;
+        margin: 0;
+    }
+
+    html:has([data-deck]) {
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    [data-slide] {
+        height: 900px;
+        break-after: page;
+    }
+
+    [data-slide] > div {
+        width: 1600px;
+        height: 900px;
+        border: 0;
+    }
+}
