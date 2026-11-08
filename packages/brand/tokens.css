@@ -45,6 +45,8 @@
     --accent-3-ink: #0a0a0a;
     /* The waves' middle stripe, between the two accents; decoration, so no contrast pair */
     --waves-mid: #0ae16d;
+    /* The pricing band's light rays, plain white light; decoration, so no contrast pair */
+    --rays-light: #ffffff;
     /* Solana's brand gradient, for the word "Solana" in the hero; brand colour, so no contrast pair */
     --solana-purple: #9945ff;
     --solana-green: #14f195;

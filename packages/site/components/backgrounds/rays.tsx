@@ -18,12 +18,16 @@ function hasWebGL2() {
  * the box stays empty.
  */
 export function Rays({ className }: { className?: string }) {
-    const [ready, setReady] = useState<{ reduced: boolean } | null>(null);
+    const [ready, setReady] = useState<{ reduced: boolean; colour: string } | null>(null);
 
     useEffect(() => {
         if (!hasWebGL2()) return;
         setReady({
             reduced: window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false,
+            // The shader takes a hex string, not a custom property, so the token is read here
+            colour: getComputedStyle(document.documentElement)
+                .getPropertyValue("--rays-light")
+                .trim(),
         });
     }, []);
 
@@ -32,7 +36,7 @@ export function Rays({ className }: { className?: string }) {
             {ready && (
                 <WavesBoundary>
                     <LightRays
-                        raysColor="#ffffff"
+                        raysColor={ready.colour}
                         followMouse={false}
                         cursorShadow={false}
                         clickPulse={false}
