@@ -51,10 +51,10 @@ export function Safety() {
                                 key={fact.title}
                                 className={`bg-bg py-(--space-6) ${cellInset(i, 3, 2)}`}
                             >
-                                <h3 className="text-(length:--lead-size) leading-(--lead-line) font-semibold">
+                                <h3 className="text-(length:--cell-title-size) leading-(--cell-title-line) font-semibold">
                                     {fact.title}
                                 </h3>
-                                <p className="mt-(--space-2) max-w-[44ch] text-(length:--ui-size) leading-(--ui-line) text-text-muted">
+                                <p className="mt-(--space-2) max-w-[44ch] text-(length:--lead-size) leading-(--lead-line) text-text-muted">
                                     {fact.text}
                                 </p>
                             </li>

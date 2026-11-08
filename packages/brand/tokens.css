@@ -118,19 +118,20 @@
     /* The landing page's H1 and how many characters wide it runs before it wraps */
     --hero-size: clamp(36px, 5vw, 64px);
     --hero-line: 1.15;
+    --hero-measure: 22ch;
     /* A landing band's heading: the H1, sized from its column (32 px on a phone, 41 at 1024),
        stays at least 1.3 times this at every width */
     --band-title-size: clamp(24px, 3vw, 40px);
-    --hero-measure: 22ch;
+    /* A landing grid cell's title, in How it works and Safety alike */
+    --cell-title-size: 20px;
+    --cell-title-line: 28px;
     /* The 404 page's number */
     --not-found-size: clamp(96px, 16vw, 200px);
     /* The hero fills the screen under the header, but never less than this on a short laptop */
     --hero-min: 640px;
-    /* How it works: each step's number and title, and its terminal, the same height in every column */
+    /* How it works: each step's number, and its terminal, the same height in every column */
     --how-number-size: 48px;
     --how-number-line: 48px;
-    --how-title-size: 20px;
-    --how-title-line: 28px;
     --how-term: 216px;
     --how-code-size: 13px;
     --how-code-line: 20px;

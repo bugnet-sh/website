@@ -165,7 +165,7 @@ export function How() {
                                         >
                                             {String(i + 1).padStart(2, "0")}
                                         </span>
-                                        <h3 className="mt-(--space-5) text-(length:--how-title-size) leading-(--how-title-line) font-semibold">
+                                        <h3 className="mt-(--space-5) text-(length:--cell-title-size) leading-(--cell-title-line) font-semibold">
                                             {step.title}
                                         </h3>
                                         <p className="mt-(--space-2) text-(length:--lead-size) leading-(--lead-line) text-text-muted">
