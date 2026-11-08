@@ -8,6 +8,8 @@ type Api = (typeof import("mermaid"))["default"];
 
 let loading: Promise<Api> | undefined;
 
+const SEQUENCE_TAIL = 20;
+
 /** Mermaid, fetched once for the first diagram near the screen and set up in the site's tokens. */
 function load(): Promise<Api> {
     loading ??= Promise.all([import("mermaid"), document.fonts.ready]).then(([module]) => {
@@ -23,8 +25,12 @@ function toSvg(markup: string): SVGSVGElement | null {
     const svg = new DOMParser().parseFromString(markup, "text/html").querySelector("svg");
     const box = svg?.viewBox.baseVal;
     if (!svg || !box?.width) return null;
+    // A sequence diagram's box ends on its last message, which cuts that arrow in half; its
+    // lifelines run on, so half an actor box more shows the arrow and ends them past it
+    const height = box.height + (svg.querySelector(".actor-line") ? SEQUENCE_TAIL : 0);
+    svg.setAttribute("viewBox", `${box.x} ${box.y} ${box.width} ${height}`);
     svg.setAttribute("width", String(box.width));
-    svg.setAttribute("height", String(box.height));
+    svg.setAttribute("height", String(height));
     svg.style.removeProperty("max-width");
     return svg;
 }

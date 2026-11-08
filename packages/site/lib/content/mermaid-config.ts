@@ -85,7 +85,8 @@ export function mermaidConfig(token: (name: string) => string): MermaidConfig {
         ].join(""),
         // The box pads the diagram, so Mermaid's own margins go
         flowchart: {
-            curve: "step",
+            // Steps bend into slanted stubs where an edge ends going down, so top-down charts break
+            curve: "basis",
             diagramPadding: 0,
             nodeSpacing: 32,
             rankSpacing: 32,
@@ -96,8 +97,10 @@ export function mermaidConfig(token: (name: string) => string): MermaidConfig {
             mirrorActors: false,
             diagramMarginX: 0,
             diagramMarginY: 0,
-            width: 120,
+            // Fits four participants with short labels in the docs column
+            width: 112,
             height: 40,
+            actorMargin: 20,
             actorFontFamily: ui,
             actorFontSize: size,
             messageFontFamily: ui,
