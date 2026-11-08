@@ -7,8 +7,8 @@ const fixtures = fileURLToPath(new URL("../../test/fixtures/docs", import.meta.u
 describe("buildSearchIndex", () => {
     it("indexes each page's lead and each h2 or h3 section, front matter left out", () => {
         const pages = [
-            { title: "Install", slug: "", file: "install.md" },
-            { title: "Paying", slug: "paying", file: "paying.md" },
+            { title: "Install", slug: "", file: "install.md", group: "Start" as const },
+            { title: "Paying", slug: "paying", file: "paying.md", group: "Paying" as const },
         ];
         expect(buildSearchIndex(pages, fixtures)).toEqual([
             {

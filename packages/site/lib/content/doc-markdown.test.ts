@@ -6,7 +6,7 @@ import { docs, type Doc } from "./docs";
 
 const fixtures = fileURLToPath(new URL("../../test/fixtures/docs", import.meta.url));
 const content = fileURLToPath(new URL("../../content/docs", import.meta.url));
-const install: Doc = { title: "Install", slug: "install", file: "install.md" };
+const install: Doc = { title: "Install", slug: "install", file: "install.md", group: "Start" };
 
 const mermaid = [
     "```mermaid",
@@ -101,8 +101,8 @@ describe("docMarkdown", () => {
             "/docs/paying.md",
             "/docs/tools.md",
             "/docs/limits.md",
-            "/docs/safety.md",
             "/docs/watching-a-run.md",
+            "/docs/safety.md",
             "/docs/faq.md",
         ]);
     });

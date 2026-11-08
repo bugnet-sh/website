@@ -53,6 +53,11 @@ export default async function DocPage({ params }: Props) {
                             <Markdown
                                 source={body}
                                 look="article"
+                                titleLabel={
+                                    <span className="bg-code-inline px-(--space-2) py-(--space-1) text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) text-text-muted uppercase">
+                                        {doc.group}
+                                    </span>
+                                }
                                 titleAction={
                                     <CopyButton
                                         text={cleanMarkdown(doc, body)}
@@ -62,7 +67,7 @@ export default async function DocPage({ params }: Props) {
                                 }
                             />
                         </article>
-                        <div className="max-w-(--article) text-(length:--ui-size)">
+                        <div className="max-w-(--article)">
                             <PrevNext slug={doc.slug} />
                         </div>
                     </div>

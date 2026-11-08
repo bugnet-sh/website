@@ -33,7 +33,7 @@ export function OnThisPage({ items }: { items: TocItem[] }) {
         <nav aria-labelledby="on-this-page">
             <p
                 id="on-this-page"
-                className="text-(length:--fine-size) leading-(--fine-line) font-semibold text-text-muted"
+                className="text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) text-text-muted uppercase"
             >
                 On this page
             </p>
