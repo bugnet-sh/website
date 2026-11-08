@@ -138,8 +138,10 @@
     /* The x402 band's logo box, on wide screens and stacked */
     --x402-figure: 480px;
     --x402-figure-phone: 400px;
-    /* The dithered mark's height at most, centred in its column */
-    --dither-logo: 360px;
+    /* The dithered mark: its share of its column's width, and its gap from the column's top; it is
+       taller than the column, which cuts its foot (founder, 2026-11-08) */
+    --dither-logo-width: 87%;
+    --dither-logo-top: var(--space-3);
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */
     --caps-tracking: 0.08em;
 

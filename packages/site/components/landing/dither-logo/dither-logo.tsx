@@ -65,8 +65,9 @@ function PlainMark() {
 /**
  * The rendered mark under a dither veil: white dots on the page's ground, Bayer, and a wandering
  * veil that shows the smooth render where it passes. The picture's ground is the page's, so the
- * box never shows. It sits centred in its parent, at most `--dither-logo` tall, in a box of the
- * picture's aspect. The plain render stands in until the browser shows it can draw the dither,
+ * box never shows. It is `--dither-logo-width` of its parent's width, centred, its top
+ * `--dither-logo-top` under the parent's top, in a box of the picture's aspect; the parent cuts
+ * what runs past its foot. The plain render stands in until the browser shows it can draw the dither,
  * and stays when it cannot.
  */
 export function DitherLogo({ className }: { className?: string }) {
@@ -132,11 +133,11 @@ export function DitherLogo({ className }: { className?: string }) {
         <div
             aria-hidden="true"
             data-testid="dither-logo"
-            className={`absolute inset-0 grid place-items-center ${className ?? ""}`.trim()}
+            className={`absolute inset-0 ${className ?? ""}`.trim()}
         >
             <div
                 ref={slot}
-                className="relative h-[min(80%,var(--dither-logo))]"
+                className="absolute top-(--dither-logo-top) left-1/2 w-(--dither-logo-width) -translate-x-1/2"
                 style={{ aspectRatio: `${MARK.width} / ${MARK.height}` }}
             >
                 {dither && !failed ? (
