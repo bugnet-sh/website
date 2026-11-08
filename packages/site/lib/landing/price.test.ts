@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
-    lengthText,
     packageFacts,
     priceText,
     pricingCells,
     SOON_GPUS,
+    tenMinutePrice,
     type PricingCell,
 } from "./price";
 import type { PackageRow } from "../stats/types";
@@ -15,33 +15,48 @@ it("shows a price with the decimals it needs and at least two", () => {
     expect(priceText(2_000_000)).toBe("2.00");
 });
 
-it("lists a package's parts, a GPU's model and VRAM first when it has one", () => {
+it("lists a package's parts, a GPU's model and VRAM first when it has one, its length last", () => {
     const cpu = { id: "c", vcpu: 2, memoryMiB: 2048, diskGiB: 10, gpu: null, minutes: 10 };
     expect(packageFacts({ ...cpu, priceMicros: 50_000 })).toEqual([
         { label: "vCPU", value: "2" },
         { label: "Memory", value: "2 GiB" },
         { label: "Disk", value: "10 GiB" },
+        { label: "Time", value: "10 min" },
     ]);
     const l4 = { count: 1, memoryGiB: 24, model: "NVIDIA L4" };
-    expect(packageFacts({ ...cpu, memoryMiB: 1536, gpu: l4, priceMicros: 400_000 })).toEqual([
+    const gpu = { ...cpu, memoryMiB: 1536, gpu: l4, minutes: 90, priceMicros: 400_000 };
+    expect(packageFacts(gpu)).toEqual([
         { label: "GPU", value: "NVIDIA L4" },
         { label: "VRAM", value: "24 GiB" },
         { label: "vCPU", value: "2" },
         { label: "Memory", value: "1.5 GiB" },
         { label: "Disk", value: "10 GiB" },
+        { label: "Time", value: "1 h 30 min" },
     ]);
     const two = { ...cpu, gpu: { ...l4, count: 2 }, priceMicros: 1 };
     expect(packageFacts(two).slice(0, 2)).toEqual([
         { label: "GPU", value: "2 × NVIDIA L4" },
         { label: "VRAM", value: "2 × 24 GiB" },
     ]);
-    const unnamed = { ...cpu, gpu: { count: 1, memoryGiB: 24 }, priceMicros: 1 };
-    expect(packageFacts(unnamed)[0]).toEqual({ label: "GPU", value: "1" });
 });
 
-it("says what a package's price buys", () => {
-    expect(lengthText({ minutes: 10 })).toBe("/ 10 min");
-    expect(lengthText({ minutes: 90 })).toBe("/ 1 h 30 min");
+it("counts a GPU the feed names no model for, never showing a bare number", () => {
+    const base = { id: "g", vcpu: 2, memoryMiB: 2048, diskGiB: 10, minutes: 10, priceMicros: 1 };
+    const one = { ...base, gpu: { count: 1, memoryGiB: 24, model: null } };
+    expect(packageFacts(one)[0]).toEqual({ label: "GPU", value: "1 GPU" });
+    const two = { ...base, gpu: { count: 2, memoryGiB: 24 } };
+    expect(packageFacts(two).slice(0, 2)).toEqual([
+        { label: "GPU", value: "2 GPUs" },
+        { label: "VRAM", value: "2 × 24 GiB" },
+    ]);
+});
+
+it("prices every package for ten minutes, whatever its length, to the micro-USDC", () => {
+    expect(tenMinutePrice({ priceMicros: 50_000, minutes: 10 })).toBe("0.05");
+    expect(tenMinutePrice({ priceMicros: 180_000, minutes: 30 })).toBe("0.06");
+    expect(tenMinutePrice({ priceMicros: 5_000, minutes: 1 })).toBe("0.05");
+    expect(tenMinutePrice({ priceMicros: 100_000, minutes: 40 })).toBe("0.025");
+    expect(tenMinutePrice({ priceMicros: 100_000, minutes: 30 })).toBe("0.033333");
 });
 
 describe("pricingCells", () => {
