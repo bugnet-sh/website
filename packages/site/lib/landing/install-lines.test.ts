@@ -6,7 +6,7 @@ import { clients } from "./clients";
 import { installLines } from "./install-lines";
 
 const dir = fileURLToPath(new URL("../../content/docs", import.meta.url));
-const lines = installLines(readDoc(docBySlug("") as Doc, dir).body);
+const lines = installLines(readDoc(docBySlug("install") as Doc, dir).body);
 
 it("takes each client's first code block from the docs, or its steps when it has none", () => {
     expect(lines.clients.map((c) => c.id)).toEqual(clients.map((c) => c.id));

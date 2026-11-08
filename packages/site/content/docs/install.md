@@ -1,8 +1,8 @@
 ---
 title: Install
 sources:
-    - bugnet-gateway/README.md: Install
-    - docs/website/plan.md: section 2, /docs#install
+    - bugnet-gateway/README.md: Install; Paying
+    - docs/website/plan.md: section 1, payment; section 2, /docs#install; section 5, decision 9
     - content/legal/terms.md: Accepting these terms
 ---
 
@@ -11,11 +11,20 @@ sources:
 Bugnet is one MCP server at `https://mcp.bugnet.sh/mcp`. It speaks Streamable HTTP and needs no
 sign-in, header or API key. By installing Bugnet you accept the [Terms](/terms/).
 
-## Clients
+## Pick an entry {#pick-an-entry}
+
+Every client takes one of two entries. Add one, not both, or every tool shows up twice.
+
+| Entry                                             | Pays                                                          | Needs                                                                      |
+| ------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                      | Nothing else                                                               |
+| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the `pay` wallet on this computer, or by link without it | Node 20.3 or newer, plus [`pay`](https://pay.sh) to pay from this computer |
+
+## Clients {#clients}
 
 ### Claude Code {#claude-code}
 
-#### The plugin
+#### The plugin {#the-plugin}
 
 The plugin adds the MCP server, a skill that tells Claude when a sandbox fits, and hint hooks. It
 comes in two forms. Install one, not both, or every tool shows up twice.
@@ -26,6 +35,10 @@ claude plugin install bugnet@bugnet          # pays by link, in your browser
 claude plugin install bugnet-wallet@bugnet   # pays from the pay wallet on this computer
 ```
 
+1. Add the marketplace with `claude plugin marketplace add bugnet-sh/bugnet`.
+2. Install `bugnet@bugnet` to pay by link, or `bugnet-wallet@bugnet` to pay from the `pay` wallet.
+3. Start a new Claude Code session.
+
 - `bugnet` connects to `https://mcp.bugnet.sh/mcp` and needs nothing else.
 - `bugnet-wallet` runs the [bridge](#bridge) with `npx`, so it needs Node 20.3 or newer, and pays
   with [`pay`](https://pay.sh) set up on this computer.
@@ -33,23 +46,30 @@ claude plugin install bugnet-wallet@bugnet   # pays from the pay wallet on this 
   hides Bugnet.
 
 Inside a session, `/plugin marketplace add bugnet-sh/bugnet` and then
-`/plugin install bugnet@bugnet` do the same. Start a new session afterwards. The tools show up as
+`/plugin install bugnet@bugnet` do the same. The tools show up as
 `mcp__plugin_bugnet_sandbox__bugnet_*`, or `mcp__plugin_bugnet-wallet_sandbox__bugnet_*` with the
 wallet plugin.
 
 The hooks run a small local script with Node and stay silent if Node is not installed. They add a
 short hint when a prompt or a command looks like a fit, for example after a local run fails for
-lack of CUDA, memory or disk space. Set `BUGNET_HINTS=quiet` to keep only hints after failed
-commands, or `BUGNET_HINTS=off` to turn hints off.
+lack of CUDA, memory or disk space. The hints are computed on your machine and send nothing
+anywhere. Set `BUGNET_HINTS=quiet` to keep only hints after failed commands, or `BUGNET_HINTS=off`
+to turn hints off.
 
-#### Just the MCP server
+#### Just the MCP server {#just-the-mcp-server}
 
 ```sh
 claude mcp add --transport http bugnet https://mcp.bugnet.sh/mcp
 ```
 
-That adds Bugnet to the current project for you only. Add `--scope user` to have it in every
-project, or `--scope project` to share it with your team through `.mcp.json`. Check it with
+Without `--scope`, Bugnet works only in the folder where you ran the command. Add `--scope user`
+to have it in every project, for you only:
+
+```sh
+claude mcp add --scope user --transport http bugnet https://mcp.bugnet.sh/mcp
+```
+
+Or add `--scope project` to share it with your team through `.mcp.json`. Check it with
 `claude mcp list`, which should show `bugnet: https://mcp.bugnet.sh/mcp (HTTP) - ✔ Connected`.
 
 ### claude.ai {#claude-ai}
@@ -64,8 +84,19 @@ project, or `--scope project` to share it with your team through `.mcp.json`. Ch
 On Team and Enterprise plans an owner adds it first under **Organization settings > Connectors**,
 then each member connects it. The Free plan allows one custom connector.
 
-claude.ai pays by link: the agent shows you the order's pay link, you pay in your browser, and the
-agent finishes the order with `bugnet_redeem`.
+claude.ai runs in your browser, so it cannot use the bridge. It pays by link: the agent shows you
+the order's pay link, you pay in your browser, and the agent finishes the order with
+`bugnet_redeem`.
+
+### Claude Desktop {#claude-desktop}
+
+1. Download `bugnet.mcpb` from the
+   [latest release](https://github.com/bugnet-sh/bugnet/releases/latest).
+2. Open it with Claude Desktop.
+3. Confirm the install when Claude Desktop asks.
+
+It runs the [bridge](#bridge), so it pays from the `pay` wallet on this computer when you have one,
+and by link otherwise.
 
 ### Cursor {#cursor}
 
@@ -224,12 +255,15 @@ for a payment step. You only need it for these:
   pays only links on `pay.bugnet.sh`, on Solana mainnet, up to the price you approved.
 - **Clients that only run local servers.**
 
+Without `pay`, the bridge opens the pay link in your client when the client can open links, and
+waits up to 10 minutes for you to pay.
+
 Use the bridge instead of the URL, not both, or every tool shows up twice. It needs Node 20.3 or
 newer.
 
 | Client      | Setup                                                                                  |
 | ----------- | -------------------------------------------------------------------------------------- |
-| Claude Code | `claude mcp add --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0`                  |
+| Claude Code | `claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0`     |
 | Codex CLI   | `codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0`                                     |
 | Cursor      | `"bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }`                  |
 | Devin       | `"bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }`                  |

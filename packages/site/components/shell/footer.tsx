@@ -18,7 +18,7 @@ const columns: { heading: string; links: ShellLink[] }[] = [
             { label: "How it works", href: "/#how" },
             { label: "Pricing", href: "/#pricing" },
             { label: "Stats", href: "/stats/" },
-            { label: "Get started", href: "/docs/#install" },
+            { label: "Get started", href: "/docs/" },
         ],
     },
     {

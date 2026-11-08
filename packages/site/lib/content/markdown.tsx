@@ -4,6 +4,7 @@ import { Blockquote } from "../../components/content/blockquote";
 import { CodeBlock } from "../../components/content/code-block";
 import { Heading } from "../../components/content/heading";
 import { Link } from "../../components/content/link";
+import { Mermaid } from "../../components/content/mermaid";
 import { BodyCell, HeadCell, Table } from "../../components/content/table";
 import { headingIds } from "./heading-ids";
 
@@ -68,9 +69,15 @@ const components: Components = {
     strong: ({ children }) => <strong className="font-semibold text-text">{children}</strong>,
     a: ({ href, children }) => <Link href={href}>{children}</Link>,
     blockquote: ({ children }) => <Blockquote>{children}</Blockquote>,
-    pre: ({ node }) => (
-        <CodeBlock code={node ? hastText(node).replace(/\n$/, "") : ""} lang={fenceLang(node)} />
-    ),
+    pre: ({ node }) => {
+        const code = node ? hastText(node).replace(/\n$/, "") : "";
+        const lang = fenceLang(node);
+        return lang === "mermaid" ? (
+            <Mermaid source={code} />
+        ) : (
+            <CodeBlock code={code} lang={lang} />
+        );
+    },
     // Only inline code reaches here: a fenced block is rendered whole by `pre`
     code: ({ children }) => (
         <code className="bg-code-inline px-(--space-1) py-px font-mono">{children}</code>

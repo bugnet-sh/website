@@ -141,6 +141,8 @@
     --toc: 200px;
     --sidebar: 240px;
     --chevron: 16px;
+    /* A diagram's box until the diagram replaces its source, so the swap moves little */
+    --diagram: 240px;
     --prose-line: 1.65;
     --h2-size: 20px;
     --h2-line: 28px;
