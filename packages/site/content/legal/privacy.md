@@ -1,4 +1,4 @@
-Last updated: 7 November 2026
+Last updated: 8 November 2026
 
 # Privacy Notice {#privacy}
 
@@ -13,7 +13,7 @@ Bugnet is a hackathon project. This page explains what data Bugnet handles when 
 - Some traffic passes through our servers in readable form: SSH, previews, file transfers, and traffic to hosts you chose for a secret.
 - The bugnet.sh website sets no cookies and runs no analytics.
 - The public stats page at bugnet.sh/stats lists each sandbox and payment of the last 30 days with its wallet address and transaction link, never what was run.
-- Email abuse@bugnet.org for abuse and security. Email support@bugnet.org for everything else.
+- Email support@bugnet.org for anything, abuse and security included.
 
 ## Who this covers {#scope}
 
@@ -146,7 +146,7 @@ You give a secret, such as an API token, through a one-time secret link or throu
 
 We keep the abuse signals our providers send. For each wallet we also keep a log of blocks, strikes and notes, with evidence. The evidence never includes secrets. For a sandbox flagged for abuse, we keep its session record (summary and logs) privately for 30 days.
 
-Reports to abuse@bugnet.org usually include a preview URL, a transfer link or a provider's notice. We use them to find the sandbox and the wallet that paid for it. When a sandbox is used for abuse, we end it, keep the payment and block the wallet. The [Terms](/terms) say what counts as abuse.
+Abuse reports to support@bugnet.org usually include a preview URL, a transfer link or a provider's notice. We use them to find the sandbox and the wallet that paid for it. When a sandbox is used for abuse, we end it, keep the payment and block the wallet. The [Terms](/terms) say what counts as abuse.
 
 Our providers also run their own checks:
 
@@ -270,7 +270,7 @@ Some of these are US companies or may keep data in the US. That includes the com
 | Wallet records, blocks, strikes and evidence | Handle abuse | As long as needed to run Bugnet and handle abuse |
 | Server logs | Security and fixing bugs | As long as needed to run Bugnet and handle abuse |
 | Traces at Grafana Labs, if on | Fixing bugs | 14 days (Grafana's free tier) |
-| Email to abuse@ and support@ | Answer you, act on reports | As long as needed to run Bugnet and handle abuse |
+| Email to support@bugnet.org | Answer you, act on reports | As long as needed to run Bugnet and handle abuse |
 | Plugin hook files, on your machine | Decide when to suggest Bugnet | Removed once older than 2 days, the next time the hook cleans up |
 | Rows on the public stats page (wallet, transaction, sandbox numbers) | Show how Bugnet is used | 30 days on the page; totals keep counting |
 | Payments and refunds on Solana | Public blockchain | Forever. Nobody can erase them. |
@@ -282,7 +282,7 @@ Some of these are US companies or may keep data in the US. That includes the com
 - Secrets are sealed to keys built into the secret page and the bridge. Our router, edges, gateway and databases only see sealed boxes.
 - We never put our provider account logins or API keys inside your sandbox.
 
-Nothing is perfectly secure. If you find a security problem, email abuse@bugnet.org.
+Nothing is perfectly secure. If you find a security problem, email support@bugnet.org.
 
 ## Your choices {#rights}
 
@@ -298,5 +298,4 @@ Our list of providers will change. After the hackathon, Bugnet plans to move to 
 
 ## Contact {#contact}
 
-- Abuse and security: abuse@bugnet.org
-- Everything else: support@bugnet.org
+- Everything, abuse and security included: support@bugnet.org

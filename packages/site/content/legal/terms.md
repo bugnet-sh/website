@@ -1,4 +1,4 @@
-Last updated: 7 November 2026
+Last updated: 8 November 2026
 
 # Bugnet Terms of Service and Acceptable Use {#terms}
 
@@ -210,7 +210,7 @@ To appeal a block, email `support@bugnet.org` with the wallet address and an ord
 
 ## Reporting abuse {#abuse-reports}
 
-Report abuse and security problems, including copyright, takedown and law-enforcement notices, to `abuse@bugnet.org`. Include the preview URL, the session page URL, the transfer URL or its `bnx_` token, or the provider's notice, and say what you saw and when.
+Report abuse and security problems, including copyright, takedown and law-enforcement notices, to `support@bugnet.org`. Include the preview URL, the session page URL, the transfer URL or its `bnx_` token, or the provider's notice, and say what you saw and when.
 
 ## Support {#support}
 
@@ -250,5 +250,4 @@ We may change these terms. The date at the top shows the last update. There are 
 
 ## Contact {#contact}
 
-- **Abuse and security:** `abuse@bugnet.org`
-- **Everything else:** `support@bugnet.org`
+- **Everything, abuse and security included:** `support@bugnet.org`
