@@ -81,7 +81,8 @@ on macOS and Linux. On Windows, payments go to the pay.sh wallet or the pay link
     ```
 
 2. Send that address a little USDC on Solana. It needs no SOL: Bugnet pays the fee.
-3. Turn it on in `~/.config/bugnet/mcp.toml`:
+3. Turn it on in `~/.config/bugnet/mcp.toml`. The bridge reads these settings only from that file,
+   which must be yours and not writable by group or others.
 
 ```toml
 pay_signer = "key"           # "pay", the default, uses the pay CLI
