@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
 import { docHref, docs } from "../lib/content/docs";
+import { llmsFiles } from "../lib/content/llms";
 import { fakeValues } from "../lib/stats/testing/fake-data";
 import { caddyHeaders, parseHeadersTxt, servedPaths } from "../scripts/caddy-headers";
 import { internalRefs } from "./internal-refs";
@@ -89,6 +90,15 @@ const html = () => files.filter((f) => f.endsWith(".html"));
 const read = (file: string) => readFile(join(out, file), "utf8");
 const page = async (file: string) => new JSDOM(await read(file)).window.document;
 const brandFont = (font: string) => readFile(require.resolve(`@bugnet/brand/fonts/${font}.woff2`));
+const ids = new Map<string, Set<string>>();
+/** The ids in a built page, read once. */
+async function idsOf(file: string): Promise<Set<string>> {
+    if (!ids.has(file)) {
+        const doc = await page(file);
+        ids.set(file, new Set([...doc.querySelectorAll("[id]")].map((e) => e.id)));
+    }
+    return ids.get(file) as Set<string>;
+}
 const sha256 = (text: string) =>
     `'sha256-${createHash("sha256").update(text, "utf8").digest("base64")}'`;
 
@@ -264,14 +274,6 @@ describe("next build", () => {
     });
 
     it("links only to files and anchors that exist", async () => {
-        const ids = new Map<string, Set<string>>();
-        const idsOf = async (file: string) => {
-            if (!ids.has(file)) {
-                const doc = await page(file);
-                ids.set(file, new Set([...doc.querySelectorAll("[id]")].map((e) => e.id)));
-            }
-            return ids.get(file) as Set<string>;
-        };
         let checked = 0;
         for (const file of html()) {
             const doc = await page(file);
@@ -291,6 +293,50 @@ describe("next build", () => {
             }
         }
         expect(checked).toBeGreaterThan(20);
+    });
+
+    it("ships llms.txt, llms-full.txt and each docs page as Markdown, as the docs give them", async () => {
+        const written = llmsFiles(join(site, "content/docs"));
+        for (const [path, text] of written) expect(await read(path.slice(1)), path).toBe(text);
+        expect(files.filter((f) => f.endsWith(".md"))).toEqual(
+            [...written.keys()]
+                .filter((path) => path.endsWith(".md"))
+                .map((path) => path.slice(1))
+                .sort(),
+        );
+    });
+
+    it("links llms.txt and the Markdown only to files and anchors that exist", async () => {
+        const texts = files.filter((f) => /^(llms(-full)?\.txt|docs\/[^/]+\.md)$/.test(f));
+        expect(texts).toHaveLength(docs.length + 2);
+        let checked = 0;
+        for (const file of texts) {
+            for (const [url] of (await read(file)).matchAll(
+                /https:\/\/bugnet\.sh\/[^\s)<>`"'\]]*/g,
+            )) {
+                const { pathname, hash } = new URL(url);
+                const target = pathname.endsWith("/")
+                    ? `${pathname.slice(1)}index.html`
+                    : pathname.slice(1);
+                expect(files, `${file}: ${url}`).toContain(target);
+                if (hash.length > 1) {
+                    const id = decodeURIComponent(hash.slice(1));
+                    expect([...(await idsOf(target))], `${file}: ${url}`).toContain(id);
+                }
+                checked++;
+            }
+        }
+        expect(checked).toBeGreaterThan(50);
+    });
+
+    it("puts one Copy Markdown button in each docs page's title row", async () => {
+        for (const file of html().filter((f) => f.startsWith("docs/"))) {
+            const doc = await page(file);
+            const buttons = [...doc.querySelectorAll('button[aria-label="Copy Markdown"]')];
+            expect(buttons, file).toHaveLength(1);
+            const row = doc.querySelector("main h1")?.parentElement;
+            expect(row?.contains(buttons[0] ?? null), file).toBe(true);
+        }
     });
 
     it("ships robots.txt, a sitemap whose every URL is a file, and the icons", async () => {

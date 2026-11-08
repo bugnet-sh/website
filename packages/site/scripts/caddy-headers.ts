@@ -48,7 +48,17 @@ function quote(token: string, what: string): string {
     return `"${token}"`;
 }
 
-/** A named matcher and a `header` block per page, for `import` inside a Caddy site block. */
+/** Plain text files the build ships, and the headers each is served with. */
+export const textFiles = ["*.md", "*.txt"];
+export const textHeaders: [name: string, value: string][] = [
+    ["Content-Type", "text/plain; charset=utf-8"],
+    ["X-Content-Type-Options", "nosniff"],
+];
+
+/**
+ * A named matcher and a `header` block per page, then one for the plain text files, for `import`
+ * inside a Caddy site block.
+ */
 export function caddyHeaders(blocks: readonly HeaderBlock[]): string {
     const seen = new Set<string>();
     const lines = ["# Written by scripts/caddy-headers.ts from headers.txt. Do not edit."];
@@ -69,6 +79,14 @@ export function caddyHeaders(blocks: readonly HeaderBlock[]): string {
         }
         lines.push("}");
     });
+    // llms.txt and the docs as Markdown are UTF-8, and Caddy's type for .md comes from the host
+    lines.push(
+        "",
+        `@text path ${textFiles.map((p) => quote(p, "path")).join(" ")}`,
+        "header @text {",
+        ...textHeaders.map(([name, value]) => `    ${name} ${quote(value, name)}`),
+        "}",
+    );
     return `${lines.join("\n")}\n`;
 }
 

@@ -9,7 +9,8 @@ const types: Record<string, string> = {
     ".css": "text/css",
     ".woff2": "font/woff2",
     ".svg": "image/svg+xml",
-    ".txt": "text/plain",
+    ".txt": "text/plain; charset=utf-8",
+    ".md": "text/plain; charset=utf-8",
     ".json": "application/json",
 };
 

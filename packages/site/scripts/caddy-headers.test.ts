@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { caddyHeaders, parseHeadersTxt, servedPaths } from "./caddy-headers";
+import {
+    caddyHeaders,
+    parseHeadersTxt,
+    servedPaths,
+    textFiles,
+    textHeaders,
+} from "./caddy-headers";
 
 const csp = (hash: string) =>
     `default-src 'none'; script-src 'self' 'sha256-${hash}'; frame-ancestors 'none'`;
@@ -23,13 +29,13 @@ function readBack(caddy: string): Map<string, Map<string, string>> {
     const pages = new Map<string, Map<string, string>>();
     let current: Map<string, string> | undefined;
     for (const line of caddy.split("\n")) {
-        const matcher = /^(@page\d+) path ((?:"[^"]*" ?)+)$/.exec(line);
+        const matcher = /^(@\w+) path ((?:"[^"]*" ?)+)$/.exec(line);
         if (matcher) {
             const paths = [...(matcher[2] ?? "").matchAll(/"([^"]*)"/g)].map((m) => m[1] ?? "");
             matchers.set(matcher[1] ?? "", paths);
             continue;
         }
-        const open = /^header (@page\d+) \{$/.exec(line);
+        const open = /^header (@\w+) \{$/.exec(line);
         if (open) {
             current = new Map();
             for (const p of matchers.get(open[1] ?? "") ?? []) pages.set(p, current);
@@ -62,6 +68,15 @@ describe("caddyHeaders", () => {
         expect(pages.get("/docs/before-you-pay/index.html")).toBe(folder);
         expect(pages.get("/index.html")).toBe(pages.get("/"));
         expect(pages.has("")).toBe(false);
+    });
+
+    it("serves Markdown and text files as UTF-8 plain text", () => {
+        const pages = readBack(caddyHeaders(parseHeadersTxt(sample)));
+        expect(textFiles).toEqual(["*.md", "*.txt"]);
+        for (const files of textFiles) {
+            expect([...(pages.get(files) ?? [])], files).toEqual(textHeaders);
+        }
+        expect(Object.fromEntries(textHeaders)["Content-Type"]).toBe("text/plain; charset=utf-8");
     });
 
     it("keeps a file page at its own path only", () => {
