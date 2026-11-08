@@ -25,7 +25,7 @@ export function Hero({ installLine }: { installLine: string }) {
                     <p className="mt-(--space-4) text-(length:--lead-size) leading-(--lead-line) text-text-muted">
                         Pay per run in USDC on Solana. No account, no API key.
                     </p>
-                    {/* The line's box is kept while the feed loads, so the price arriving moves nothing */}
+                    {/* Kept while the feed loads, so the price arriving moves nothing */}
                     <div className="mt-(--space-4) h-(--ui-line)">
                         <FromPrice />
                     </div>
@@ -34,7 +34,7 @@ export function Hero({ installLine }: { installLine: string }) {
                     <SandboxFigure />
                 </div>
                 <div className="col-span-full flex flex-wrap items-center gap-x-(--space-5) gap-y-(--space-3) border-t-(length:--hairline) border-line px-(--pad) py-(--space-5) phone:flex-col phone:items-stretch">
-                    {/* As wide as its line, so Copy sits beside the command, and scrolled when the row is narrower */}
+                    {/* As wide as its line, so Copy sits beside the command; scrolled if wider */}
                     <div className="max-w-full min-w-0">
                         <CodeBlock code={installLine} lang="sh" />
                     </div>

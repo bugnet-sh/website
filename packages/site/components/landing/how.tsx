@@ -118,7 +118,7 @@ export function How() {
                                 className={`bg-bg py-(--space-6) ${cellInset(i, 4, 2)}`}
                             >
                                 {step.card}
-                                {/* Positioned, so the tip opens under the title, over the sentence */}
+                                {/* Positioned: the tip opens under the title, over the sentence */}
                                 <div className="relative mt-(--space-5) flex items-center gap-(--space-2)">
                                     <h3 className="text-(length:--lead-size) leading-(--lead-line) font-semibold">
                                         <span className="mr-(--space-2) font-mono text-text-muted">

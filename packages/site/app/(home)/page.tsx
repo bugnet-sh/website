@@ -3,6 +3,7 @@ import { Hero } from "../../components/landing/hero";
 import { How } from "../../components/landing/how";
 import { Install } from "../../components/landing/install";
 import { Pricing } from "../../components/landing/pricing";
+import { X402 } from "../../components/landing/x402";
 import { StatsProvider } from "../../components/stats/stats-provider";
 import { readDoc } from "../../lib/content/doc-file";
 import { docBySlug, type Doc } from "../../lib/content/docs";
@@ -13,7 +14,7 @@ import { installLines } from "../../lib/landing/install-lines";
 export const metadata = pageMetadata(
     "/",
     undefined,
-    "Run code you don't trust in a throwaway cloud sandbox, from your AI agent. Pay per run in USDC.",
+    "Throwaway cloud sandboxes for AI agents. Pay per run in USDC on Solana. No account, no API key.",
 );
 
 export default function HomePage() {
@@ -37,6 +38,7 @@ export default function HomePage() {
                 <Hero installLine={lines.hero} />
                 <How />
                 <Install tabs={tabs} />
+                <X402 />
                 <Pricing />
             </main>
         </StatsProvider>
