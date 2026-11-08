@@ -15,7 +15,19 @@ export default defineConfig({
                         "packages/*/test/**/*.test.ts",
                         "packages/site/**/*.test.ts",
                     ],
+                    exclude: [...site, "packages/site/test/**"],
+                    sequence: { groupOrder: 0 },
+                },
+            },
+            {
+                extends: true,
+                // build.test deletes and rebuilds out/ while smoke.test serves it, so they run in turn
+                test: {
+                    name: "site-build",
+                    include: ["packages/site/test/**/*.test.ts"],
                     exclude: site,
+                    fileParallelism: false,
+                    sequence: { groupOrder: 1 },
                 },
             },
             {
@@ -27,6 +39,7 @@ export default defineConfig({
                     include: ["packages/site/**/*.test.tsx"],
                     exclude: site,
                     environment: "jsdom",
+                    sequence: { groupOrder: 0 },
                 },
             },
         ],
