@@ -1,4 +1,3 @@
-import type { Metadata } from "next";
 import { StatsHead } from "../../../components/stats/head";
 import { Headline } from "../../../components/stats/headline";
 import { Limits } from "../../../components/stats/limits";
@@ -9,11 +8,10 @@ import { PaymentsTable } from "../../../components/stats/payments-table";
 import { Providers } from "../../../components/stats/providers";
 import { SessionsTable } from "../../../components/stats/sessions-table";
 import { StatsProvider } from "../../../components/stats/stats-provider";
+import { pageMetadata } from "../../../lib/content/meta";
 import { Usage } from "../../../components/stats/usage";
 
-export const metadata: Metadata = {
-    title: "Bugnet stats",
-};
+export const metadata = pageMetadata("/stats/", "Stats", "Live numbers from Bugnet.");
 
 export default function StatsPage() {
     return (

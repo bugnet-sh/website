@@ -6,8 +6,9 @@ import { Sidebar } from "../../../../components/docs/sidebar";
 import { Sources } from "../../../../components/docs/sources";
 import { Band, Frame } from "../../../../components/shell/frame";
 import { readDoc } from "../../../../lib/content/doc-file";
-import { docBySlug, docs, type Doc } from "../../../../lib/content/docs";
+import { docBySlug, docHref, docs, type Doc } from "../../../../lib/content/docs";
 import { Markdown } from "../../../../lib/content/markdown";
+import { describe, pageMetadata } from "../../../../lib/content/meta";
 import { tocOf } from "../../../../lib/content/toc";
 
 type Props = { params: Promise<{ slug?: string[] }> };
@@ -25,7 +26,8 @@ async function docOf(params: Props["params"]): Promise<Doc> {
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
-    return { title: `Bugnet docs: ${(await docOf(params)).title}` };
+    const doc = await docOf(params);
+    return pageMetadata(docHref(doc), doc.title, describe(readDoc(doc).body));
 }
 
 // The rail the sidebar and On this page list stick to, under the sticky header

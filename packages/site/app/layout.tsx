@@ -13,7 +13,8 @@ const fonts = [
 ];
 
 export const metadata: Metadata = {
-    title: "Bugnet",
+    metadataBase: new URL("https://bugnet.sh"),
+    title: { default: "Bugnet", template: "%s | Bugnet" },
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
