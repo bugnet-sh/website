@@ -68,7 +68,7 @@ export function CodeBlock({
                         : "p-(--space-2)",
                 )}
             >
-                <CopyButton text={code} label="Copy code" icon />
+                <CopyButton text={code} label="Copy code" form="icon" />
             </div>
         </div>
     );
