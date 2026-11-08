@@ -79,9 +79,13 @@ html:has([data-drawing]) {
     }
 }
 
-:focus-visible {
-    outline: var(--ring) solid var(--accent);
-    outline-offset: var(--ring);
+/* In the base layer, so a part that draws its ring inside itself, where a scrolling parent would
+   clip one drawn outside, can say so with a utility */
+@layer base {
+    :focus-visible {
+        outline: var(--ring) solid var(--accent);
+        outline-offset: var(--ring);
+    }
 }
 
 /* A text field matches :focus-visible on a click as well, so it marks focus with its border */
