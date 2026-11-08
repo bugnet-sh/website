@@ -22,11 +22,24 @@ export function OnThisPage({ items }: { items: TocItem[] }) {
                     line,
                 ),
             );
-        // The root's top edge is the line, so a heading crossing it calls back
-        const observer = new IntersectionObserver(update, { rootMargin: `${-line}px 0px 0px 0px` });
-        for (const heading of headings) observer.observe(heading);
+        // Once a frame while the page scrolls or resizes, so a heading that stops right on the
+        // line counts too
+        let frame = 0;
+        const schedule = () => {
+            if (frame) return;
+            frame = requestAnimationFrame(() => {
+                frame = 0;
+                update();
+            });
+        };
+        window.addEventListener("scroll", schedule, { passive: true });
+        window.addEventListener("resize", schedule);
         update();
-        return () => observer.disconnect();
+        return () => {
+            cancelAnimationFrame(frame);
+            window.removeEventListener("scroll", schedule);
+            window.removeEventListener("resize", schedule);
+        };
     }, [items]);
 
     return (
