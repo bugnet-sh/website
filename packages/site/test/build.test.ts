@@ -6,6 +6,7 @@ import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
+import { docHref, docs } from "../lib/content/docs";
 import { fakeValues } from "../lib/stats/testing/fake-data";
 import { caddyHeaders, parseHeadersTxt, servedPaths } from "../scripts/caddy-headers";
 import { beforeAll, describe, expect, it } from "vitest";
@@ -78,6 +79,11 @@ function csp(path: string): Map<string, string[]> {
     );
 }
 
+/** A PNG's width and height, from its header. */
+function pngSize(bytes: Buffer): [number, number] {
+    return [bytes.readUInt32BE(16), bytes.readUInt32BE(20)];
+}
+
 const html = () => files.filter((f) => f.endsWith(".html"));
 const read = (file: string) => readFile(join(out, file), "utf8");
 const page = async (file: string) => new JSDOM(await read(file)).window.document;
@@ -121,9 +127,16 @@ describe("next build", () => {
         for (const file of html()) {
             const doc = await page(file);
             const urls = [
-                ...[...doc.querySelectorAll("link[href]")].map((l) => l.getAttribute("href")),
+                // The canonical link is the one absolute URL, and it must still be ours
+                ...[...doc.querySelectorAll("link[href]:not([rel=canonical])")].map((l) =>
+                    l.getAttribute("href"),
+                ),
                 ...[...doc.querySelectorAll("script[src]")].map((s) => s.getAttribute("src")),
             ];
+            const canonical = doc.querySelector("link[rel=canonical]")?.getAttribute("href");
+            if (!/^(404|_not-found)/.test(file)) {
+                expect(canonical, file).toBe(`https://bugnet.sh${urlPath(file)}`);
+            }
             expect(urls.length, file).toBeGreaterThan(0);
             for (const url of urls) {
                 expect(url, file).not.toMatch(/^(https?:)?\/\//i);
@@ -262,5 +275,35 @@ describe("next build", () => {
             }
         }
         expect(checked).toBeGreaterThan(20);
+    });
+
+    it("ships robots.txt, a sitemap whose every URL is a file, and the icons", async () => {
+        expect(await read("robots.txt")).toContain("Sitemap: https://bugnet.sh/sitemap.xml");
+        const urls = [...(await read("sitemap.xml")).matchAll(/<loc>([^<]+)<\/loc>/g)].map(
+            (m) => m[1] ?? "",
+        );
+        const expected = ["/", "/stats/", ...docs.map(docHref), "/terms/", "/privacy/"];
+        expect(urls.sort()).toEqual(expected.map((p) => `https://bugnet.sh${p}`).sort());
+        for (const url of urls) {
+            const { pathname } = new URL(url);
+            expect(files, url).toContain(`${pathname.slice(1)}index.html`);
+        }
+        expect(files).toContain("icon.svg");
+        expect(files).toContain("404.html");
+        const apple = files.filter((f) => /^apple-icon\.[\w-]*\.?png$/.test(f));
+        expect(apple).toHaveLength(1);
+        expect(pngSize(await readFile(join(out, apple[0] ?? "")))).toEqual([180, 180]);
+    });
+
+    it("ships one 1200 by 630 PNG share image, named in the meta of the main pages", async () => {
+        expect(pngSize(await readFile(join(out, "og.png")))).toEqual([1200, 630]);
+        for (const file of ["index.html", "stats/index.html", "docs/index.html"]) {
+            const doc = await page(file);
+            const meta = (selector: string) => doc.querySelector(selector)?.getAttribute("content");
+            expect(meta('meta[property="og:image"]'), file).toBe("https://bugnet.sh/og.png");
+            expect(meta('meta[name="twitter:card"]'), file).toBe("summary_large_image");
+            expect(meta('meta[name="description"]'), file).toBeTruthy();
+            expect(doc.querySelector('link[rel="canonical"]'), file).not.toBeNull();
+        }
     });
 });
