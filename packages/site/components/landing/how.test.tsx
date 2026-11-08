@@ -144,10 +144,18 @@ describe("How's terminals", () => {
         ]);
     });
 
-    it("keep the cursor inside its own line, so it leaves no marks above when it moves on", () => {
+    it("draw the cursor as a box one cell in size, so it leaves no marks when it moves on", () => {
         const { steps } = setup({ reduced: true });
         for (const line of steps.flatMap((step) => [...step.querySelectorAll("[data-how-line]")])) {
-            expect(line.className).toContain("overflow-y-clip");
+            const caret = line.className.split(" ").filter((c) => c.startsWith("data-caret:"));
+            expect(caret).toEqual(
+                expect.arrayContaining([
+                    "data-caret:after:inline-block",
+                    "data-caret:after:h-(--how-code-line)",
+                    "data-caret:after:w-[1ch]",
+                ]),
+            );
+            expect(line.className).not.toContain("█");
         }
     });
 });
