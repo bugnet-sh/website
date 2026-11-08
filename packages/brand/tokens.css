@@ -84,9 +84,12 @@
     --chart-phone: 240px;
     --tip-button: 24px;
     --tip-width: 320px;
-    --panel-chart: 200px;
     /* A table's header and 13 rows, so a page of 50 scrolls inside its band */
     --table: 560px;
+    /* 13 folded rows and their hairlines, with no header, so the box never cuts a row's text */
+    --table-fold: calc(13 * (var(--row) + var(--hairline)));
+    /* The usage chart, beside the payment breakdown */
+    --panel-chart: 280px;
     /* The width under which a wide table scrolls sideways inside its band */
     --table-min: 880px;
     /* The least a data box keeps while it waits or shows that it is unavailable */
