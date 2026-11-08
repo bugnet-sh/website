@@ -55,7 +55,7 @@ export function ChartContainer({
                 data-slot="chart"
                 data-chart={id}
                 className={cx(
-                    "flex justify-center font-mono text-(length:--tick-size) [&_.recharts-cartesian-axis-tick_text]:fill-text-muted",
+                    "flex justify-center font-mono text-(length:--tick-size) [&_.recharts-cartesian-axis-tick-value]:fill-text-muted",
                     className,
                 )}
                 style={{ ...seriesColours(config), ...style }}
@@ -105,7 +105,13 @@ export function ChartTooltipContent({
     valueFormatter?: (value: number, key: string) => ReactNode;
 }) {
     const config = useChartConfig();
-    const items = (payload ?? []).filter((item) => item.type !== "none");
+    const order = Object.keys(config);
+    const rank = (item: { dataKey?: unknown; name?: unknown }) =>
+        order.indexOf(String(item.dataKey ?? item.name));
+    // In the config's order, as the legend lists them, not the order the marks are drawn in
+    const items = (payload ?? [])
+        .filter((item) => item.type !== "none")
+        .sort((a, b) => rank(a) - rank(b));
     if (!active || items.length === 0) return null;
     return (
         <div className="grid gap-(--space-2) border-(length:--hairline) border-line bg-surface px-(--space-3) py-(--space-2) font-ui text-(length:--fine-size) leading-(--fine-line) text-text">

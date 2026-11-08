@@ -4,7 +4,8 @@ import { formatUsdc } from "../../lib/stats/format";
 import { parseSummary } from "../../lib/stats/parse";
 import { fakeSummary, type Scenario } from "../../lib/stats/testing/fake-data";
 import type { StatsSummary } from "../../lib/stats/types";
-import { MoneyChart, scaleOf } from "./money-chart";
+import { axisWidth, niceScale } from "./axis";
+import { endOffsets, MoneyChart, scaleOf } from "./money-chart";
 import { StatsState } from "./stats-provider";
 
 // jsdom lays nothing out, so the chart is given a size to draw into
@@ -79,7 +80,44 @@ describe("scaleOf", () => {
         expect(ticks).toEqual([-5, -2.5, 0, 2.5, 5, 7.5]);
     });
 
+    it("writes every tick to the decimals its step needs", () => {
+        const at = (values: number[]) => niceScale(values).decimals;
+        expect(at([5.25, -3.22])).toBe(1);
+        expect(at([40])).toBe(0);
+        expect(at([0.9])).toBe(2);
+    });
+
+    it("never steps a count by less than one", () => {
+        expect(niceScale([1], 1).ticks).toEqual([0, 1]);
+        expect(niceScale([39], 1).ticks).toEqual([0, 10, 20, 30, 40]);
+    });
+
     it("draws an empty history as 0 to 1", () => {
         expect(scaleOf([]).domain).toEqual([0, 1]);
+    });
+});
+
+describe("endOffsets", () => {
+    it("puts each label above its own point when the lines end apart", () => {
+        expect(endOffsets(100, 200, 300)).toEqual({ earned: -8, spent: -8 });
+    });
+
+    it("puts the lower line's label under its point when the lines end together", () => {
+        expect(endOffsets(101, 100, 300)).toEqual({ earned: 16, spent: -8 });
+        expect(endOffsets(100, 101, 300)).toEqual({ earned: -8, spent: 16 });
+    });
+
+    it("lifts the upper label instead when there is no room under the lower point", () => {
+        const { earned, spent } = endOffsets(290, 295, 300);
+        expect(spent).toBe(-8);
+        // The earned baseline sits a label's line box above the spent one
+        expect(290 + earned).toBe(295 - 8 - 16);
+    });
+});
+
+describe("axisWidth", () => {
+    it("fits the longest label, so stacked charts share one plot edge", () => {
+        expect(axisWidth(["0", "-2.5", "7.5"])).toBe(axisWidth(["-2.5"]));
+        expect(axisWidth(["40"])).toBeLessThan(axisWidth(["-2.5"]));
     });
 });

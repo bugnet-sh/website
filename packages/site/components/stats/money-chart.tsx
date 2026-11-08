@@ -9,6 +9,8 @@ import {
     Rectangle,
     XAxis,
     YAxis,
+    usePlotArea,
+    useYAxisScale,
     type BarShapeProps,
     type LabelProps,
 } from "recharts";
@@ -24,6 +26,7 @@ import {
     type ChartConfig,
 } from "../ui/chart";
 import { Tip } from "../ui/tip";
+import { dayTick, moneyTick, niceScale, sharedAxisWidth, type Scale } from "./axis";
 import { RangeControl } from "./range";
 import { useStats } from "./stats-provider";
 import { isUnavailable, Unavailable } from "./unavailable";
@@ -53,43 +56,70 @@ export function toPoints(daily: readonly DayRow[]): Point[] {
     }));
 }
 
-/**
- * Zero is always on the axis, so a bar grows from it. All-zero days still get a span, so a new
- * deployment's axis reads 0 to 1 rather than one value repeated.
- */
-/** Round steps (1, 2, 2.5 or 5 times a power of ten), so ticks read 0, 2.5, 5 rather than 2.78. */
-function niceStep(span: number): number {
-    const raw = span / 4;
-    const power = 10 ** Math.floor(Math.log10(raw));
-    const step = [1, 2, 2.5, 5, 10].find((m) => m * power >= raw) ?? 10;
-    return step * power;
-}
-
 /** The y range widened to whole steps, and its ticks; zero is always a tick. */
-export function scaleOf(points: readonly Point[]): { domain: [number, number]; ticks: number[] } {
-    const values = points.flatMap((p) => [p.earned, p.spent, p.profit]);
-    const low = Math.min(0, ...values);
-    const high = Math.max(0, ...values);
-    if (low === high) return { domain: [0, 1], ticks: [0, 1] };
-    const step = niceStep(high - low);
-    const from = Math.floor(low / step) * step;
-    const to = Math.ceil(high / step) * step;
-    const ticks: number[] = [];
-    for (let i = 0; from + i * step <= to + step / 1e6; i++) {
-        ticks.push(Number((from + i * step).toFixed(6)));
-    }
-    return { domain: [from, to], ticks };
+export const scaleOf = (points: readonly Point[]): Scale =>
+    niceScale(points.flatMap((p) => [p.earned, p.spent, p.profit]));
+
+/** A label's line box (--fine-line), the least gap between two labels' baselines. */
+const LABEL_LINE = 16;
+const ABOVE = -8;
+const BELOW = 16;
+
+/**
+ * Baseline offsets for the two end labels, given each line's last y and the plot's bottom. Apart,
+ * each sits above its own point. Closer than a label's line box, the lower line's label goes
+ * under its point, or, with no room left under it, the upper one rises clear of it.
+ */
+export function endOffsets(
+    earnedY: number,
+    spentY: number,
+    bottom: number,
+): { earned: number; spent: number } {
+    if (Math.abs(earnedY - spentY) >= LABEL_LINE) return { earned: ABOVE, spent: ABOVE };
+    const earnedUpper = earnedY <= spentY;
+    const [upperY, lowerY] = earnedUpper ? [earnedY, spentY] : [spentY, earnedY];
+    const [upper, lower] =
+        lowerY + BELOW <= bottom ? [ABOVE, BELOW] : [lowerY + ABOVE - LABEL_LINE - upperY, ABOVE];
+    return earnedUpper ? { earned: upper, spent: lower } : { earned: lower, spent: upper };
 }
 
-const tick = (value: number) =>
-    formatUsdc(micros(value), { decimals: Number.isInteger(value) ? 0 : 2 });
+type Series = "earned" | "spent";
 
-/** The value at a line's last point, so a reader need not trace it back to the axis. */
-function EndLabel({ x, y, value, index, last }: LabelProps & { index?: number; last: number }) {
-    if (index !== last || typeof x !== "number" || typeof y !== "number") return null;
+/** The value at a line's last point, in its line's colour, so a reader need not trace it back. */
+function EndLabelText({
+    x,
+    y,
+    value,
+    series,
+    final,
+}: {
+    x: number;
+    y: number;
+    value: number;
+    series: Series;
+    final: Point;
+}) {
+    const plot = usePlotArea();
+    const scale = useYAxisScale();
+    const dy =
+        plot && scale
+            ? endOffsets(scale(final.earned) ?? 0, scale(final.spent) ?? 0, plot.y + plot.height)[
+                  series
+              ]
+            : ABOVE;
     return (
-        <text x={x} y={y} dx={-4} dy={-8} textAnchor="end" fill="var(--text)">
-            {formatUsdc(micros(Number(value)))}
+        <text
+            x={x}
+            y={y}
+            dx={-4}
+            dy={dy}
+            textAnchor="end"
+            fill={series === "earned" ? "var(--accent-2)" : "var(--text-muted)"}
+            stroke="var(--bg)"
+            strokeWidth={4}
+            paintOrder="stroke"
+        >
+            {formatUsdc(micros(value))}
         </text>
     );
 }
@@ -122,7 +152,14 @@ export function MoneyChart() {
     const points = stats.data ? toPoints(rangeDays(stats.data.daily, stats.range)) : [];
     const scale = scaleOf(points);
     const last = points.length - 1;
-    const endLabel = (props: LabelProps) => <EndLabel {...props} last={last} />;
+    const end = points[last];
+    const endLabel = (series: Series) =>
+        function SeriesEndLabel({ x, y, value, index }: LabelProps & { index?: number }) {
+            if (index !== last || end === undefined) return null;
+            if (typeof x !== "number" || typeof y !== "number") return null;
+            return <EndLabelText x={x} y={y} value={Number(value)} series={series} final={end} />;
+        };
+    const width = stats.data ? sharedAxisWidth(rangeDays(stats.data.daily, stats.range)) : 0;
     return (
         <Band rail={false}>
             <Frame className="py-(--space-6)">
@@ -147,7 +184,7 @@ export function MoneyChart() {
                                 <CartesianGrid vertical={false} stroke="var(--line)" />
                                 <XAxis
                                     dataKey="day"
-                                    tickFormatter={formatDay}
+                                    tick={dayTick(points[0]?.day, end?.day)}
                                     tickLine={false}
                                     axisLine={{ stroke: "var(--line)" }}
                                     minTickGap={24}
@@ -155,13 +192,15 @@ export function MoneyChart() {
                                 <YAxis
                                     domain={scale.domain}
                                     ticks={scale.ticks}
-                                    width="auto"
-                                    tickFormatter={tick}
+                                    width={width}
+                                    tickFormatter={(value: number) =>
+                                        moneyTick(value, scale.decimals)
+                                    }
                                     tickLine={false}
                                     axisLine={false}
                                 />
                                 <ChartTooltip
-                                    cursor={{ fill: "var(--surface-hover)" }}
+                                    cursor={{ stroke: "var(--text-muted)", strokeWidth: 1 }}
                                     isAnimationActive={false}
                                     content={
                                         <ChartTooltipContent
@@ -199,7 +238,7 @@ export function MoneyChart() {
                                     dot={false}
                                     isAnimationActive={false}
                                 >
-                                    <LabelList dataKey="spent" content={endLabel} />
+                                    <LabelList dataKey="spent" content={endLabel("spent")} />
                                 </Line>
                                 {halo("earned")}
                                 <Line
@@ -210,7 +249,7 @@ export function MoneyChart() {
                                     dot={false}
                                     isAnimationActive={false}
                                 >
-                                    <LabelList dataKey="earned" content={endLabel} />
+                                    <LabelList dataKey="earned" content={endLabel("earned")} />
                                 </Line>
                             </ComposedChart>
                         </ChartContainer>
