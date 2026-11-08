@@ -1,6 +1,6 @@
 "use client";
 
-import { Fragment, useId } from "react";
+import { useId } from "react";
 import { cx } from "../../lib/cx";
 import { formatDuration } from "../../lib/stats/format";
 import { formatBytes, limitRows, sizeText } from "../../lib/stats/labels";
@@ -94,7 +94,7 @@ export function Limits() {
                                     {packages.map((p) => (
                                         <tr key={p.id}>
                                             {/* Wrapped, the row grows round its lines,
-                                                and breaks only between the parts */}
+                                                which break only between the parts */}
                                             <td
                                                 className={cx(
                                                     bodyCell(),
@@ -103,14 +103,8 @@ export function Limits() {
                                             >
                                                 {sizeText(p)
                                                     .split(", ")
-                                                    .map((part, i) => (
-                                                        <Fragment key={part}>
-                                                            {i > 0 && ", "}
-                                                            <span className="whitespace-nowrap">
-                                                                {part}
-                                                            </span>
-                                                        </Fragment>
-                                                    ))}
+                                                    .map((part) => part.replaceAll(" ", "\u00a0"))
+                                                    .join(", ")}
                                             </td>
                                             <td className={bodyCell(true)}>
                                                 {formatBytes(p.diskGiB * GiB)}
