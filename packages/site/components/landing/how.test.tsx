@@ -143,6 +143,13 @@ describe("How's terminals", () => {
             START_MS + (21 + 13) * C + 3 * PAUSE_MS + LINE_MS,
         ]);
     });
+
+    it("keep the cursor inside its own line, so it leaves no marks above when it moves on", () => {
+        const { steps } = setup({ reduced: true });
+        for (const line of steps.flatMap((step) => [...step.querySelectorAll("[data-how-line]")])) {
+            expect(line.className).toContain("overflow-y-clip");
+        }
+    });
 });
 
 describe("HowPlayer in one row", () => {

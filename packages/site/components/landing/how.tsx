@@ -125,10 +125,12 @@ function Terminal({ lines, inset }: { lines: Line[]; inset: string }) {
                 className={`h-full overflow-hidden pt-(--space-5) font-mono text-(length:--how-code-size) leading-(--how-code-line) whitespace-pre ${inset}`}
             >
                 {lines.map((line, j) => (
+                    // Clipped to its height: the cursor glyph is taller than the line, and what
+                    // it paints above is not always cleared when the cursor moves on
                     <p
                         key={j}
                         data-how-line
-                        className="h-(--how-code-line) data-caret:after:text-text-muted data-caret:after:content-['█'] data-off:invisible"
+                        className="h-(--how-code-line) overflow-y-clip data-caret:after:text-text-muted data-caret:after:content-['█'] data-off:invisible"
                     >
                         {line.runs.map((r, k) => (
                             <span
