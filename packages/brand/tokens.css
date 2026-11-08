@@ -45,8 +45,6 @@
     --accent-3-ink: #0a0a0a;
     /* The waves' middle stripe, between the two accents; decoration, so no contrast pair */
     --waves-mid: #0ae16d;
-    /* The pricing band's light rays, plain white light; decoration, so no contrast pair */
-    --rays-light: #ffffff;
     /* Solana's brand gradient, for the word "Solana" in the hero; brand colour, so no contrast pair */
     --solana-purple: #9945ff;
     --solana-green: #14f195;
@@ -142,8 +140,6 @@
     --x402-figure-phone: 400px;
     /* The dithered mark's height at most, centred in its column */
     --dither-logo: 360px;
-    /* The pricing band's light rays, from its top edge down */
-    --rays: clamp(320px, 40vw, 560px);
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */
     --caps-tracking: 0.08em;
 

@@ -7,6 +7,25 @@ export function priceText(micros: number): string {
     return formatUsdc(micros, { decimals: 6 }).replace(/(\.\d\d\d*?)0+$/, "$1");
 }
 
+/** A package's rate per minute, rounded to the micro-USDC: 50 000 micros for 10 minutes is "0.005". */
+export function perMinuteText(p: Pick<PackageRow, "priceMicros" | "minutes">): string {
+    return priceText(Math.round(p.priceMicros / Math.max(1, p.minutes)));
+}
+
+const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
+const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
+
+/**
+ * The packages the landing shows, at most `max`: the CPU ones, then the GPU ones, each from the
+ * lowest rate up. When both kinds have more than fit, each gets half, so GPUs are always shown.
+ */
+export function pricingPackages(rows: readonly PackageRow[], max = 8): PackageRow[] {
+    const cpu = rows.filter((p) => !p.gpu).sort(byRate);
+    const gpu = rows.filter((p) => p.gpu).sort(byRate);
+    const cpuCount = Math.min(cpu.length, Math.max(max - gpu.length, Math.ceil(max / 2)));
+    return [...cpu.slice(0, cpuCount), ...gpu.slice(0, max - cpuCount)];
+}
+
 const MiB = 1024 ** 2;
 const GiB = 1024 ** 3;
 

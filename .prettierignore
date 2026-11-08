@@ -10,7 +10,6 @@ packages/site/next-env.d.ts
 packages/site/AGENTS.md
 packages/site/components/waves/sliced-waves.tsx
 packages/site/components/backgrounds/gradient-ascii.tsx
-packages/site/components/backgrounds/light-rays.tsx
 # Legal text, kept byte for byte as the founder approved it
 packages/site/content/legal
 # Written by the build from content/docs
