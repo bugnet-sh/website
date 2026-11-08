@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { cx } from "../../lib/cx";
 import { mermaidConfig } from "../../lib/content/mermaid-config";
+import { fade, useMore } from "./scroll-x";
 
 type Api = (typeof import("mermaid"))["default"];
 
@@ -49,19 +50,8 @@ export function Mermaid({ source }: { source: string }) {
     const [drawn, setDrawn] = useState(false);
     // Until Mermaid has drawn or given up, the page jumps rather than glides to a link's heading
     const [drawing, setDrawing] = useState(true);
-    const [more, setMore] = useState(false);
-
     // Whether the diagram runs on past the right edge, so a phone shows that it scrolls
-    const measure = useCallback(() => {
-        const el = scroller.current;
-        if (el) setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-    }, []);
-
-    useEffect(() => {
-        measure();
-        window.addEventListener("resize", measure);
-        return () => window.removeEventListener("resize", measure);
-    }, [drawn, measure]);
+    const more = useMore(scroller);
 
     useEffect(() => {
         const target = box.current;
@@ -112,9 +102,8 @@ export function Mermaid({ source }: { source: string }) {
                 until it reaches its end */}
             <div
                 ref={scroller}
-                onScroll={measure}
                 data-more={more || undefined}
-                className="overflow-x-auto p-(--space-5) data-more:[mask-image:linear-gradient(to_left,transparent,#000_var(--space-7))]"
+                className={cx("overflow-x-auto p-(--space-5)", fade)}
             >
                 {!drawn && (
                     <pre className="font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre">

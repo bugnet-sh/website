@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { Markdown } from "./markdown";
 
 vi.mock("../../components/content/mermaid", () => ({
@@ -7,6 +7,17 @@ vi.mock("../../components/content/mermaid", () => ({
 }));
 
 afterEach(cleanup);
+
+// jsdom has no ResizeObserver, which a block that scrolls sideways listens with
+beforeEach(() => {
+    vi.stubGlobal(
+        "ResizeObserver",
+        class {
+            observe() {}
+            disconnect() {}
+        },
+    );
+});
 
 it("draws a mermaid fence as a diagram and keeps every other fence a code block", () => {
     const source = [
@@ -23,6 +34,25 @@ it("draws a mermaid fence as a diagram and keeps every other fence a code block"
     expect(screen.getByRole("figure").textContent).toBe("flowchart LR\n    A --> B");
     expect(screen.getAllByRole("button", { name: "Copy code" })).toHaveLength(1);
     expect(document.querySelector("pre")?.textContent).toBe("claude mcp add bugnet");
+});
+
+it("wraps a shell block line by line, its text whole, and leaves a JSON block to scroll", () => {
+    const source = [
+        "```sh",
+        "claude mcp add --scope user bugnet",
+        "pay setup",
+        "```",
+        "",
+        "```json",
+        "{}",
+        "```",
+    ].join("\n");
+    render(<Markdown source={source} look="article" />);
+    const [shell, json] = document.querySelectorAll("pre");
+    expect(shell?.textContent).toBe("claude mcp add --scope user bugnet\npay setup");
+    expect(shell?.querySelectorAll("code > span")).toHaveLength(2);
+    expect(shell?.className).toContain("whitespace-pre-wrap");
+    expect(json?.className).not.toContain("whitespace-pre-wrap");
 });
 
 it("puts a title action in the H1's row, and leaves an H1 without one alone", () => {

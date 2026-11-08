@@ -12,6 +12,7 @@ import { NextSteps, type NextStep } from "../../components/content/next-steps";
 import { BodyCell, HeadCell, Table } from "../../components/content/table";
 import { cx } from "../cx";
 import { headingIds } from "./heading-ids";
+import { isShell } from "./highlight";
 import { CLIP, callouts, clips, codeTabs, lead, nextSteps } from "./parts";
 
 type HastElement = NonNullable<ExtraProps["node"]>;
@@ -165,7 +166,12 @@ function componentsOf(look: Look): Components {
             return lang === "mermaid" ? (
                 <Mermaid source={text} />
             ) : (
-                <CodeBlock code={text} lang={lang} className={block} />
+                <CodeBlock
+                    code={text}
+                    lang={lang}
+                    long={isShell(lang) ? "wrap" : "fade"}
+                    className={block}
+                />
             );
         },
         // Only inline code reaches here: a fenced block is rendered whole by `pre`
