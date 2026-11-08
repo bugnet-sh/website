@@ -4,15 +4,15 @@ import { Safety } from "./safety";
 
 afterEach(cleanup);
 
-it("heads the band in two tones, the three cells named in the muted line", () => {
+it("heads the band in two tones, the muted line saying what the cells don't", () => {
     render(<Safety />);
     const heading = screen.getByRole("heading", { level: 2 });
     expect(heading.textContent).toBe(
-        "Untrusted code stays in the sandbox. Off your machine. Gone at the deadline. Output is just data.",
+        "Untrusted code stays in the sandbox. Run code you wouldn't trust on your own laptop.",
     );
     expect(screen.getByRole("region", { name: heading.textContent ?? "" })).toBeTruthy();
     const muted = heading.querySelector("span");
-    expect(muted?.textContent).toBe("Off your machine. Gone at the deadline. Output is just data.");
+    expect(muted?.textContent).toBe("Run code you wouldn't trust on your own laptop.");
     expect(muted?.className).toContain("text-text-muted");
 });
 
@@ -32,9 +32,9 @@ it("shows three facts from the docs, each over a drawing kept from screen reader
         items.map((item) => within(item).getByRole("heading", { level: 3 }).textContent),
     ).toEqual(["Runs on a cloud machine", "Deleted at the deadline", "Output comes back as data"]);
     expect(items.map((item) => item.querySelector("p")?.textContent)).toEqual([
-        "Code in the sandbox runs on a cloud machine, not yours. It can't reach your files, your keys or your local network.",
-        "When its time is up, the sandbox is deleted with everything in it. Download what you need before then.",
-        "Bugnet strips escape codes and hidden characters from what the sandbox sends back, and marks it as data, not instructions.",
+        "It can't reach your files, your keys or your local network.",
+        "Everything in it goes too, so download what you need before then.",
+        "Bugnet strips escape codes and hidden characters, and keeps the last 8 KiB of each stream.",
     ]);
     for (const item of items) {
         const art = item.querySelector("svg");

@@ -6,21 +6,21 @@ import { DataArt, DeadlineArt, OffMachineArt } from "./art/safety-art";
 import { cellInset } from "./inset";
 import { LandingTitle } from "./title";
 
-/** Each cell restates a fact from the docs' Safety page, in fewer words */
+/** Each cell restates a fact from the docs' Safety page, its sentence adding to its title */
 export const safetyFacts: { title: string; text: string; Art: ComponentType }[] = [
     {
         title: "Runs on a cloud machine",
-        text: "Code in the sandbox runs on a cloud machine, not yours. It can't reach your files, your keys or your local network.",
+        text: "It can't reach your files, your keys or your local network.",
         Art: OffMachineArt,
     },
     {
         title: "Deleted at the deadline",
-        text: "When its time is up, the sandbox is deleted with everything in it. Download what you need before then.",
+        text: "Everything in it goes too, so download what you need before then.",
         Art: DeadlineArt,
     },
     {
         title: "Output comes back as data",
-        text: "Bugnet strips escape codes and hidden characters from what the sandbox sends back, and marks it as data, not instructions.",
+        text: "Bugnet strips escape codes and hidden characters, and keeps the last 8 KiB of each stream.",
         Art: DataArt,
     },
 ];
@@ -39,7 +39,7 @@ export function Safety() {
                         <LandingTitle id={id}>
                             Untrusted code stays in the sandbox.{" "}
                             <span className="block text-text-muted">
-                                Off your machine. Gone at the deadline. Output is just data.
+                                Run code you wouldn't trust on your own laptop.
                             </span>
                         </LandingTitle>
                         <a href="/docs/safety/" className={secondaryButton}>
