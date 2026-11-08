@@ -44,6 +44,12 @@ const methods: Record<string, string> = { checkout: "Checkout page", pay_cli: "p
 
 export const methodLabel = (method: string): string => methods[method] ?? method;
 
+/** The payment methods the page names, which a box waiting for the feed keeps rows for. */
+export const knownMethods: readonly string[] = Object.keys(methods);
+
+/** The providers the page names, which a box waiting for the feed keeps rows for. */
+export const knownProviders: readonly string[] = Object.keys(providers);
+
 const reasons: Record<EndReason, string> = {
     stop: "stopped",
     deadline: "deadline",
