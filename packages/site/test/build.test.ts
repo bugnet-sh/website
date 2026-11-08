@@ -155,7 +155,8 @@ describe("next build", () => {
 
     it("names no outside font host, vercel or analytics anywhere", async () => {
         for (const file of files.filter((f) => textFile.test(f))) {
-            const text = (await read(file)).toLowerCase();
+            // The privacy notice says the site "runs no analytics", which is the point
+            const text = (await read(file)).toLowerCase().replaceAll("no analytics", "");
             for (const word of outside) expect(text.includes(word), `${file}: ${word}`).toBe(false);
         }
     });
