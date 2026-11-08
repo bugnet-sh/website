@@ -25,7 +25,7 @@ export function Hero({ installLine }: { installLine: string }) {
                         <br />
                         for AI agents.
                     </h1>
-                    <p className="mt-(--space-4) text-(length:--lead-size) leading-(--lead-line) text-text-muted">
+                    <p className="mt-(--space-4) text-(length:--lead-size) leading-(--lead-line) text-balance text-text-muted">
                         Pay per run in USDC on{" "}
                         <span className="bg-[linear-gradient(90deg,var(--solana-purple),var(--solana-green))] bg-clip-text text-transparent">
                             Solana
@@ -33,7 +33,8 @@ export function Hero({ installLine }: { installLine: string }) {
                         . No account, no API key.
                     </p>
                 </div>
-                <div className="relative overflow-hidden">
+                {/* Stacked, the slot's top edge has no hairline to meet, so the cut fades out */}
+                <div className="relative overflow-hidden tablet:[mask-image:linear-gradient(to_bottom,transparent,#000_var(--space-7))]">
                     <SandboxFigure />
                 </div>
                 <div className="col-span-full flex flex-wrap items-center gap-x-(--space-5) gap-y-(--space-3) border-t-(length:--hairline) border-line px-(--pad) py-(--space-5) phone:flex-col phone:items-stretch">
