@@ -3,7 +3,6 @@ import { notFound } from "next/navigation";
 import { OnThisPage } from "../../../../components/content/on-this-page";
 import { PrevNext } from "../../../../components/docs/prev-next";
 import { Sidebar } from "../../../../components/docs/sidebar";
-import { Sources } from "../../../../components/docs/sources";
 import { Band, Frame } from "../../../../components/shell/frame";
 import { readDoc } from "../../../../lib/content/doc-file";
 import { docBySlug, docHref, docs, type Doc } from "../../../../lib/content/docs";
@@ -36,7 +35,7 @@ const rail =
 
 export default async function DocPage({ params }: Props) {
     const doc = await docOf(params);
-    const { body, sources } = readDoc(doc);
+    const { body } = readDoc(doc);
     const toc = tocOf(body);
     return (
         <main>
@@ -53,7 +52,6 @@ export default async function DocPage({ params }: Props) {
                         </article>
                         <div className="max-w-(--article) text-(length:--ui-size)">
                             <PrevNext slug={doc.slug} />
-                            <Sources sources={sources} />
                         </div>
                     </div>
                     <aside className={`${rail} overflow-y-auto narrow:hidden`}>

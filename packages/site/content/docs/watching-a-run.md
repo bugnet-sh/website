@@ -1,10 +1,5 @@
 ---
 title: Watching a run
-sources:
-    - bugnet-gateway/README.md: Tools; Limits
-    - docs/mcp-gateway/design.md: section 5, tools
-    - docs/website/plan.md: section 2, /docs#watching-a-run
-    - docs/website/session-page.md: sections 1 to 3; section 8; section 10, D-a, D-e and D-g
 ---
 
 # Watching a run

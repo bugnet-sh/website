@@ -1,11 +1,5 @@
 ---
 title: Paying
-sources:
-    - bugnet-gateway/README.md: Paying; Tools
-    - docs/mcp-gateway/payments-port.md: sections 1 to 4, 7 and 9
-    - docs/mcp-gateway/design.md: section 3, protocol; section 5, tools
-    - docs/website/plan.md: section 1, pages and payment; section 2, /docs#paying
-    - content/legal/terms.md: Prices and payment; Time, extensions and deletion; Refunds
 ---
 
 # Paying

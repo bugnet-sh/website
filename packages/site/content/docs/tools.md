@@ -1,11 +1,5 @@
 ---
 title: Tools
-sources:
-    - bugnet-gateway/README.md: Install; Tools; Paying; Limits; FAQ
-    - docs/mcp-gateway/design.md: section 3, protocol; section 5, tools; section 6, output safety
-    - docs/mcp-gateway/payments-port.md: sections 4, 7 and 9
-    - docs/website/session-page.md: section 8
-    - content/legal/terms.md: Transfers
 ---
 
 # Tools

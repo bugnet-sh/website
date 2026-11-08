@@ -9,6 +9,7 @@ import { JSDOM } from "jsdom";
 import { docHref, docs } from "../lib/content/docs";
 import { fakeValues } from "../lib/stats/testing/fake-data";
 import { caddyHeaders, parseHeadersTxt, servedPaths } from "../scripts/caddy-headers";
+import { internalRefs } from "./internal-refs";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
@@ -17,7 +18,7 @@ const out = join(site, "out");
 const fonts = ["lexend-deca-200", "manrope-400", "manrope-600", "obel-mono-400"];
 const licenses = ["OFL-lexend-deca.txt", "OFL-manrope.txt", "OFL-obel-mono.txt"];
 const outside = ["fonts.googleapis", "fonts.gstatic", "vercel", "analytics"];
-const textFile = /\.(html|css|js|json|txt|map|svg)$/;
+const textFile = /\.(html|css|js|json|txt|md|map|svg)$/;
 const directives = [
     "base-uri",
     "connect-src",
@@ -236,6 +237,21 @@ describe("next build", () => {
     it("has inline scripts on the stats page for the policy to hash", async () => {
         const doc = await page("stats/index.html");
         expect(doc.querySelectorAll("script:not([src])").length).toBeGreaterThan(0);
+    });
+
+    it("names none of the team's own files, notes or sessions in the docs it ships", async () => {
+        const pages = html().filter((f) => f.startsWith("docs/"));
+        expect(pages).toHaveLength(docs.length);
+        for (const file of pages) {
+            const main = (await page(file)).querySelector("main");
+            expect(main, file).not.toBeNull();
+            expect(internalRefs(main?.textContent ?? ""), file).toEqual([]);
+        }
+        const texts = files.filter((f) =>
+            /^(docs\/.*\.md|llms.*\.txt|search-index\.json)$/.test(f),
+        );
+        expect(texts).toContain("search-index.json");
+        for (const file of texts) expect(internalRefs(await read(file)), file).toEqual([]);
     });
 
     it("ships none of the fake stats values", async () => {
