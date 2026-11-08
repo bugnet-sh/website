@@ -14,6 +14,7 @@ it("takes each client's first code block from the docs, or its steps when it has
         id: "claude-code",
         name: "Claude Code",
         code: expect.stringMatching(/^claude plugin marketplace add bugnet-sh\/bugnet\n/),
+        lang: "sh",
     });
     expect(lines.clients.find((c) => c.id === "claude-ai")).toEqual({
         id: "claude-ai",

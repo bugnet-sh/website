@@ -8,7 +8,9 @@ import { clients, type ClientId } from "./clients";
 const ID = /\{#([\w-]+)\}\s*$/;
 
 /** A client's first code block, or, for one set up by clicking through, its steps as Markdown. */
-export type ClientLines = { id: ClientId; name: string } & ({ code: string } | { steps: string });
+export type ClientLines = { id: ClientId; name: string } & (
+    { code: string; lang: string | undefined } | { steps: string }
+);
 
 /** The client sections of the docs' Install page, each the nodes under its `### … {#id}`. */
 function sections(tree: Root): Map<string, RootContent[]> {
@@ -36,7 +38,7 @@ export function installLines(markdown: string): { hero: string; clients: ClientL
         const nodes = found.get(id);
         if (!nodes) throw new Error(`install.md has no section {#${id}}`);
         const code = nodes.find((n): n is Code => n.type === "code");
-        if (code) return { id, name, code: code.value };
+        if (code) return { id, name, code: code.value, lang: code.lang ?? undefined };
         const list = nodes.find((n): n is List => n.type === "list");
         const [start, end] = [list?.position?.start.offset, list?.position?.end.offset];
         if (start === undefined || end === undefined) {

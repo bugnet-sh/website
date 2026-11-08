@@ -15,6 +15,15 @@ function hastText(node: HastNode): string {
     return "";
 }
 
+/** The language a fence names, which remark writes as `language-…` on the block's code. */
+function fenceLang(node: ExtraProps["node"]): string | undefined {
+    const code = node?.children[0];
+    if (code?.type !== "element") return undefined;
+    const names = code.properties.className;
+    const name = Array.isArray(names) ? names.find((n) => String(n).startsWith("language-")) : null;
+    return name ? String(name).slice("language-".length) : undefined;
+}
+
 const block = "mt-(--space-4) first:mt-0";
 
 // The site's own parts replace the elements Markdown makes; each drops the hast `node` prop
@@ -59,7 +68,9 @@ const components: Components = {
     strong: ({ children }) => <strong className="font-semibold text-text">{children}</strong>,
     a: ({ href, children }) => <Link href={href}>{children}</Link>,
     blockquote: ({ children }) => <Blockquote>{children}</Blockquote>,
-    pre: ({ node }) => <CodeBlock code={node ? hastText(node).replace(/\n$/, "") : ""} />,
+    pre: ({ node }) => (
+        <CodeBlock code={node ? hastText(node).replace(/\n$/, "") : ""} lang={fenceLang(node)} />
+    ),
     // Only inline code reaches here: a fenced block is rendered whole by `pre`
     code: ({ children }) => <code className="bg-surface px-(--space-1) font-mono">{children}</code>,
     table: ({ children }) => <Table>{children}</Table>,

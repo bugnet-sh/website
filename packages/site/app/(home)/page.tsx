@@ -22,7 +22,7 @@ export default function HomePage() {
         name: client.name,
         panel:
             "code" in client ? (
-                <CodeBlock code={client.code} />
+                <CodeBlock code={client.code} lang={client.lang} />
             ) : (
                 <div className="text-(length:--ui-size) leading-(--ui-line)">
                     <Markdown source={client.steps} />
