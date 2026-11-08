@@ -1,8 +1,14 @@
 import { cx } from "../../lib/cx";
 import { Logo } from "../brand/logo";
+import { GitHubIcon, XIcon } from "../icons";
 import { FooterWaves } from "../waves/waves";
 import { Frame } from "./frame";
 import { github, ShellAnchor, type ShellLink } from "./links";
+
+const socials = [
+    { label: "GitHub", href: github.href, Icon: GitHubIcon },
+    { label: "X", href: "https://x.com/bugnetsh", Icon: XIcon },
+];
 
 const columns: { heading: string; links: ShellLink[] }[] = [
     {
@@ -20,7 +26,6 @@ const columns: { heading: string; links: ShellLink[] }[] = [
         links: [
             { label: "Docs", href: "/docs/" },
             { label: "Install", href: "/#install" },
-            github,
             { label: "x402", href: "https://x402.org", external: true },
         ],
     },
@@ -29,7 +34,6 @@ const columns: { heading: string; links: ShellLink[] }[] = [
         links: [
             { label: "Terms", href: "/terms/" },
             { label: "Privacy", href: "/privacy/" },
-            { label: "X", href: "https://x.com/bugnetsh", external: true },
         ],
     },
 ];
@@ -67,7 +71,22 @@ export function SiteFooter() {
                     <p className="mt-(--space-4) max-w-[34ch] text-(length:--ui-size) leading-(--ui-line) text-text-muted">
                         Pay-per-run sandboxes for AI agents, paid in USDC on Solana.
                     </p>
-                    <p className="mt-(--space-3) text-(length:--fine-size) leading-(--fine-line) text-text-muted">
+                    <ul className="mt-(--space-5) flex gap-(--space-2)">
+                        {socials.map(({ label, href, Icon }) => (
+                            <li key={label}>
+                                <a
+                                    href={href}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    aria-label={`${label} (opens in a new tab)`}
+                                    className="relative grid size-(--button) place-items-center border-(length:--hairline) before:absolute before:-inset-[calc((var(--hit)-var(--button))/2)] before:content-[''] border-line text-text-muted hover:border-accent-3 hover:text-accent-3"
+                                >
+                                    <Icon />
+                                </a>
+                            </li>
+                        ))}
+                    </ul>
+                    <p className="mt-(--space-5) text-(length:--fine-size) leading-(--fine-line) text-text-muted">
                         © 2026 Bugnet
                     </p>
                 </div>

@@ -9,10 +9,17 @@ function footer() {
 }
 
 describe("SiteFooter", () => {
-    it("links the site, the developer pages and the legal pages, column by column", () => {
+    it("links GitHub and X as icons, then the site, developer and legal pages, column by column", () => {
         render(<SiteFooter />);
         const links = within(footer()).getAllByRole("link");
-        expect(links.map((l) => [l.textContent, l.getAttribute("href")])).toEqual([
+        expect(
+            links.map((l) => [
+                l.getAttribute("aria-label") ?? l.textContent,
+                l.getAttribute("href"),
+            ]),
+        ).toEqual([
+            ["GitHub (opens in a new tab)", "https://github.com/bugnet-sh/bugnet"],
+            ["X (opens in a new tab)", "https://x.com/bugnetsh"],
             ["Home", "/"],
             ["How it works", "/#how"],
             ["Pricing", "/#pricing"],
@@ -20,11 +27,9 @@ describe("SiteFooter", () => {
             ["Get started", "/docs/#install"],
             ["Docs", "/docs/"],
             ["Install", "/#install"],
-            ["GitHub (opens in a new tab)", "https://github.com/bugnet-sh/bugnet"],
             ["x402 (opens in a new tab)", "https://x402.org"],
             ["Terms", "/terms/"],
             ["Privacy", "/privacy/"],
-            ["X (opens in a new tab)", "https://x.com/bugnetsh"],
         ]);
     });
 

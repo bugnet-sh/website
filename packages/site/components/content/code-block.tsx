@@ -36,7 +36,7 @@ export function CodeBlock({ code, lang }: { code: string; lang?: string }) {
             </pre>
             {/* Centred on the first line: 8 px + half a 28 px button = 12 px + half a 20 px line */}
             <div className="shrink-0 p-(--space-2)">
-                <CopyButton text={code} label="Copy code" />
+                <CopyButton text={code} label="Copy code" icon />
             </div>
         </div>
     );
