@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { AsciiField } from "../components/backgrounds/ascii-field";
+import { SiteFooter } from "../components/shell/footer";
 import { Band, Frame } from "../components/shell/frame";
 import { SiteHeader } from "../components/shell/header";
 import { primaryButton, secondaryButton } from "../components/ui/button";
@@ -44,6 +45,7 @@ export default function NotFound() {
                     </Frame>
                 </Band>
             </main>
+            <SiteFooter />
         </>
     );
 }
