@@ -14,3 +14,6 @@ packages/site/public/search-index.json
 # Written by the build from assets/og.svg and the brand icon
 packages/site/public/og.png
 packages/site/app/apple-icon.png
+
+# Agent working files: plan ledgers and screenshots
+.superpowers/
