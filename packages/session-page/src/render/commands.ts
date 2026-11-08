@@ -14,6 +14,8 @@ export interface CommandsView {
     root: HTMLElement;
     setJobs(jobs: Job[], now: Date): void;
     setOutput(state: OutputState | null): void;
+    // Commands the router recorded no row for
+    setDropped(n: number): void;
     buffer(seq: number): OutputBuffer;
     apply(seq: number, frame: LiveFrame): void;
     setLive(seq: number, state: LiveState): void;
@@ -155,7 +157,11 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             tbody,
         ],
     );
-    const root = el(doc, "section", { class: "commands" }, [bar, note, table]);
+    const dropped = el(doc, "p", {
+        class: "commands-dropped",
+        attrs: { "data-edge": "", hidden: "" },
+    });
+    const root = el(doc, "section", { class: "commands" }, [bar, note, table, dropped]);
 
     function bufferOf(seq: number): OutputBuffer {
         let buffer = buffers.get(seq);
@@ -436,6 +442,11 @@ export function createCommandsView(opts: CommandsOpts): CommandsView {
             syncExpand();
             syncOutput();
             startTicking();
+        },
+
+        setDropped(n) {
+            dropped.textContent = n > 0 ? copy.jobsDropped(n) : "";
+            dropped.hidden = n === 0;
         },
 
         setOutput(state) {

@@ -213,6 +213,7 @@ describe("parseGetBody", () => {
                     frames: [{ s: "o", t: "ok 12 tests\n", cr: false }],
                 },
             ],
+            jobsDropped: 0,
         });
     });
 
@@ -239,8 +240,18 @@ describe("parseGetBody", () => {
                         frames: null,
                     },
                 ],
+                jobsDropped: 0,
             },
         });
+    });
+
+    it("reads the commands past the router's cap, on a record and a snapshot", () => {
+        expect(ended({ ...exampleRecord(), jobsDropped: 7 }).jobsDropped).toBe(7);
+        const body = parseGetBody({
+            state: "running",
+            snapshot: { ...exampleSnapshot(), jobsDropped: 3 },
+        });
+        expect(body.state === "running" && body.snapshot.jobsDropped).toBe(3);
     });
 
     it("reads an expired answer, which has no payload", () => {
@@ -630,6 +641,14 @@ describe("parseGetBody with served x402 and allowance rows", () => {
                 network,
             },
         ]);
+    });
+
+    it("reads an allowance in a mint other than USDC, which the router serves with no asset", () => {
+        const row = servedAllowance();
+        delete row.asset;
+        const [allowance] = one(row);
+        expect(allowance).toMatchObject({ kind: "allowance", phase: "paid", tx: sig });
+        expect(allowance).not.toHaveProperty("asset");
     });
 
     it("drops an allowance paid in or refunded without its transaction", () => {

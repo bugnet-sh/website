@@ -82,6 +82,17 @@ const footer = (root: HTMLElement, seq: number) =>
     [...detail(root, seq).querySelectorAll(".term-foot > span")].map((s) => plain(s.textContent));
 
 describe("createCommandsView", () => {
+    it("says under the table how many commands the router recorded no row for", () => {
+        const { view } = showEnded("ended-full");
+        const last = () => view.root.lastElementChild as HTMLElement;
+        expect(last().hidden).toBe(true);
+        view.setDropped(3);
+        expect(last().hidden).toBe(false);
+        expect(last().textContent).toBe(copy.jobsDropped(3));
+        view.setDropped(0);
+        expect(last().hidden).toBe(true);
+    });
+
     it("shows ended-full as six rows, the last one open with its command, output and exit", () => {
         const { view } = showEnded("ended-full");
         expect(rows(view.root).map((r) => r.dataset.seq)).toEqual(["1", "2", "3", "4", "5", "6"]);

@@ -128,6 +128,8 @@ export const copy = {
     notSeen: "Other internet traffic from the sandbox is not seen by Bugnet.",
     eventsDropped: (n: number) =>
         `${plural(n, "more event wasn't", "more events weren't")} recorded.`,
+    jobsDropped: (n: number) =>
+        `${plural(n, "more command wasn't", "more commands weren't")} recorded.`,
     noCalls: "No calls recorded.",
     mapLabel: "Map of calls in this session",
 

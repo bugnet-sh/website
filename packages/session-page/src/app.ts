@@ -401,6 +401,7 @@ export function startPage(env: PageEnv): { destroy(): void } {
         startClock();
         v.commands.setOutput(null);
         v.commands.setJobs(snapshot.jobs, now);
+        v.commands.setDropped(snapshot.jobsDropped);
         runningSeqs = snapshot.jobs
             .filter((j) => j.state === "running")
             .map((j) => j.seq)
@@ -430,6 +431,7 @@ export function startPage(env: PageEnv): { destroy(): void } {
         startClock();
         v.commands.setOutput(record.output);
         v.commands.setJobs(record.jobs, now);
+        v.commands.setDropped(record.jobsDropped);
         askIn(nextAsk());
     }
 

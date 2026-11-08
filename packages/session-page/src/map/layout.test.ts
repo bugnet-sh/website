@@ -24,6 +24,7 @@ function mapOf(events: SessionEvent[]): MapModel {
         events,
         eventsDropped: 0,
         jobs: [],
+        jobsDropped: 0,
     });
 }
 

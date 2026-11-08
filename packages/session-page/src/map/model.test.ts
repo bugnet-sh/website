@@ -197,6 +197,7 @@ function record(events: SessionEvent[]): SessionRecord {
         events,
         eventsDropped: 0,
         jobs: [],
+        jobsDropped: 0,
     };
 }
 

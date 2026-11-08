@@ -95,7 +95,7 @@ const states: State[] = [
     },
     {
         name: "ended-crowded",
-        edges: [status, times, "div.map", "table.commands"],
+        edges: [status, times, "div.map", "table.commands", "p.commands-dropped"],
         link: (s) => s["ended-crowded"],
         // The fold's table, whose long hosts and paths once pushed its amounts out of view
         reach: async (page) => {

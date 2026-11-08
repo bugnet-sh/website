@@ -792,6 +792,14 @@ section.commands {
     color: var(--text-muted);
 }
 
+/* Spaced and sized as the map's caption, which says the same of events */
+.commands-dropped {
+    margin-top: var(--space-3);
+    color: var(--text-muted);
+    font-size: var(--small-size);
+    line-height: var(--small-line);
+}
+
 /* Every column has its cell in the head row, so ticking numbers never move a column */
 table.commands {
     table-layout: fixed;
