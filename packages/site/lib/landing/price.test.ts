@@ -4,7 +4,7 @@ import {
     priceText,
     pricingCells,
     SOON_GPUS,
-    tenMinutePrice,
+    lengthText,
     type PricingCell,
 } from "./price";
 import type { PackageRow } from "../stats/types";
@@ -21,7 +21,6 @@ it("lists a package's parts, a GPU's model and VRAM first when it has one, its l
         { label: "vCPU", value: "2" },
         { label: "Memory", value: "2 GiB" },
         { label: "Disk", value: "10 GiB" },
-        { label: "Time", value: "10 min" },
     ]);
     const l4 = { count: 1, memoryGiB: 24, model: "NVIDIA L4" };
     const gpu = { ...cpu, memoryMiB: 1536, gpu: l4, minutes: 90, priceMicros: 400_000 };
@@ -31,7 +30,6 @@ it("lists a package's parts, a GPU's model and VRAM first when it has one, its l
         { label: "vCPU", value: "2" },
         { label: "Memory", value: "1.5 GiB" },
         { label: "Disk", value: "10 GiB" },
-        { label: "Time", value: "1 h 30 min" },
     ]);
     const two = { ...cpu, gpu: { ...l4, count: 2 }, priceMicros: 1 };
     expect(packageFacts(two).slice(0, 2)).toEqual([
@@ -51,12 +49,9 @@ it("counts a GPU the feed names no model for, never showing a bare number", () =
     ]);
 });
 
-it("prices every package for ten minutes, whatever its length, to the micro-USDC", () => {
-    expect(tenMinutePrice({ priceMicros: 50_000, minutes: 10 })).toBe("0.05");
-    expect(tenMinutePrice({ priceMicros: 180_000, minutes: 30 })).toBe("0.06");
-    expect(tenMinutePrice({ priceMicros: 5_000, minutes: 1 })).toBe("0.05");
-    expect(tenMinutePrice({ priceMicros: 100_000, minutes: 40 })).toBe("0.025");
-    expect(tenMinutePrice({ priceMicros: 100_000, minutes: 30 })).toBe("0.033333");
+it("says what a package's price buys", () => {
+    expect(lengthText({ minutes: 10 })).toBe("/ 10 min");
+    expect(lengthText({ minutes: 90 })).toBe("/ 1 h 30 min");
 });
 
 describe("pricingCells", () => {

@@ -5,7 +5,8 @@ import { cx } from "../../lib/cx";
 import {
     packageFacts,
     pricingCells,
-    tenMinutePrice,
+    lengthText,
+    priceText,
     type PricingCell,
 } from "../../lib/landing/price";
 import { Band, Frame } from "../shell/frame";
@@ -15,7 +16,7 @@ import { secondaryButton } from "../ui/button";
 import { cellInset } from "./inset";
 import { LandingTitle } from "./title";
 
-/** A cell's top line: the package's rate for ten minutes, or the model of a GPU not on sale yet */
+/** A cell's top line: the package's price for its length, or the model of a GPU not on sale yet */
 function Head({ cell }: { cell: PricingCell }) {
     if (cell.kind === "soon") {
         return (
@@ -27,10 +28,10 @@ function Head({ cell }: { cell: PricingCell }) {
     return (
         <p className="flex items-baseline gap-(--space-2)">
             <span className="font-mono text-(length:--stat-size) leading-(--stat-line) text-accent">
-                {tenMinutePrice(cell.p)}
+                {priceText(cell.p.priceMicros)}
             </span>
             <span className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
-                USDC / 10 min
+                USDC {lengthText(cell.p)}
             </span>
         </p>
     );

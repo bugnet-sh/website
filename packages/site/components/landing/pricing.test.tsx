@@ -32,14 +32,12 @@ function show(summary: SummaryState) {
 const showPackages = (packages: PackageRow[]) =>
     show({ data: { ...data, packages }, updatedAt: new Date(), failedAt: null });
 
-it("prices every package for ten minutes and lists its own length beside its parts", () => {
+it("prices every package for its own length, which no row repeats", () => {
     showPackages([pack("short", 10, 50_000), pack("long", 30, 180_000)]);
     const [short, long] = screen.getAllByRole("listitem") as [HTMLElement, HTMLElement];
     expect(short.querySelector("p")?.textContent).toBe("0.05USDC / 10 min");
-    expect(long.querySelector("p")?.textContent).toBe("0.06USDC / 10 min");
-    const time = (cell: HTMLElement) =>
-        within(cell).getByText("Time").nextElementSibling?.textContent;
-    expect([time(short), time(long)]).toEqual(["10 min", "30 min"]);
+    expect(long.querySelector("p")?.textContent).toBe("0.18USDC / 30 min");
+    expect(within(short).queryByText("Time")).toBeNull();
 });
 
 it("names each GPU coming soon in its head, with its VRAM and one small Coming soon, no price", () => {

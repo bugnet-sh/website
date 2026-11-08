@@ -47,14 +47,15 @@ const MiB = 1024 ** 2;
 const GiB = 1024 ** 3;
 const gpuCount = (count: number) => `${count} ${count === 1 ? "GPU" : "GPUs"}`;
 
-/** A package's rate for ten minutes, whatever its own length, rounded to the micro-USDC: "0.05" */
-export function tenMinutePrice(p: Pick<PackageRow, "priceMicros" | "minutes">): string {
-    return priceText(Math.round((p.priceMicros * 10) / Math.max(1, p.minutes)));
+/** What a package's price buys: "/ 10 min" (founder, 2026-11-08: "Pricing becomes / 10 minute") */
+export function lengthText(p: Pick<PackageRow, "minutes">): string {
+    return `/ ${formatDuration(p.minutes * 60)}`;
 }
 
 /**
  * What a package holds, as its pricing cell lists it: a GPU's model and VRAM first, when it has
- * one, and its length last. A GPU the feed names no model for shows its count, as "1 GPU".
+ * one. Its length is in its price's line. A GPU the feed names no model for shows its count, as
+ * "1 GPU".
  */
 export function packageFacts(p: PackageRow): { label: string; value: string }[] {
     const gpu = p.gpu;
@@ -69,6 +70,5 @@ export function packageFacts(p: PackageRow): { label: string; value: string }[] 
         { label: "vCPU", value: String(p.vcpu) },
         { label: "Memory", value: formatBytes(p.memoryMiB * MiB) },
         { label: "Disk", value: formatBytes(p.diskGiB * GiB) },
-        { label: "Time", value: formatDuration(p.minutes * 60) },
     ];
 }
