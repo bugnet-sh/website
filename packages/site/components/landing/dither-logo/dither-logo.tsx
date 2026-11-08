@@ -136,7 +136,7 @@ export function DitherLogo({ className }: { className?: string }) {
         >
             <div
                 ref={slot}
-                className="relative h-[min(72%,var(--dither-logo))]"
+                className="relative h-[min(80%,var(--dither-logo))]"
                 style={{ aspectRatio: `${MARK.width} / ${MARK.height}` }}
             >
                 {dither && !failed ? (
