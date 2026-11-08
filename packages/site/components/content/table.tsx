@@ -8,7 +8,7 @@ const prose = "py-(--space-2) whitespace-normal!";
 /** A Markdown table in the stats table's cells, scrolled sideways if a phone is too narrow. */
 export function Table({ children }: { children?: ReactNode }) {
     return (
-        <div className="mt-(--space-4) overflow-x-auto first:mt-0">
+        <div className="mt-(--prose-gap) overflow-x-auto first:mt-0">
             <table className={tableClass}>{children}</table>
         </div>
     );

@@ -16,7 +16,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const site = fileURLToPath(new URL("..", import.meta.url));
 const out = join(site, "out");
-const fonts = ["lexend-deca-200", "manrope-400", "manrope-600", "obel-mono-400"];
+const fonts = ["lexend-deca-200", "manrope-400", "manrope-500", "manrope-600", "obel-mono-400"];
 const licenses = ["OFL-lexend-deca.txt", "OFL-manrope.txt", "OFL-obel-mono.txt"];
 const outside = ["fonts.googleapis", "fonts.gstatic", "vercel", "analytics"];
 const textFile = /\.(html|css|js|json|txt|md|map|svg)$/;

@@ -1,13 +1,13 @@
 # Font sources
 
-The four `.woff2` files are cut by `../scripts/fonts.sh` (fonttools 4.60.1, `fonttools[woff]`).
+The five `.woff2` files are cut by `../scripts/fonts.sh` (fonttools 4.60.1, `fonttools[woff]`).
 The script downloads each source, checks its SHA-256, instances the variable axis, then subsets.
 
-| Output                                   | Source                                                                                                                            | SHA-256                                                                | Instance               |
-| ---------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------- |
-| `manrope-400.woff2`, `manrope-600.woff2` | `https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/manrope/Manrope%5Bwght%5D.ttf`       | `3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6`     | `wght=400`, `wght=600` |
-| `lexend-deca-200.woff2`                  | `https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/lexenddeca/LexendDeca%5Bwght%5D.ttf` | `d11c12298f431d7e416a1e615d33f2c2b98bda2318a0c186c8c94f08c2d90ce8`     | `wght=200`             |
-| `obel-mono-400.woff2`                    | `ObelMono-1.002-woff2/ObelMono-VF.woff2` in `https://typographic.systems/download/ObelMono-1.002-woff2.zip`                       | zip `789760993c70f01bcb25cb6db02457ebf77febd12078ab00085218e6d41b14df` | `wght=400`             |
+| Output                                                        | Source                                                                                                                            | SHA-256                                                                | Instance                           |
+| ------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------- | ---------------------------------- |
+| `manrope-400.woff2`, `manrope-500.woff2`, `manrope-600.woff2` | `https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/manrope/Manrope%5Bwght%5D.ttf`       | `3ae11c49db0455a3cc33e37d380f20fdb8c7f8b41dc07625c177e3d87a9d6ae6`     | `wght=400`, `wght=500`, `wght=600` |
+| `lexend-deca-200.woff2`                                       | `https://raw.githubusercontent.com/google/fonts/86aced91de05cd4f96a06838124cca45be337b2b/ofl/lexenddeca/LexendDeca%5Bwght%5D.ttf` | `d11c12298f431d7e416a1e615d33f2c2b98bda2318a0c186c8c94f08c2d90ce8`     | `wght=200`                         |
+| `obel-mono-400.woff2`                                         | `ObelMono-1.002-woff2/ObelMono-VF.woff2` in `https://typographic.systems/download/ObelMono-1.002-woff2.zip`                       | zip `789760993c70f01bcb25cb6db02457ebf77febd12078ab00085218e6d41b14df` | `wght=400`                         |
 
 ## Commands
 

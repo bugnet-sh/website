@@ -22,20 +22,27 @@ function colourOf(token: Token): string {
  * A fenced block: one line per line, scrolled sideways when long, with Copy beside it. A shell or
  * JSON block is coloured by token; any other language shows as plain text. In a row beside a
  * button, `inRow` makes a one-line block that button's height; phones stack the row, and the
- * block wraps there instead of scrolling.
+ * block wraps there instead of scrolling. `className` sets the space above it, 16 px by default.
  */
 export function CodeBlock({
     code,
     lang,
     inRow = false,
+    className = "mt-(--space-4) first:mt-0",
 }: {
     code: string;
     lang?: string;
     inRow?: boolean;
+    className?: string;
 }) {
     const tokens = highlight(code, lang);
     return (
-        <div className="mt-(--space-4) flex items-start border-(length:--hairline) border-line bg-surface first:mt-0">
+        <div
+            className={cx(
+                "flex items-start border-(length:--hairline) border-line bg-surface",
+                className,
+            )}
+        >
             <pre
                 className={cx(
                     "min-w-0 flex-1 overflow-x-auto pl-(--space-4) font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre",

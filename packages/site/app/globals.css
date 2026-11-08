@@ -16,6 +16,7 @@
     --color-line: var(--line);
     --color-text: var(--text);
     --color-text-muted: var(--text-muted);
+    --color-prose: var(--prose);
     --color-accent: var(--accent);
     --color-accent-ink: var(--accent-ink);
     --color-accent-2: var(--accent-2);

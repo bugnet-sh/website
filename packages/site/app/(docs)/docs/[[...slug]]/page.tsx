@@ -49,9 +49,10 @@ export default async function DocPage({ params }: Props) {
                         <Sidebar current={doc.slug} />
                     </aside>
                     <div className="min-w-0">
-                        <article className="max-w-(--article) text-(length:--ui-size) leading-(--prose-line)">
+                        <article className="max-w-(--article) text-(length:--prose-size) leading-(--prose-line) text-prose">
                             <Markdown
                                 source={body}
+                                look="article"
                                 titleAction={
                                     <CopyButton
                                         text={cleanMarkdown(doc, body)}

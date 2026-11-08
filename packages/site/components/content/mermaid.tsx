@@ -92,7 +92,7 @@ export function Mermaid({ source }: { source: string }) {
         <div
             ref={box}
             className={cx(
-                "relative mt-(--space-4) border-(length:--hairline) border-line first:mt-0",
+                "relative mt-(--prose-gap) border-(length:--hairline) border-line first:mt-0",
                 !drawn && "min-h-(--diagram)",
             )}
         >
