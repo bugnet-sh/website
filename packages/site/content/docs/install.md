@@ -1,9 +1,5 @@
 ---
 title: Install
-sources:
-    - bugnet-gateway/README.md: Install; Paying
-    - docs/website/plan.md: section 1, payment; section 2, /docs#install; section 5, decision 9
-    - content/legal/terms.md: Accepting these terms
 ---
 
 # Install {#install}

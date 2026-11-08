@@ -1,7 +1,5 @@
 ---
 title: Install
-sources:
-    - README.md: Install
 ---
 
 # Install {#install}

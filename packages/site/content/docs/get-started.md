@@ -1,12 +1,5 @@
 ---
 title: Get started
-sources:
-    - bugnet-gateway/README.md: How it works; Quick start; Install; Tools; Paying; Security model; Limits; FAQ
-    - docs/mcp-gateway/design.md: section 3, protocol; section 5, tools
-    - docs/mcp-gateway/payments-port.md: sections 2 to 4, 7 and 9
-    - docs/website/session-page.md: sections 2, 3 and 8
-    - docs/website/plan.md: section 1, payment; section 2, /docs
-    - content/legal/terms.md: Time, extensions and deletion; Refunds
 ---
 
 # Get started {#get-started}

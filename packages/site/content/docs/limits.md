@@ -1,10 +1,5 @@
 ---
 title: Limits
-sources:
-    - bugnet-gateway/README.md: Limits; Paying; Security model, What Bugnet will not run
-    - docs/mcp-gateway/payments-port.md: section 7
-    - docs/website/plan.md: section 2, /docs#limits
-    - content/legal/terms.md: Transfers
 ---
 
 # Limits

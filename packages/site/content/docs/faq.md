@@ -1,10 +1,5 @@
 ---
 title: FAQ
-sources:
-    - bugnet-gateway/README.md: FAQ; Paying; Limits
-    - docs/mcp-gateway/payments-port.md: sections 2 and 7
-    - docs/mcp-gateway/design.md: section 5, tools
-    - docs/website/landing-v2.md: decision 3, x402 section
 ---
 
 # FAQ

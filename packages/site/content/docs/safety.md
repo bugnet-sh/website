@@ -1,10 +1,5 @@
 ---
 title: Safety
-sources:
-    - bugnet-gateway/README.md: Security model; Paying
-    - docs/mcp-gateway/design.md: section 1, what runs where; section 6, output safety
-    - docs/website/plan.md: section 2, /docs#safety
-    - docs/website/session-page.md: section 2
 ---
 
 # Safety

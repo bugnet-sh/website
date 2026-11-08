@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import ReactMarkdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Blockquote } from "../../components/content/blockquote";
@@ -88,10 +89,28 @@ const components: Components = {
     hr: () => <hr className="mt-(--space-7) border-line" />,
 };
 
-/** Markdown rendered to React elements at build time, never to an HTML string. */
-export function Markdown({ source }: { source: string }) {
+/**
+ * Markdown rendered to React elements at build time, never to an HTML string. A title action sits
+ * at the right of the H1's row, centred on its first line, and drops under it on phones.
+ */
+export function Markdown({ source, titleAction }: { source: string; titleAction?: ReactNode }) {
+    const parts: Components = titleAction
+        ? {
+              ...components,
+              h1: ({ id, children }) => (
+                  <div className="flex items-start justify-between gap-x-(--space-5) phone:flex-col phone:gap-y-(--space-4)">
+                      <Heading level={1} id={id}>
+                          {children}
+                      </Heading>
+                      <div className="mt-[calc((var(--title-size)-var(--button))/2)] phone:mt-0">
+                          {titleAction}
+                      </div>
+                  </div>
+              ),
+          }
+        : components;
     return (
-        <ReactMarkdown remarkPlugins={[remarkGfm, headingIds]} components={components}>
+        <ReactMarkdown remarkPlugins={[remarkGfm, headingIds]} components={parts}>
             {source}
         </ReactMarkdown>
     );

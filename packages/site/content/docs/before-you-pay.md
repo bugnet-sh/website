@@ -1,9 +1,5 @@
 ---
 title: Before you pay
-sources:
-    - docs/website/plan.md: section 1, payment; section 2, /docs#before-you-pay
-    - bugnet-gateway/README.md: Install; Paying
-    - content/legal/terms.md: Who pays; Refunds
 ---
 
 # Before you pay

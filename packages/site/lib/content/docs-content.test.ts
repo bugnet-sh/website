@@ -1,5 +1,8 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { internalRefs } from "../../test/internal-refs";
 import { readDoc } from "./doc-file";
 import { docBySlug, docs, type Doc } from "./docs";
 import { tocOf } from "./toc";
@@ -10,11 +13,12 @@ const read = (doc: Doc) => readDoc(doc, dir);
 const install = docBySlug("install") as Doc;
 
 describe("docs content", () => {
-    it("names its sources on every page and carries no source comments", () => {
+    it("names none of the team's own files, notes or sessions, front matter included", () => {
         for (const doc of docs) {
-            const { sources, body } = read(doc);
-            expect(sources.length, doc.file).toBeGreaterThan(0);
-            expect(body, doc.file).not.toMatch(/<!--|PENDING/);
+            const file = readFileSync(join(dir, doc.file), "utf8");
+            expect(internalRefs(file), doc.file).toEqual([]);
+            expect(file, doc.file).toMatch(/^---\ntitle: [^\n]+\n---\n/);
+            expect(read(doc).body, doc.file).not.toMatch(/<!--|PENDING/);
         }
     });
 
