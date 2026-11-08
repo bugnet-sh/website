@@ -34,9 +34,6 @@ export function Hero({ installLine }: { installLine: string }) {
                     <SandboxFigure />
                 </div>
                 <div className="col-span-full flex flex-wrap items-center gap-x-(--space-5) gap-y-(--space-3) border-t-(length:--hairline) border-line px-(--pad) py-(--space-5) phone:flex-col phone:items-stretch">
-                    <p className="text-(length:--ui-size) leading-(--ui-line) font-semibold">
-                        Add the MCP server
-                    </p>
                     {/* As wide as its line, so Copy sits beside the command, and scrolled when the row is narrower */}
                     <div className="max-w-full min-w-0">
                         <CodeBlock code={installLine} lang="sh" />
