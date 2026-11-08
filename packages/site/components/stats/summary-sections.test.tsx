@@ -66,14 +66,18 @@ it("lists only the limits the feed sends, in the table's order", () => {
     const rows = within(table)
         .getAllByRole("row")
         .slice(1)
-        .map((tr) => [...tr.querySelectorAll("td")].slice(0, 2).map((td) => td.textContent));
+        // The name is the cell's own text, before the tip that follows it
+        .map((tr) => [...tr.querySelectorAll("td")].map((td) => td.firstChild?.textContent));
     expect(rows).toEqual([
         ["Sandboxes running at once, per wallet", "5"],
         ["Largest single payment", "100 USDC"],
         ["Largest file transfer", "1 GiB"],
     ]);
-    // Only the first has a reason to give
+    // Only the first has a reason to give, and gives it after its name
     expect(within(table).getAllByRole("button")).toHaveLength(1);
+    expect(within(table).getByRole("button").closest("td")?.textContent).toContain(
+        "Sandboxes running at once, per wallet",
+    );
     const buy = screen.getByRole("table", { name: "What you can buy" });
     expect(within(buy).getByText("4 vCPU, 16 GiB, 1 GPU 20 GiB")).toBeDefined();
 });

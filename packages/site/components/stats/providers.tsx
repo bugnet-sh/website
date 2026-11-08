@@ -6,6 +6,7 @@ import {
     failureRate,
     formatShare,
     formatStartMs,
+    knownProviders,
     providerLabel,
     share,
 } from "../../lib/stats/labels";
@@ -24,10 +25,11 @@ function Start({ ms }: { ms: number | null }) {
     return formatStartMs(ms);
 }
 
+/** The bar draws on its own track, so a small share reads against the whole; phones show the %. */
 function Share({ part, total }: { part: number; total: number }) {
     return (
         <span className="flex items-center gap-(--space-2)">
-            <span aria-hidden className="flex w-(--share-bar)">
+            <span aria-hidden className="flex w-(--share-bar) bg-line phone:hidden">
                 <span
                     className="h-(--share-line) bg-text-muted/40"
                     style={{ width: `${share(part, total) * 100}%` }}
@@ -38,9 +40,11 @@ function Share({ part, total }: { part: number; total: number }) {
     );
 }
 
+/** Phones keep the provider, its share and its failure rate; tablets drop the slowest starts. */
 const columns: {
     label: string;
     numeric?: boolean;
+    hide?: string;
     cell: (p: ProviderRow, total: number) => ReactNode;
 }[] = [
     { label: "Provider", cell: (p) => <Cut>{providerLabel(p.provider)}</Cut> },
@@ -48,9 +52,24 @@ const columns: {
         label: "Share of sandboxes",
         cell: (p, total) => <Share part={p.sandboxes7d} total={total} />,
     },
-    { label: "Active now", numeric: true, cell: (p) => formatCount(p.active) },
-    { label: "Start (median)", numeric: true, cell: (p) => <Start ms={p.startP50Ms} /> },
-    { label: "Start (slowest 5 %)", numeric: true, cell: (p) => <Start ms={p.startP95Ms} /> },
+    {
+        label: "Active now",
+        numeric: true,
+        hide: "phone:hidden",
+        cell: (p) => formatCount(p.active),
+    },
+    {
+        label: "Start (median)",
+        numeric: true,
+        hide: "phone:hidden",
+        cell: (p) => <Start ms={p.startP50Ms} />,
+    },
+    {
+        label: "Start (slowest 5 %)",
+        numeric: true,
+        hide: "tablet:hidden",
+        cell: (p) => <Start ms={p.startP95Ms} />,
+    },
     { label: "Failure rate", numeric: true, cell: (p) => failureRate(p) },
 ];
 
@@ -60,6 +79,8 @@ export function Providers() {
     const id = useId();
     const rows = stats.data?.providers ?? [];
     const total = rows.reduce((sum, p) => sum + p.sandboxes7d, 0);
+    // Until the feed answers, one empty row for each provider the page knows, so it moves nothing
+    const waiting = stats.data === null ? knownProviders.length : 0;
     return (
         <Band>
             <div className="relative min-h-(--box) py-(--space-6)">
@@ -72,11 +93,11 @@ export function Providers() {
                         No sandboxes in the last 7 days.
                     </p>
                 )}
-                {rows.length > 0 && (
+                {rows.length + waiting > 0 && (
                     <div className="relative mt-(--space-4) overflow-x-auto">
                         <table
                             aria-labelledby={id}
-                            className={cx(tableClass, "min-w-(--table-min)")}
+                            className={cx(tableClass, "min-w-(--table-min) tablet:min-w-0")}
                         >
                             <thead>
                                 <tr>
@@ -84,7 +105,7 @@ export function Providers() {
                                         <th
                                             key={c.label}
                                             scope="col"
-                                            className={headCell(c.numeric)}
+                                            className={cx(headCell(c.numeric), c.hide)}
                                         >
                                             {c.label}
                                         </th>
@@ -96,9 +117,22 @@ export function Providers() {
                                     // Names are the feed's and may repeat, so the order keys a row
                                     <tr key={i}>
                                         {columns.map((c) => (
-                                            <td key={c.label} className={bodyCell(c.numeric)}>
+                                            <td
+                                                key={c.label}
+                                                className={cx(bodyCell(c.numeric), c.hide)}
+                                            >
                                                 {c.cell(p, total)}
                                             </td>
+                                        ))}
+                                    </tr>
+                                ))}
+                                {Array.from({ length: waiting }, (_, i) => (
+                                    <tr key={`waiting-${i}`} aria-hidden>
+                                        {columns.map((c) => (
+                                            <td
+                                                key={c.label}
+                                                className={cx(bodyCell(c.numeric), c.hide)}
+                                            />
                                         ))}
                                     </tr>
                                 ))}

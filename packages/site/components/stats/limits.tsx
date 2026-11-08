@@ -34,9 +34,6 @@ export function Limits() {
                                 <th scope="col" className={headCell(true)}>
                                     Value
                                 </th>
-                                <th scope="col" className={cx(headCell(), "w-(--hit)")}>
-                                    <span className="sr-only">Why</span>
-                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -45,13 +42,17 @@ export function Limits() {
                                 <tr key={limit.key} className="relative">
                                     <td className={cx(bodyCell(), "whitespace-normal!")}>
                                         {limit.label}
-                                    </td>
-                                    <td className={bodyCell(true)}>{limit.value}</td>
-                                    <td className={cx(bodyCell(), "text-right")}>
+                                        {/* After the name, so every value meets the frame's edge */}
                                         {limit.tip && (
-                                            <Tip text={limit.tip} label={`About ${limit.label}`} />
+                                            <span className="ml-(--space-2) inline-flex align-middle">
+                                                <Tip
+                                                    text={limit.tip}
+                                                    label={`About ${limit.label}`}
+                                                />
+                                            </span>
                                         )}
                                     </td>
+                                    <td className={bodyCell(true)}>{limit.value}</td>
                                 </tr>
                             ))}
                         </tbody>
@@ -65,7 +66,7 @@ export function Limits() {
                         >
                             What you can buy
                         </h3>
-                        {/* Five columns do not fit a phone, so the table scrolls inside its own box */}
+                        {/* On phones the size wraps so all four columns fit; the box still scrolls if not */}
                         <div className="relative mt-(--space-4) overflow-x-auto">
                             <table aria-labelledby={buyId} className={tableClass}>
                                 <thead>
@@ -87,7 +88,14 @@ export function Limits() {
                                 <tbody>
                                     {packages.map((p) => (
                                         <tr key={p.id}>
-                                            <td className={bodyCell()}>{sizeText(p)}</td>
+                                            <td
+                                                className={cx(
+                                                    bodyCell(),
+                                                    "phone:whitespace-normal!",
+                                                )}
+                                            >
+                                                {sizeText(p)}
+                                            </td>
                                             <td className={bodyCell(true)}>
                                                 {formatBytes(p.diskGiB * GiB)}
                                             </td>

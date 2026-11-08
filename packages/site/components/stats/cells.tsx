@@ -4,8 +4,11 @@ import { formatShortWallet, formatUsdc } from "../../lib/stats/format";
 import { ExternalArrow } from "../icons";
 import { CopyButton } from "./copy-button";
 
-/** A table's cells line up with the frame's edges: the first and last pad only inward. */
-const cellPad = "px-(--space-3) first:pl-0 last:pr-0 whitespace-nowrap";
+/**
+ * A table's cells line up with the frame's edges: the first and last pad only inward. Narrower
+ * screens pad less, so a wide table still fits its frame.
+ */
+const cellPad = "px-(--space-3) narrow:px-(--space-2) first:pl-0! last:pr-0! whitespace-nowrap";
 
 export const headCell = (numeric = false): string =>
     cx(
