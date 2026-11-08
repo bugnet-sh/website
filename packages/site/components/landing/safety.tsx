@@ -1,62 +1,71 @@
-import { useId } from "react";
+import { useId, type ComponentType } from "react";
+import { cx } from "../../lib/cx";
 import { Band, Frame } from "../shell/frame";
 import { secondaryButton } from "../ui/button";
+import { DataArt, DeadlineArt, OffMachineArt } from "./art/safety-art";
 import { cellInset } from "./inset";
 import { LandingTitle } from "./title";
 
-// Each line restates a fact from the docs' Safety and Paying pages, in fewer words
-const facts = [
+/** Each cell restates a fact from the docs' Safety page, in fewer words */
+export const safetyFacts: { title: string; text: string; Art: ComponentType }[] = [
     {
-        title: "Off your machine",
-        text: "Code runs on a cloud machine. It cannot reach your files, keys or network.",
+        title: "Runs on a cloud machine",
+        text: "Code in the sandbox runs on a cloud machine, not yours. It can't reach your files, your keys or your local network.",
+        Art: OffMachineArt,
     },
     {
-        title: "Gone at the deadline",
-        text: "The sandbox and everything in it are deleted when its time ends.",
+        title: "Deleted at the deadline",
+        text: "When its time is up, the sandbox is deleted with everything in it. Download what you need before then.",
+        Art: DeadlineArt,
     },
     {
-        title: "Output is data",
-        text: "Escape codes and hidden characters are stripped, and output is labelled as data, not instructions.",
-    },
-    {
-        title: "Checked for free",
-        text: "Before you pay, fixed rules flag install scripts that fetch binaries, hidden code and model files that run code.",
-    },
-    {
-        title: "No AI on our side",
-        text: "Bugnet's server is plain code. It never sees your conversation.",
-    },
-    {
-        title: "You approve every payment",
-        text: "Nothing is spent without your approval and your wallet's signature.",
+        title: "Output comes back as data",
+        text: "Bugnet strips escape codes and hidden characters from what the sandbox sends back, and marks it as data, not instructions.",
+        Art: DataArt,
     },
 ];
 
-/** Why running untrusted code here is safe: six facts in a hairline grid, three to a row. */
+/**
+ * Why running untrusted code here is safe: a heading in two tones with the Safety link at its
+ * right, then three cells in a hairline grid, each with its fact over a green line drawing.
+ */
 export function Safety() {
     const id = useId();
     return (
         <Band as="div" id="safety" rail={false}>
             <Frame padded={false}>
                 <section aria-labelledby={id}>
-                    <div className="flex flex-wrap items-end justify-between gap-(--space-4) px-(--pad) pt-(--band) pb-(--space-6)">
-                        <LandingTitle id={id}>Untrusted code stays in the sandbox.</LandingTitle>
+                    <div className="flex items-start justify-between gap-(--space-5) px-(--pad) pt-(--band) pb-(--space-7) tablet:flex-col">
+                        <LandingTitle id={id}>
+                            Untrusted code stays in the sandbox.{" "}
+                            <span className="block text-text-muted">
+                                Off your machine. Gone at the deadline. Output is just data.
+                            </span>
+                        </LandingTitle>
                         <a href="/docs/safety/" className={secondaryButton}>
                             Safety
                         </a>
                     </div>
-                    <ul className="grid grid-cols-3 gap-(--hairline) border-t-(length:--hairline) border-line bg-line narrow:grid-cols-2 phone:grid-cols-1">
-                        {facts.map((fact, i) => (
-                            <li
-                                key={fact.title}
-                                className={`bg-bg py-(--space-6) ${cellInset(i, 3, 2)}`}
-                            >
-                                <h3 className="text-(length:--cell-title-size) leading-(--cell-title-line) font-semibold">
-                                    {fact.title}
-                                </h3>
-                                <p className="mt-(--space-2) max-w-[44ch] text-(length:--lead-size) leading-(--lead-line) text-text-muted">
-                                    {fact.text}
-                                </p>
+                    <ul className="grid grid-cols-3 gap-(--hairline) border-t-(length:--hairline) border-line bg-line tablet:grid-cols-1">
+                        {safetyFacts.map(({ title, text, Art }, i) => (
+                            <li key={title} className="flex flex-col bg-bg">
+                                <div
+                                    className={cx(
+                                        "pt-(--space-6)",
+                                        cellInset(i, 3, 3),
+                                        "tablet:pr-(--pad) tablet:pl-(--pad)",
+                                    )}
+                                >
+                                    <h3 className="text-(length:--cell-title-size) leading-(--cell-title-line) font-semibold">
+                                        {title}
+                                    </h3>
+                                    <p className="mt-(--space-2) max-w-[44ch] text-(length:--lead-size) leading-(--lead-line) text-text-muted">
+                                        {text}
+                                    </p>
+                                </div>
+                                <div className="art-glow mt-auto flex justify-center px-(--space-5) pt-(--space-7) pb-(--space-6)">
+                                    <Art />
+                                </div>
                             </li>
                         ))}
                     </ul>

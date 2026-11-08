@@ -142,6 +142,28 @@
     --dither-logo: 360px;
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */
     --caps-tracking: 0.08em;
+    /* The line drawings of Safety and paying from the sandbox: green on the dark ground, so
+       decoration with no contrast pair. Each drawing's width (1 px a unit of its 280 by 184 box),
+       its stroke and type, and its tones of green */
+    --art-w: 280px;
+    --art-stroke: 1.25px;
+    --art-type: 11px;
+    --art-dim: color-mix(in srgb, var(--accent) 45%, transparent);
+    --art-faint: color-mix(in srgb, var(--accent) 18%, transparent);
+    --art-wash: color-mix(in srgb, var(--accent) 9%, transparent);
+    /* The soft green light behind each drawing, and the halo on its lit lines */
+    --art-glow: color-mix(in srgb, var(--accent) 11%, transparent);
+    --art-halo: color-mix(in srgb, var(--accent) 45%, transparent);
+    --art-halo-blur: 4px;
+    /* Dashed lines: a hidden edge, and the flow of payments, which moves one dash and gap a beat */
+    --art-dash: 3px 4px;
+    --art-flow-dash: 6px 8px;
+    --art-flow-step: 14px;
+    /* How far a bit of a deleted sandbox drifts before it fades */
+    --art-drift-x: 8px;
+    --art-drift-y: -16px;
+    /* What is yours in a drawing, such as your laptop: grey, so green stays the sandbox's */
+    --art-off: color-mix(in srgb, var(--text-muted) 55%, var(--line));
 
     /* Articles: docs, terms and privacy */
     --article: 72ch;
