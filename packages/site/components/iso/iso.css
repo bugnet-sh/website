@@ -7,13 +7,14 @@
     --anatomy-shade-1: var(--surface);
     --anatomy-shade-2: var(--surface-hover);
     --anatomy-shade-3: color-mix(in srgb, var(--line) 40%, var(--surface-hover));
-    --anatomy-lit-top: color-mix(in srgb, var(--accent) 10%, var(--surface-hover));
-    --anatomy-lit-shade: color-mix(in srgb, var(--accent) 6%, var(--surface));
+    --anatomy-lit-top: color-mix(in srgb, var(--text) 10%, var(--surface-hover));
+    --anatomy-lit-shade: color-mix(in srgb, var(--text) 6%, var(--surface));
     --anatomy-hi: color-mix(in srgb, var(--text-muted) 35%, var(--text));
     --anatomy-mid: color-mix(in srgb, var(--text-muted) 66%, var(--line));
     --anatomy-lo: color-mix(in srgb, var(--text-muted) 30%, var(--line));
     --anatomy-faint: color-mix(in srgb, var(--text-muted) 9%, var(--line));
-    --anatomy-lit: var(--accent);
+    /* Black and white, the screen included (founder, 2026-11-08) */
+    --anatomy-lit: var(--text);
     --anatomy-dot: var(--text);
     --anatomy-halo: #000;
     --anatomy-halo-opacity: 0.9;

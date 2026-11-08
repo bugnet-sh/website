@@ -17,6 +17,8 @@
     );
     aspect-ratio: var(--sbx-ratio);
     height: auto;
+    /* Lowered, so the base fills the slot's foot and the slot cuts a little of it too */
+    translate: 0 11%;
 }
 
 .sbx-dark {
@@ -45,11 +47,11 @@
 }
 
 .sbx-glass-screen {
-    fill: color-mix(in srgb, var(--accent) 5%, var(--bg));
+    fill: color-mix(in srgb, var(--text) 5%, var(--bg));
 }
 
 .sbx-glow {
-    fill: var(--accent);
+    fill: var(--text);
     opacity: 0.1;
     filter: blur(4px);
 }
