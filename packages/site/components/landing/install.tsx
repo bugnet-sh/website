@@ -3,8 +3,7 @@
 import { useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { cx } from "../../lib/cx";
 import { Link } from "../content/link";
-import { Rays } from "../backgrounds/rays";
-import { Band, Frame } from "../shell/frame";
+import { Band } from "../shell/frame";
 import { LandingTitle } from "./title";
 
 export type InstallTab = { id: string; name: string; panel: ReactNode };
@@ -91,20 +90,16 @@ export function InstallTabs({ tabs }: { tabs: InstallTab[] }) {
 export function Install({ tabs }: { tabs: InstallTab[] }) {
     const id = useId();
     return (
-        <Band as="div" id="install" rail={false}>
-            {/* White light rays fall from the band's top, behind the tabs; they take no clicks */}
-            <Frame className="relative overflow-hidden">
-                <Rays className="pointer-events-none absolute inset-x-0 top-0 h-(--rays) [mask-image:linear-gradient(to_bottom,#000_40%,transparent)]" />
-                <section aria-labelledby={id} className="relative py-(--band)">
-                    <LandingTitle id={id}>Install</LandingTitle>
-                    <div className="mt-(--space-6)">
-                        <InstallTabs tabs={tabs} />
-                    </div>
-                    <p className="mt-(--space-4) text-(length:--ui-size) leading-(--ui-line) text-text-muted">
-                        By installing Bugnet you accept the <Link href="/terms/">Terms</Link>.
-                    </p>
-                </section>
-            </Frame>
+        <Band as="div" id="install">
+            <section aria-labelledby={id} className="py-(--band)">
+                <LandingTitle id={id}>Install</LandingTitle>
+                <div className="mt-(--space-6)">
+                    <InstallTabs tabs={tabs} />
+                </div>
+                <p className="mt-(--space-4) text-(length:--ui-size) leading-(--ui-line) text-text-muted">
+                    By installing Bugnet you accept the <Link href="/terms/">Terms</Link>.
+                </p>
+            </section>
         </Band>
     );
 }

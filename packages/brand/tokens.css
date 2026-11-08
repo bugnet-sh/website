@@ -130,7 +130,7 @@
     --x402-figure-phone: 320px;
     /* The dithered mark's height at most, centred in its column */
     --dither-logo: 360px;
-    /* The install band's light rays, from its top edge down */
+    /* The pricing band's light rays, from its top edge down */
     --rays: clamp(320px, 40vw, 560px);
     --x402-mark: 200px;
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */

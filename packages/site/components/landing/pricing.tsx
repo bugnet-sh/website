@@ -3,6 +3,7 @@
 import { useId } from "react";
 import { cx } from "../../lib/cx";
 import { packageFacts, priceText } from "../../lib/landing/price";
+import { Rays } from "../backgrounds/rays";
 import { Band, Frame } from "../shell/frame";
 import { useStats } from "../stats/stats-provider";
 import { isUnavailable, Unavailable } from "../stats/unavailable";
@@ -21,8 +22,10 @@ export function Pricing() {
     const packages = stats.data?.packages ?? [];
     return (
         <Band as="div" id="pricing" rail={false}>
-            <Frame padded={false}>
-                <section aria-labelledby={id}>
+            {/* White light rays fall from the band's top, through the cells; they take no clicks */}
+            <Frame padded={false} className="relative overflow-hidden">
+                <Rays className="pointer-events-none absolute inset-x-0 top-0 h-(--rays) [mask-image:linear-gradient(to_bottom,#000_40%,transparent)]" />
+                <section aria-labelledby={id} className="relative">
                     <div className="flex flex-wrap items-end justify-between gap-(--space-4) px-(--pad) pt-(--band) pb-(--space-6)">
                         <LandingTitle id={id}>Pricing</LandingTitle>
                         <a href="/stats/#limits" className={secondaryButton}>
@@ -36,7 +39,7 @@ export function Pricing() {
                                     <li
                                         key={p.id}
                                         className={cx(
-                                            "bg-bg py-(--space-5) shadow-[0_0_0_var(--hairline)_var(--line)]",
+                                            "py-(--space-5) shadow-[0_0_0_var(--hairline)_var(--line)]",
                                             cellInset(i, 4, 2),
                                         )}
                                     >
