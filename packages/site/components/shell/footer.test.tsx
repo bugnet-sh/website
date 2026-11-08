@@ -43,13 +43,14 @@ describe("SiteFooter", () => {
         expect(within(footer()).getByText("© 2026 Bugnet")).toBeDefined();
     });
 
-    it("lays the brand and the two link columns on the spec's grid at every width", () => {
+    it("lays the brand and the two link columns on one grid at every width", () => {
         render(<SiteFooter />);
         const grid = within(footer()).getByText("© 2026 Bugnet").closest("div")?.parentElement;
         expect(grid?.className.split(" ")).toEqual(
             expect.arrayContaining([
-                "grid-cols-[1.8fr_1fr_1fr]",
-                "gap-(--space-6)",
+                "grid-cols-[1fr_auto_auto]",
+                "gap-x-(--space-8)",
+                "gap-y-(--space-6)",
                 "pt-(--space-7)",
                 "pb-(--space-8)",
                 "px-(--pad)",
@@ -62,10 +63,11 @@ describe("SiteFooter", () => {
             expect.arrayContaining(["tablet:col-span-2", "phone:col-span-1"]),
         );
         expect(columns).toHaveLength(2);
+        // One group against the right edge on desktop, each column's links starting on one line
         for (const column of columns) {
-            expect(column.className.split(" ")).toEqual(
-                expect.arrayContaining(["justify-self-end", "phone:justify-self-start"]),
-            );
+            const classes = column.className.split(" ");
+            expect(classes).not.toContain("justify-self-end");
+            expect(classes).toContain("tablet:pt-0");
         }
     });
 

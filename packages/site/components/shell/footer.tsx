@@ -18,13 +18,14 @@ const columns: ShellLink[][] = [
 ];
 
 /**
- * The closing band. Its hairline above is the one under the band before it. The link columns
- * hug the frame's right edge until phones, where everything stacks on the left.
+ * The closing band, pushed to the bottom of a short page. Its hairline above is the one under the
+ * band before it. The two link columns form one group against the frame's right edge; tablets
+ * put them under the logo, and phones stack everything on the left.
  */
 export function SiteFooter() {
     return (
-        <footer>
-            <Frame className="grid grid-cols-[1.8fr_1fr_1fr] gap-(--space-6) pt-(--space-7) pb-(--space-8) tablet:grid-cols-2 phone:grid-cols-1">
+        <footer className="mt-auto">
+            <Frame className="grid grid-cols-[1fr_auto_auto] gap-x-(--space-8) gap-y-(--space-6) pt-(--space-7) pb-(--space-8) tablet:grid-cols-2 phone:grid-cols-1">
                 <div className="tablet:col-span-2 phone:col-span-1">
                     <Logo />
                     <p className="mt-(--space-4) max-w-[34ch] text-(length:--ui-size) leading-(--ui-line) text-text-muted">
@@ -35,15 +36,17 @@ export function SiteFooter() {
                     </p>
                 </div>
                 {columns.map((column) => (
+                    // Pushed down half the gap between the logo's line and a link's, so the first
+                    // link centres on the logo; on phones each link is a whole tap target tall
                     <ul
                         key={column[0]?.href}
-                        className="flex flex-col gap-(--space-3) justify-self-end phone:justify-self-start"
+                        className="flex flex-col gap-(--space-3) pt-[calc((var(--wordmark-line)-var(--ui-line))/2)] tablet:pt-0 phone:gap-0"
                     >
                         {column.map((link) => (
                             <li key={link.href} className="flex">
                                 <ShellAnchor
                                     link={link}
-                                    className={`inline-flex items-center gap-(--space-1) ${linkText}`}
+                                    className={`inline-flex items-center gap-(--space-1) phone:h-(--hit) ${linkText}`}
                                 />
                             </li>
                         ))}

@@ -59,6 +59,14 @@ export function Menu({ current }: { current?: Page }) {
             >
                 {open ? <CloseIcon /> : <MenuIcon />}
             </button>
+            {/* Dims the page under the open panel, so the panel reads as above it; a tap on it
+                closes the menu, as any tap outside the panel does */}
+            {open && (
+                <div
+                    aria-hidden
+                    className="fixed inset-x-0 top-(--nav) bottom-0 hidden bg-bg/80 phone:block"
+                />
+            )}
             {/* Positioned against the sticky header, so it hangs just under the header's hairline,
                 which is inside the header, and covers the page instead of pushing it down */}
             <nav

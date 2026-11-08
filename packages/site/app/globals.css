@@ -52,7 +52,10 @@ html {
     text-size-adjust: 100%;
 }
 
+/* A column, so the footer can sit at the bottom of a short page */
 body {
+    display: flex;
+    flex-direction: column;
     min-height: 100svh;
     background: var(--bg);
 }
