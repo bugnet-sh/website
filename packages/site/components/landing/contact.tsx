@@ -44,7 +44,7 @@ const rowArrow =
     "block size-(--contact-row-arrow) shrink-0 transition-transform duration-300 motion-reduce:transition-none";
 
 const row =
-    "contact-row group flex min-h-(--contact-row) items-center justify-between gap-(--space-4) bg-bg pr-(--space-6) pl-(--pad) font-mono text-(length:--contact-row-size) leading-(--contact-row-line) hover:bg-surface-hover focus-visible:-outline-offset-(--ring) phone:pr-(--pad)";
+    "contact-row group flex min-h-(--contact-row) items-center justify-between gap-(--space-4) bg-bg pr-(--space-6) pl-(--pad) font-mono text-(length:--contact-row-size) leading-(--contact-row-line) hover:bg-surface-hover focus-visible:-outline-offset-(--ring) tablet:pr-(--pad)";
 
 const label = "flex items-center gap-(--space-3)";
 
@@ -59,11 +59,11 @@ export function Contact() {
             <Frame padded={false}>
                 <section
                     aria-labelledby={id}
-                    className="grid grid-cols-3 gap-(--hairline) bg-line phone:grid-cols-1"
+                    className="grid grid-cols-3 gap-(--hairline) bg-line tablet:grid-cols-1"
                 >
                     <a
                         href={`mailto:${supportEmail}`}
-                        className="group col-span-2 col-start-2 row-start-1 flex items-center justify-between gap-(--space-5) bg-bg py-(--space-7) pr-(--pad) pl-(--space-7) hover:text-accent focus-visible:-outline-offset-(--ring) phone:col-span-1 phone:col-start-auto phone:row-start-auto phone:pl-(--pad)"
+                        className="group col-span-2 col-start-2 row-start-1 flex items-center justify-between gap-(--space-5) bg-bg py-(--space-7) pr-(--pad) pl-(--space-7) hover:text-accent focus-visible:-outline-offset-(--ring) tablet:col-span-1 tablet:col-start-auto tablet:row-start-auto tablet:pl-(--pad)"
                     >
                         <h2
                             id={id}
@@ -77,7 +77,7 @@ export function Contact() {
                             className="block size-(--contact-arrow) shrink-0 transition-transform duration-300 group-hover:translate-x-(--space-2) group-focus-visible:translate-x-(--space-2) motion-reduce:transition-none"
                         />
                     </a>
-                    <ul className="col-start-1 row-start-1 grid grid-rows-2 gap-(--hairline) phone:col-start-auto phone:row-start-auto">
+                    <ul className="col-start-1 row-start-1 grid grid-rows-2 gap-(--hairline) tablet:col-start-auto tablet:row-start-auto">
                         <li className="grid">
                             <a href="/docs/" className={row}>
                                 <span className={label}>
