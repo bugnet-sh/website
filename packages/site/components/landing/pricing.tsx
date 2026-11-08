@@ -39,7 +39,7 @@ export function Pricing() {
                                     <li
                                         key={p.id}
                                         className={cx(
-                                            "py-(--space-5) shadow-[0_0_0_var(--hairline)_var(--line)]",
+                                            "py-(--space-6) shadow-[0_0_0_var(--hairline)_var(--line)]",
                                             cellInset(i, 4, 2),
                                         )}
                                     >
