@@ -121,10 +121,6 @@
     --hero-measure: 22ch;
     /* The 404 page's number */
     --not-found-size: clamp(96px, 16vw, 200px);
-    /* How far the pricing title's ASCII backdrop reaches over the cells under it */
-    --pricing-bleed: 72px;
-    /* Faint, so the white title reads over it */
-    --pricing-field-opacity: 0.45;
     /* The hero fills the screen under the header, but never less than this on a short laptop */
     --hero-min: 640px;
     /* How it works: each step's mock card body, the same height in every column */
