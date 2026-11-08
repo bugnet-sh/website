@@ -6,7 +6,7 @@ import { LandingTitle } from "./title";
 
 const muted = "text-text-muted";
 
-/** A small window onto the step: its number and name, then a few literal lines. */
+/** A small window onto the step: what it talks to, then a few literal lines. */
 function Card({ tag, aside, children }: { tag: string; aside?: ReactNode; children: ReactNode }) {
     return (
         // A picture of the step; the title and sentence under it say the same in words
@@ -14,7 +14,7 @@ function Card({ tag, aside, children }: { tag: string; aside?: ReactNode; childr
             aria-hidden
             className="border-(length:--hairline) border-line bg-surface font-mono text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap"
         >
-            <div className="flex h-(--segment) items-center justify-between border-b-(length:--hairline) border-line px-(--space-3) tracking-(--caps-tracking) text-text-muted uppercase">
+            <div className="flex h-(--segment) items-center justify-between border-b-(length:--hairline) border-line px-(--space-3) text-text-muted">
                 <span>{tag}</span>
                 {aside}
             </div>
@@ -44,11 +44,10 @@ const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
         text: "Ask your agent to run something in a sandbox.",
         tip: "It checks for free first with bugnet_assess.",
         card: (
-            <Card tag="01 Ask">
+            <Card tag="bugnet_assess" aside={<span className="text-accent">free</span>}>
                 <p>
                     <span className={muted}>&gt;</span> Try this repo in a sandbox.
                 </p>
-                <p className="text-accent-3">bugnet_assess</p>
             </Card>
         ),
     },
@@ -57,7 +56,7 @@ const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
         text: "Your agent names the size and price. You approve the call.",
         tip: "Bugnet refuses a call whose price isn't the exact price of that size.",
         card: (
-            <Card tag="02 Approve">
+            <Card tag="bugnet_start">
                 <p>2 vCPU 2 GiB 10 min</p>
                 <p className="text-accent-2">0.05 USDC</p>
                 <p className="flex gap-(--space-2)">
@@ -74,7 +73,7 @@ const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
         text: "Pay in USDC on Solana, by link or from your wallet.",
         tip: "x402: no account, no API key.",
         card: (
-            <Card tag="03 Pay">
+            <Card tag="pay.bugnet.sh" aside={<span className="text-accent-3">Solana</span>}>
                 <Line label="order">
                     <span className="text-accent-2">0.05 USDC</span>
                 </Line>
@@ -90,7 +89,7 @@ const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
         text: "Commands run in a fresh cloud sandbox. Results come back.",
         tip: "The sandbox is deleted at the deadline.",
         card: (
-            <Card tag="04 Run" aside={<span className="text-text">09:58</span>}>
+            <Card tag="2 vCPU 2 GiB" aside={<span className="text-text">09:58</span>}>
                 <p>
                     <span className={muted}>$</span> npm test
                 </p>
