@@ -1,11 +1,11 @@
 "use client";
 
-import { useStatsSummary } from "../../lib/stats/client";
 import { lowestPrice, priceText } from "../../lib/landing/price";
+import { useStats } from "../stats/stats-provider";
 
 /** The cheapest run on sale, from the live feed; without the feed there is no price to show. */
 export function FromPrice() {
-    const { data } = useStatsSummary();
+    const { data } = useStats();
     const micros = data ? lowestPrice(data.packages) : null;
     if (micros === null) return null;
     return (
