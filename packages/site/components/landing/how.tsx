@@ -104,6 +104,7 @@ function Terminal({ lines, inset }: { lines: Line[]; inset: string }) {
         // A picture of the step, which its title and sentence say in words
         <div
             aria-hidden
+            data-how-term
             className="relative mt-auto h-(--how-term) border-t-(length:--hairline) border-line bg-surface"
         >
             <span

@@ -1,10 +1,13 @@
 "use client";
 
 import { useEffect, useRef, type ReactNode } from "react";
-import { timeline, type Frame } from "./how-timeline";
+import { LINE_MS, PAUSE_MS, timeline, type Frame } from "./how-timeline";
 
 // The bar's scale-x-0 sets the scale property, which a transform keyframe would not undo
 const grow: Keyframe[] = [{ scale: "0 1" }, { scale: "1 1" }];
+
+// The narrow breakpoint in globals.css, under which the four steps no longer sit in one row
+const STACKED = "(max-width: 1080px)";
 
 /** Drives the server-drawn steps by attribute, and returns what stops it */
 function play(root: HTMLElement): () => void {
@@ -90,7 +93,81 @@ function play(root: HTMLElement): () => void {
     };
 }
 
-/** The steps' list, playing them in order while it is on screen, and still under reduced motion */
+/**
+ * Stacked, a visitor sees a step or two at a time, so each terminal types its own lines once as
+ * it comes into view, and then stays drawn. One on screen at first is already drawn and stays so.
+ */
+function playEach(root: HTMLElement): () => void {
+    const steps = [...root.querySelectorAll<HTMLElement>("[data-how-step]")];
+    const timers = new Set<ReturnType<typeof setTimeout>>();
+    const bars = new Set<Animation>();
+    const waiting = new Set<HTMLElement>();
+    const lines = (step: HTMLElement) => [...step.querySelectorAll<HTMLElement>("[data-how-line]")];
+    const later = (ms: number, run: () => void) => {
+        const timer = setTimeout(() => {
+            timers.delete(timer);
+            run();
+        }, ms);
+        timers.add(timer);
+    };
+
+    const type = (step: HTMLElement) => {
+        const all = lines(step);
+        step.toggleAttribute("data-playing", true);
+        const bar = step.querySelector<HTMLElement>("[data-how-bar]")?.animate?.(grow, {
+            duration: (all.length - 1) * LINE_MS + PAUSE_MS,
+            easing: "linear",
+        });
+        if (bar) bars.add(bar);
+        all.forEach((line, j) =>
+            later(j * LINE_MS, () => {
+                all[j - 1]?.toggleAttribute("data-caret", false);
+                line.toggleAttribute("data-off", false);
+                line.toggleAttribute("data-caret", true);
+            }),
+        );
+        later((all.length - 1) * LINE_MS + PAUSE_MS, () => {
+            all.at(-1)?.toggleAttribute("data-caret", false);
+            step.toggleAttribute("data-playing", false);
+        });
+    };
+
+    const observer = new IntersectionObserver(
+        (entries) => {
+            for (const entry of entries) {
+                const step = entry.target.closest<HTMLElement>("[data-how-step]");
+                if (!step) continue;
+                if (entry.isIntersecting) {
+                    observer.unobserve(entry.target);
+                    if (waiting.delete(step)) type(step);
+                } else if (!waiting.has(step)) {
+                    waiting.add(step);
+                    lines(step).forEach((line) => line.toggleAttribute("data-off", true));
+                }
+            }
+        },
+        { threshold: 0.5 },
+    );
+    steps.forEach((step) => observer.observe(step.querySelector("[data-how-term]") ?? step));
+
+    return () => {
+        observer.disconnect();
+        timers.forEach(clearTimeout);
+        bars.forEach((bar) => bar.cancel());
+        steps.forEach((step) => {
+            step.toggleAttribute("data-playing", false);
+            lines(step).forEach((line) => {
+                line.toggleAttribute("data-off", false);
+                line.toggleAttribute("data-caret", false);
+            });
+        });
+    };
+}
+
+/**
+ * The steps' list: in one row it plays them in order while it is on screen; stacked, each plays
+ * as it comes into view. Under reduced motion every terminal stays drawn.
+ */
 export function HowPlayer({ className, children }: { className: string; children: ReactNode }) {
     const list = useRef<HTMLOListElement>(null);
 
@@ -103,7 +180,18 @@ export function HowPlayer({ className, children }: { className: string; children
         ) {
             return;
         }
-        return play(root);
+        const stacked = window.matchMedia?.(STACKED);
+        const start = () => (stacked?.matches ? playEach(root) : play(root));
+        let stop = start();
+        const swap = () => {
+            stop();
+            stop = start();
+        };
+        stacked?.addEventListener?.("change", swap);
+        return () => {
+            stacked?.removeEventListener?.("change", swap);
+            stop();
+        };
     }, []);
 
     return (
