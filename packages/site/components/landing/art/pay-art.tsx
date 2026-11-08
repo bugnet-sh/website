@@ -2,20 +2,25 @@ import { cylinder, frontMatrix, iso, pathOf, type SolidPaths } from "../../iso/i
 import { Art, GlassBox } from "./art";
 import { box, camera } from "./line-art";
 
-// Each drawing stands alone in its cell: no line runs from one cell into the next
+/*
+ * The three drawings share one ground: each one's lowest point sits on GROUND, and each is
+ * centred across the 280 units of its box, so side by side they line up. Every line starts
+ * under the solid it leaves (hidden by that solid's fill) and ends on an arrowhead or a part.
+ * The offsets below are the kit's projection of each part, measured once.
+ */
+const GROUND = 156;
 
-/** A coin, solid so no line shows through it; a dim one is a coin already paid out */
-function Coin({ paths, dim = false }: { paths: SolidPaths; dim?: boolean }) {
+function Coin({ paths }: { paths: SolidPaths }) {
     return (
         <g>
             <path d={paths.fill} className="art-ground" />
             <path d={paths.top} className="art-wash" />
-            <path d={`${paths.outline}${paths.crease}`} className={dim ? "art-dim" : "art-lit"} />
+            <path d={`${paths.outline}${paths.crease}`} className="art-lit" />
         </g>
     );
 }
 
-/** A dashed run that ends in an arrowhead at (x, y), pointing left or right */
+/** A dashed run at height y from x `from` to an arrowhead whose tip is at x `to` */
 function Arrow({ from, to, y }: { from: number; to: number; y: number }) {
     const back = to > from ? -6 : 6;
     return (
@@ -29,42 +34,49 @@ function Arrow({ from, to, y }: { from: number; to: number; y: number }) {
     );
 }
 
-// No API key needed: the sandbox, and the paid APIs it can pick from, one of them picked
+// No API key needed: the sandbox, and the paid APIs it can pick from, one of them picked.
+// A 40-unit cube reaches 35.8 below its origin and 35.8 to each side; the middle of its right
+// edge is 4 above the origin, level with the middle of the list
 
-const C1 = camera(70, 124);
+const C1 = camera(70, GROUND - 35.8);
 const sandbox = box(C1, [0, 0, 0], [40, 40, 40]);
 const prompt = frontMatrix(40, C1);
+const LIST_X = 136;
+const MID = Math.round(GROUND - 35.8 - 4);
+const CHIP = 24;
+const GAP = 4;
 const apis = ["search", "chat", "translate"];
+const chipY = (i: number) => MID - CHIP / 2 + (i - 1) * (CHIP + GAP) + 0.5;
 
 export function FindArt() {
     return (
         <Art>
-            <path d="M 106 120 H 130 V 92.5 H 152" className="art-dim art-dash" />
+            <path d={`M ${70 + 35.8} ${MID} H ${LIST_X}`} className="art-dim art-dash" />
             <GlassBox paths={sandbox} />
             <g transform={prompt}>
                 <path d="M 8 -20 l 5 -4 l -5 -4 M 16 -19 h 7" className="art-lit" />
             </g>
             {apis.map((api, i) => {
-                const y = 52.5 + i * 28;
+                const y = chipY(i);
                 const picked = i === 1;
                 return (
                     <g key={api}>
                         <rect
-                            x="152.5"
+                            x={LIST_X + 0.5}
                             y={y}
                             width="110"
-                            height="24"
+                            height={CHIP}
                             className={picked ? "art-wash" : "art-ground"}
                         />
                         <rect
-                            x="152.5"
+                            x={LIST_X + 0.5}
                             y={y}
                             width="110"
-                            height="24"
+                            height={CHIP}
                             className={picked ? "art-lit art-halo" : "art-faint"}
                         />
                         <text
-                            x="162"
+                            x={LIST_X + 10}
                             y={y + 16}
                             className={picked ? "art-text art-text-lit" : "art-text"}
                         >
@@ -77,58 +89,83 @@ export function FindArt() {
     );
 }
 
-// Paid call by call: the allowance as a stack of coins, approved once, paying out one coin a
-// call along a short run that ends in its arrowhead
+// Paid call by call: the allowance as a stack of coins, approved once, paying out a coin a call.
+// A coin of radius 22 reaches 13.9 below its origin and 27.8 to each side; the stack's top rim
+// is 37.5 above it
 
-const C2 = camera(80, 140);
+const STACK_X = 79;
+const STACK_Y = GROUND - 13.9;
+const C2 = camera(STACK_X, STACK_Y);
 const stack = Array.from({ length: 5 }, (_, i) => cylinder(0, 0, 22, i * 4.5, 3.5, C2, 48));
-const PAY_Y = 156;
-// The top coin's far rim, where the approval's line comes down to meet the stack
-const STACK_TOP = 140 - 4 * 4.5 - 3.5 - 11;
-const sent = [140, 176, 212].map((x) => cylinder(0, 0, 7, 0, 2.5, camera(x, PAY_Y - 4), 24));
+const sent = [52, 86, 120].map((dx) =>
+    cylinder(0, 0, 7, 0, 2.5, camera(STACK_X + dx, STACK_Y), 24),
+);
+const OK = { x: STACK_X + 45, y: 59, size: 22 };
 
 export function AllowanceArt() {
     return (
         <Art>
-            <path d={`M 124 64.5 H 80 V ${STACK_TOP}`} className="art-dim art-dash" />
+            <path
+                d={`M ${OK.x} ${OK.y + OK.size / 2} H ${STACK_X} V ${STACK_Y - 37.5}`}
+                className="art-dim art-dash"
+            />
+            <Arrow from={STACK_X} to={STACK_X + 150} y={STACK_Y} />
             {stack.map((coin, i) => (
                 <Coin key={i} paths={coin} />
             ))}
-            <Arrow from={108} to={246} y={PAY_Y} />
             {sent.map((coin, i) => (
-                <Coin key={i} paths={coin} dim={i > 0} />
+                <Coin key={i} paths={coin} />
             ))}
             {/* One approval */}
-            <rect x="124.5" y="53.5" width="22" height="22" className="art-wash" />
-            <rect x="124.5" y="53.5" width="22" height="22" className="art-lit art-halo" />
-            <path d="M 129.5 64.5 l 4 4 l 8 -9" className="art-lit" />
+            <rect
+                x={OK.x + 0.5}
+                y={OK.y + 0.5}
+                width={OK.size}
+                height={OK.size}
+                className="art-wash"
+            />
+            <rect
+                x={OK.x + 0.5}
+                y={OK.y + 0.5}
+                width={OK.size}
+                height={OK.size}
+                className="art-lit art-halo"
+            />
+            <path d={`M ${OK.x + 5.5} ${OK.y + 11.5} l 4 4 l 8 -9`} className="art-lit" />
         </Art>
     );
 }
 
-// Capped and refunded: what was spent fills a glass column up to the ring of the limit, and what
-// is left runs back to the coins it came from
+// Capped and refunded: what was spent fills a glass column to its level, under the ring of the
+// limit, and what is left runs back to the coins it came from. A 28 by 28 column reaches 25
+// below its origin and 25 to each side; its left foot is 12.5 below the origin
 
-const C3 = camera(182, 132);
-const column = box(C3, [0, 0, 0], [28, 28, 78]);
-const spent = box(C3, [2, 2, 0], [24, 24, 46]);
+const COL_X = 180;
+const COL_Y = GROUND - 25;
+const C3 = camera(COL_X, COL_Y);
+const column = box(C3, [0, 0, 0], [28, 28, 64]);
+const LEVEL = 24;
+const LIMIT = 48;
+const spent = box(C3, [0, 0, 0], [28, 28, LEVEL]);
 const at = (x: number, y: number, z: number) => iso([x, y, z], C3);
-// The limit is a line round the column's two front faces, flush with the glass
-const LIMIT = 60;
+// The level's near edges are lit and its far ones faint, so they never cross the limit's ring
+const levelNear = pathOf([at(0, 28, LEVEL), at(28, 28, LEVEL), at(28, 0, LEVEL)]);
+const levelFar = pathOf([at(0, 28, LEVEL), at(0, 0, LEVEL), at(28, 0, LEVEL)]);
 const ring = pathOf([at(0, 28, LIMIT), at(28, 28, LIMIT), at(28, 0, LIMIT)]);
-const leftFoot = at(0, 28, 0);
-const REFUND_Y = Math.round(leftFoot[1]) + 0.5;
-const back = [0, 4.5].map((z) => cylinder(0, 0, 10, z, 3.5, camera(84, REFUND_Y + 2), 32));
+const REFUND_Y = COL_Y + 12.5;
+const COINS_X = 89;
+const back = [0, 4.5].map((z) => cylinder(0, 0, 11, z, 3.5, camera(COINS_X, REFUND_Y), 32));
 
 export function LimitArt() {
     return (
         <Art>
-            <path d={`${spent.left}${spent.right}${spent.top}`} className="art-wash" />
-            <path d={spent.edges} className="art-dim" />
-            <path d={spent.top} className="art-lit" />
+            <Arrow from={COL_X - 25} to={COINS_X + 20} y={REFUND_Y} />
+            <path d={`${spent.left}${spent.right}`} className="art-wash" />
+            <path d={spent.top} className="art-wash" />
+            <path d={levelFar} className="art-faint" />
             <GlassBox paths={column} />
+            <path d={levelNear} className="art-lit" />
             <path d={ring} className="art-lit art-halo" />
-            <Arrow from={Math.round(leftFoot[0]) - 4} to={102} y={REFUND_Y} />
             {back.map((coin, i) => (
                 <Coin key={i} paths={coin} />
             ))}

@@ -5,7 +5,7 @@ import { box, camera, plate, round, seeded } from "./line-art";
 
 // Off your machine: the sandbox on a cloud machine, a wall on the way to your laptop
 
-const A = camera(128, 90);
+const A = camera(128, 96);
 const sandbox = box(A, [15, -50, 0], [44, 44, 44]);
 const machine = plate(A, [3, -62, 0], [68, 68]);
 const laptop = box(A, [-6, 72, 0], [40, 28, 3]);
@@ -41,7 +41,7 @@ export function OffMachineArt() {
 
 // Gone at the deadline: a box with a dial at zero, fading out where its bits drift away
 
-const B = camera(140, 104);
+const B = camera(125, 107);
 const doomed = box(B, [-1, -1, 0], [56, 56, 56]);
 const dial = frontMatrix(55, B);
 const DIAL: Point3 = [27, 0, 28];
@@ -73,10 +73,10 @@ export function DeadlineArt() {
                 <linearGradient
                     id="art-fade-line"
                     gradientUnits="userSpaceOnUse"
-                    x1="112"
-                    y1="150"
-                    x2="196"
-                    y2="54"
+                    x1="97"
+                    y1="153"
+                    x2="181"
+                    y2="57"
                 >
                     <stop offset="0.3" className="art-stop" stopOpacity="1" />
                     <stop offset="0.8" className="art-stop" stopOpacity="0" />
@@ -84,10 +84,10 @@ export function DeadlineArt() {
                 <linearGradient
                     id="art-fade-face"
                     gradientUnits="userSpaceOnUse"
-                    x1="112"
-                    y1="150"
-                    x2="196"
-                    y2="54"
+                    x1="97"
+                    y1="153"
+                    x2="181"
+                    y2="57"
                 >
                     <stop offset="0.3" className="art-stop" stopOpacity="0.12" />
                     <stop offset="0.8" className="art-stop" stopOpacity="0" />
@@ -134,9 +134,9 @@ const CH = 6.6;
 export function DataArt() {
     return (
         <Art>
-            <rect x="12.5" y="30.5" width="255" height="138" className="art-dim" />
+            <rect x="12.5" y="18.5" width="255" height="138" className="art-dim" />
             {lines.map((line, i) => {
-                const y = 52.5 + i * 38;
+                const y = 40.5 + i * 38;
                 return (
                     <g key={line.text}>
                         <rect x="28.5" y={y} width="223" height="28" className="art-wash" />
@@ -168,8 +168,8 @@ export function DataArt() {
                     </g>
                 );
             })}
-            <rect x="24" y="22" width="40" height="17" className="art-solid" />
-            <text x="31" y="34.5" className="art-tag">
+            <rect x="24" y="10" width="40" height="17" className="art-solid" />
+            <text x="31" y="22.5" className="art-tag">
                 data
             </text>
         </Art>
