@@ -33,7 +33,7 @@ const LOGO = resolve(HERE, "../../brand/logo.svg");
 
 const LONG_SIDE = 1200;
 /* Room around the mark, as a share of its longer projected side */
-const MARGIN = 0.05;
+const MARGIN = 0.015;
 /* --bg, so the picture's ground and the page are one colour */
 const GROUND = 10;
 const EXPOSURE = 0.85;
@@ -332,7 +332,7 @@ function softbox(power, [c, u, v], hu, hv, soft) {
 const LIGHTS = [
     // The key, above and right, with only its soft edge on the faces so they fall from bright to
     // dark and the bevels that turn toward it flare
-    softbox(3.2, frame(offset(0.148, 0.406), -20), 0.9, 0.3, 0.13),
+    softbox(3.2, frame(offset(0.148, 0.37), -20), 0.9, 0.3, 0.13),
     // A strip behind on the right, for the rim along the far edges
     softbox(3.0, frame([1, 0.15, -0.3]), 0.18, 0.8, 0.1),
     // A low fill for the bevels that face down

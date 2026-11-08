@@ -5,7 +5,7 @@ import DitherVeil from "./dither-veil";
 import { LogoBoundary } from "./error-boundary";
 
 /** The mark as a lit aluminium object on the page ground, as scripts/render-mark.mjs writes it. */
-export const MARK = { src: "/mark.png", width: 999, height: 1200 };
+export const MARK = { src: "/mark.png", width: 986, height: 1200 };
 /** The tokens' values, for a stylesheet without them. */
 const INK = "#0a0a0a";
 const PAPER = "#ededed";
