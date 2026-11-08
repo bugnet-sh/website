@@ -8,7 +8,7 @@ import { LandingTitle } from "./title";
 const facts = [
     "Your agent asks for a sandbox, Bugnet names the price, and the sandbox starts once you pay. That's x402, an open standard for paying on the web.",
     "You pay in USDC on Solana, and the payment clears in seconds.",
-    "Pay through a link with any Solana wallet, or scan a Solana Pay code with your phone.",
+    "Pay through a link with any Solana wallet, or from your phone in Phantom or Solflare.",
 ];
 
 /** Why there is no account: the text and its facts left, the logo right, stacked on tablets. */

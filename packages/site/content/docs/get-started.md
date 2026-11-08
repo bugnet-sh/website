@@ -61,7 +61,7 @@ Bugnet takes USDC on Solana mainnet only, and pays the SOL fees itself. Set up o
 
 | Way                   | You need                                                                                                           |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| By link               | A browser wallet such as Phantom or Solflare holding USDC, or a phone wallet that scans a Solana Pay QR code       |
+| By link               | A browser wallet such as Phantom or Solflare holding USDC, or Phantom or Solflare on your phone                    |
 | From the `pay` wallet | [`pay`](https://pay.sh) on this computer, the bridge from step 1, and Touch ID, Windows Hello or polkit to approve |
 
 To set up the `pay` wallet, about 5 to 10 minutes once:
@@ -136,7 +136,7 @@ charged.
 ### By link {#pay-by-link}
 
 1. Open the pay link the agent shows you, `https://pay.bugnet.sh/o/<order>`.
-2. Pay with your browser wallet, or scan the page's Solana Pay QR code with your phone.
+2. Pay with your browser wallet, or scan the page's QR code to open it in Phantom on your phone.
 3. Tell your agent you paid.
 
 ### From the `pay` wallet {#pay-from-the-wallet}
