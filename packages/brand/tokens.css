@@ -99,6 +99,11 @@
     --share-bar: 96px;
     --share-line: 4px;
 
+    /* The landing page's H1 and how many characters wide it runs before it wraps */
+    --hero-size: clamp(36px, 5vw, 64px);
+    --hero-line: 1.15;
+    --hero-measure: 22ch;
+
     /* Articles: docs, terms and privacy */
     --article: 72ch;
     --toc: 200px;
