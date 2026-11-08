@@ -127,8 +127,14 @@
     --pricing-field-opacity: 0.45;
     /* The hero fills the screen under the header, but never less than this on a short laptop */
     --hero-min: 640px;
-    /* How it works: each step's mock card body, the same height in every column */
-    --how-mock: 96px;
+    /* How it works: each step's number and title, and its terminal, the same height in every column */
+    --how-number-size: 48px;
+    --how-number-line: 48px;
+    --how-title-size: 20px;
+    --how-title-line: 28px;
+    --how-term: 216px;
+    --how-code-size: 13px;
+    --how-code-line: 20px;
     /* The x402 band's logo box, and the logo's size inside it until the dither replaces it */
     --x402-figure: 480px;
     --x402-figure-phone: 320px;
