@@ -1,5 +1,4 @@
 import { CodeBlock } from "../../components/content/code-block";
-import { Clients } from "../../components/landing/clients";
 import { Hero } from "../../components/landing/hero";
 import { How } from "../../components/landing/how";
 import { Install } from "../../components/landing/install";
@@ -33,7 +32,6 @@ export default function HomePage() {
         <main>
             <Hero installLine={lines.hero} />
             <How />
-            <Clients />
             <Install tabs={tabs} />
         </main>
     );
