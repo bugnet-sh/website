@@ -42,7 +42,11 @@ async function start(liveDelayMs = 2): Promise<FakeRoute> {
 const s = (name: ScenarioName): Scenario => scenarios[name];
 
 function pageHeaders(r: FakeRoute): Record<string, string> {
-    return { "Content-Type": "application/json", Origin: r.origin };
+    return {
+        "Content-Type": "application/json",
+        Origin: r.origin,
+        "Sec-Fetch-Site": "same-origin",
+    };
 }
 
 function call(
@@ -127,7 +131,7 @@ describe("pages and assets", () => {
 });
 
 describe("the /v1 guard", () => {
-    it("refuses a call without the page's own origin, type, site or size", async () => {
+    it("refuses a call without the page's own origin, type or site, and a body over 1 KiB", async () => {
         const r = await start();
         const sc = s("ended-full");
         const path = `/v1/s/${sc.id}`;
@@ -155,12 +159,19 @@ describe("the /v1 guard", () => {
                     headers: { ...pageHeaders(r), "Sec-Fetch-Site": "same-site" },
                 }),
             ],
-            ["over 1 KiB", await call(r, path, { k: sc.key, pad: "x".repeat(1_024) })],
+            [
+                "no site",
+                await call(r, path, body, {
+                    headers: { "Content-Type": "application/json", Origin: r.origin },
+                }),
+            ],
         ];
         for (const [why, res] of refused) {
             expect(res.status, why).toBe(403);
             expectHeaderLines(res);
         }
+        const large = await call(r, path, { k: sc.key, pad: "x".repeat(1_024) });
+        expect(large.status, "over 1 KiB").toBe(413);
         const sameOrigin = await call(r, path, body, {
             headers: { ...pageHeaders(r), "Sec-Fetch-Site": "same-origin" },
         });

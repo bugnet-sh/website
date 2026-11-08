@@ -170,12 +170,12 @@ export async function startFakeRoute(
         return Date.now() < session.endsAt;
     }
 
-    // A page call must come from the page itself, and a same-site preview counts as cross-site
-    function pageCall(h: IncomingHttpHeaders, size: number): boolean {
+    // A page call must come from the page itself, and a same-site preview counts as cross-site.
+    // Like the sessions role, a missing Sec-Fetch-Site is refused too
+    function pageCall(h: IncomingHttpHeaders): boolean {
         const type = (h["content-type"] ?? "").split(";")[0]?.trim().toLowerCase();
-        if (type !== "application/json" || h.origin !== origin || size > MAX_BODY) return false;
-        const site = h["sec-fetch-site"];
-        return site === undefined || site === "same-origin";
+        if (type !== "application/json" || h.origin !== origin) return false;
+        return h["sec-fetch-site"] === "same-origin";
     }
 
     function stream(res: ServerResponse, session: Session, script: LiveScript, from: number): void {
@@ -218,7 +218,8 @@ export async function startFakeRoute(
     async function v1(req: IncomingMessage, res: ServerResponse, path: string): Promise<void> {
         const { text, size } = await readBody(req);
         requests.push({ method: req.method ?? "", path, headers: req.headers, body: text });
-        if (!pageCall(req.headers, size)) return send(res, 403);
+        if (!pageCall(req.headers)) return send(res, 403);
+        if (size > MAX_BODY) return send(res, 413);
 
         const match = /^\/v1\/s\/([^/]+)(?:\/jobs\/(\d+)\/live)?$/.exec(path);
         const session = match ? sessions.get(match[1]!) : undefined;
