@@ -13,6 +13,7 @@
         "lint": "eslint . && prettier --check .",
         "format": "prettier --write .",
         "dev": "pnpm --filter @bugnet/session-page dev",
+        "dev:site": "pnpm --filter @bugnet/site dev",
         "contrast": "tsx packages/brand/src/contrast-main.ts"
     },
     "devDependencies": {

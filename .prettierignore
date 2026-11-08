@@ -4,3 +4,8 @@ pnpm-lock.yaml
 pnpm-workspace.yaml
 **/screens
 .superpowers
+packages/site/.next
+packages/site/out
+packages/site/next-env.d.ts
+packages/site/AGENTS.md
+packages/site/components/waves/sliced-waves.tsx
