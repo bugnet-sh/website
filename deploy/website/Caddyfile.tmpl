@@ -1,5 +1,5 @@
 # bugnet.sh behind HAProxy's SNI split (data-plane 15.1 and 15.2, website plan section 3).
-# deploy.sh replaces {{ROOT}} with /opt/bugnet/website/<version>/out.
+# deploy.sh renders it with the root of the version it ships, /opt/bugnet/website/<version>/out.
 {
     admin off
     persist_config off
