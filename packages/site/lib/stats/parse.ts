@@ -76,7 +76,7 @@ function day(v: unknown): DayRow {
         refundedMicros: int(o.refundedMicros),
         allowanceReturnedMicros: int(o.allowanceReturnedMicros),
         x402SpentMicros: int(o.x402SpentMicros),
-        spentMicros: int(o.spentMicros),
+        spentMicros: orNull(o.spentMicros, int),
         sandboxes: int(o.sandboxes),
         computeSeconds: int(o.computeSeconds),
         peakActive: int(o.peakActive),
@@ -92,7 +92,7 @@ function provider(v: unknown): ProviderRow {
         active: int(o.active),
         startP50Ms: orNull(o.startP50Ms, int),
         startP95Ms: orNull(o.startP95Ms, int),
-        failed7d: int(o.failed7d),
+        failed7d: orNull(o.failed7d, int),
     };
 }
 
@@ -140,7 +140,7 @@ function summary(json: unknown): StatsSummary {
             refundedMicros: int(totals.refundedMicros),
             allowanceReturnedMicros: int(totals.allowanceReturnedMicros),
             x402SpentMicros: int(totals.x402SpentMicros),
-            spentMicros: int(totals.spentMicros),
+            spentMicros: orNull(totals.spentMicros, int),
         },
         daily: arr(o.daily).map(day),
         providers: arr(o.providers).map(provider),

@@ -68,7 +68,7 @@ it("labels each line's last point with its value", () => {
     const labels = [...container.querySelectorAll(".recharts-label-list text")].map(
         (t) => t.textContent,
     );
-    expect(labels).toEqual([formatUsdc(today.spentMicros), formatUsdc(today.earnedMicros)]);
+    expect(labels).toEqual([formatUsdc(today.spentMicros ?? 0), formatUsdc(today.earnedMicros)]);
 });
 
 describe("scaleOf", () => {

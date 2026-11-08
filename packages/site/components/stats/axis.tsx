@@ -103,7 +103,13 @@ export const moneyTick = (usdc: number, decimals: number): string =>
 
 /** The money chart's y scale over some days, in USDC. */
 export const moneyScale = (days: readonly DayRow[]): Scale =>
-    niceScale(days.flatMap((d) => [d.earnedMicros, d.spentMicros, profit(d)].map((m) => m / 1e6)));
+    niceScale(
+        days.flatMap((d) =>
+            [d.earnedMicros, d.spentMicros, profit(d)].flatMap((m) =>
+                m === null ? [] : [m / 1e6],
+            ),
+        ),
+    );
 
 /** The usage chart's y scale: sandboxes started per day. */
 export const usageScale = (days: readonly DayRow[]): Scale =>

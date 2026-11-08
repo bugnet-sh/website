@@ -7,7 +7,7 @@ export type DayRow = {
     refundedMicros: number;
     allowanceReturnedMicros: number;
     x402SpentMicros: number;
-    spentMicros: number;
+    spentMicros: number | null;
     sandboxes: number;
     computeSeconds: number;
     peakActive: number;
@@ -21,7 +21,7 @@ export type ProviderRow = {
     /** Null under 5 samples. */
     startP50Ms: number | null;
     startP95Ms: number | null;
-    failed7d: number;
+    failed7d: number | null;
 };
 
 export type PackageRow = {
@@ -86,7 +86,7 @@ export type StatsSummary = {
         refundedMicros: number;
         allowanceReturnedMicros: number;
         x402SpentMicros: number;
-        spentMicros: number;
+        spentMicros: number | null;
     };
     daily: DayRow[];
     providers: ProviderRow[];

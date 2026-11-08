@@ -42,23 +42,27 @@ const explained =
     "passes through at cost and is not earned. Spent is what providers charge us, without " +
     "Solana network fees. Profit is earned minus refunds minus spent.";
 
-type Point = { day: string; earned: number; spent: number; profit: number };
+/** Spent and profit are null while the feed does not know our provider cost yet */
+type Point = { day: string; earned: number; spent: number | null; profit: number | null };
 
 const usdc = (micros: number) => micros / 1_000_000;
 const micros = (usdc: number) => Math.round(usdc * 1_000_000);
 
 export function toPoints(daily: readonly DayRow[]): Point[] {
-    return daily.map((d) => ({
-        day: d.day,
-        earned: usdc(d.earnedMicros),
-        spent: usdc(d.spentMicros),
-        profit: usdc(profit(d)),
-    }));
+    return daily.map((d) => {
+        const p = profit(d);
+        return {
+            day: d.day,
+            earned: usdc(d.earnedMicros),
+            spent: d.spentMicros === null ? null : usdc(d.spentMicros),
+            profit: p === null ? null : usdc(p),
+        };
+    });
 }
 
 /** The y range widened to whole steps, and its ticks; zero is always a tick. */
 export const scaleOf = (points: readonly Point[]): Scale =>
-    niceScale(points.flatMap((p) => [p.earned, p.spent, p.profit]));
+    niceScale(points.flatMap((p) => [p.earned, p.spent, p.profit].filter((v) => v !== null)));
 
 /** A label's line box (--fine-line), the least gap between two labels' centres. */
 const LABEL_LINE = 16;
@@ -108,14 +112,19 @@ function EndLabelText({
     const plot = usePlotArea();
     const scale = useYAxisScale();
     if (!plot) return null;
-    const centre = scale
-        ? endPlaces(
-              scale(final.earned) ?? y,
-              scale(final.spent) ?? y,
-              plot.y,
-              plot.y + plot.height,
-          )[series]
-        : y;
+    const half = LABEL_LINE / 2;
+    const alone = (at: number) =>
+        Math.min(plot.y + plot.height - half, Math.max(plot.y + half, at));
+    const centre = !scale
+        ? y
+        : final.spent === null
+          ? alone(scale(final.earned) ?? y)
+          : endPlaces(
+                scale(final.earned) ?? y,
+                scale(final.spent) ?? y,
+                plot.y,
+                plot.y + plot.height,
+            )[series];
     return (
         <text
             x={plot.x + plot.width + gutter}
@@ -158,9 +167,16 @@ export function MoneyChart() {
     const scale = scaleOf(points);
     const last = points.length - 1;
     const end = points[last];
+    // Spent and profit show only when every chosen day knows our provider cost
+    const costKnown = points.every((p) => p.spent !== null);
+    const shown: ChartConfig = costKnown ? config : { earned: config.earned };
     // The end values' gutter: as wide as the longer of them, and the y axis's gap before it
     const gutter = end
-        ? axisWidth([end.earned, end.spent].map((value) => formatUsdc(micros(value))))
+        ? axisWidth(
+              [end.earned, ...(costKnown && end.spent !== null ? [end.spent] : [])].map((value) =>
+                  formatUsdc(micros(value)),
+              ),
+          )
         : 0;
     const endLabel = (series: Series) =>
         function SeriesEndLabel({ y, value, index }: LabelProps & { index?: number }) {
@@ -186,12 +202,12 @@ export function MoneyChart() {
                     <Tip text={explained} label="About these numbers" />
                 </div>
                 <div className="mt-(--space-4) flex flex-wrap items-center justify-between gap-(--space-3)">
-                    <ChartLegendContent config={config} />
+                    <ChartLegendContent config={shown} />
                     <RangeControl value={stats.range} onChange={stats.setRange} />
                 </div>
                 <div className="relative mt-(--space-4) h-(--chart) phone:h-(--chart-phone)">
                     {points.length > 0 && (
-                        <ChartContainer config={config} className="h-full w-full">
+                        <ChartContainer config={shown} className="h-full w-full">
                             <ComposedChart
                                 data={points}
                                 barCategoryGap={1}
@@ -238,24 +254,31 @@ export function MoneyChart() {
                                         />
                                     }
                                 />
-                                <Bar
-                                    dataKey="profit"
-                                    fill="var(--color-profit)"
-                                    shape={ProfitBar}
-                                    isAnimationActive={false}
-                                />
-                                {halo("spent")}
-                                <Line
-                                    dataKey="spent"
-                                    type="monotone"
-                                    stroke="var(--color-spent)"
-                                    strokeWidth={2}
-                                    strokeDasharray="6 4"
-                                    dot={false}
-                                    isAnimationActive={false}
-                                >
-                                    <LabelList dataKey="spent" content={endLabel("spent")} />
-                                </Line>
+                                {costKnown && (
+                                    <>
+                                        <Bar
+                                            dataKey="profit"
+                                            fill="var(--color-profit)"
+                                            shape={ProfitBar}
+                                            isAnimationActive={false}
+                                        />
+                                        {halo("spent")}
+                                        <Line
+                                            dataKey="spent"
+                                            type="monotone"
+                                            stroke="var(--color-spent)"
+                                            strokeWidth={2}
+                                            strokeDasharray="6 4"
+                                            dot={false}
+                                            isAnimationActive={false}
+                                        >
+                                            <LabelList
+                                                dataKey="spent"
+                                                content={endLabel("spent")}
+                                            />
+                                        </Line>
+                                    </>
+                                )}
                                 {halo("earned")}
                                 <Line
                                     dataKey="earned"
