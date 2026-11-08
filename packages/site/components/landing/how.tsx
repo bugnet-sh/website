@@ -6,21 +6,18 @@ import { LandingTitle } from "./title";
 
 const muted = "text-text-muted";
 
-/** A small window onto the step: what it talks to, then a few literal lines. */
-function Card({ tag, aside, children }: { tag: string; aside?: ReactNode; children: ReactNode }) {
+/**
+ * A terminal joined to the foot of its step: no heading and no margin, so the cell's hairlines are
+ * its edges, and its lines start where the step's text does.
+ */
+function Card({ inset, children }: { inset: string; children: ReactNode }) {
     return (
-        // A picture of the step; the title and sentence under it say the same in words
+        // A picture of the step; the title and sentence above it say the same in words
         <div
             aria-hidden
-            className="border-(length:--hairline) border-line bg-surface font-mono text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap"
+            className={`mt-auto flex h-(--how-mock) flex-col justify-center gap-(--space-2) overflow-hidden border-t-(length:--hairline) border-line bg-surface font-mono text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap ${inset}`}
         >
-            <div className="flex h-(--segment) items-center justify-between border-b-(length:--hairline) border-line px-(--space-3) text-text-muted">
-                <span>{tag}</span>
-                {aside}
-            </div>
-            <div className="flex h-(--how-mock) flex-col justify-center gap-(--space-2) overflow-hidden px-(--space-3)">
-                {children}
-            </div>
+            {children}
         </div>
     );
 }
@@ -38,25 +35,29 @@ function Line({ label, children }: { label: string; children: ReactNode }) {
 const chip =
     "inline-flex h-(--tip-button) items-center px-(--space-2) font-ui font-semibold tracking-normal";
 
-const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
+const steps: { title: string; text: string; tip: string; lines: ReactNode }[] = [
     {
         title: "Ask",
         text: "Ask your agent to run something in a sandbox.",
         tip: "It checks for free first with bugnet_assess.",
-        card: (
-            <Card tag="bugnet_assess" aside={<span className="text-accent">free</span>}>
+        lines: (
+            <>
                 <p>
                     <span className={muted}>&gt;</span> Try this repo in a sandbox.
                 </p>
-            </Card>
+                <p>
+                    <span className="text-accent-3">bugnet_assess</span>{" "}
+                    <span className="text-accent">free</span>
+                </p>
+            </>
         ),
     },
     {
         title: "Approve",
         text: "Your agent names the size and price. You approve the call.",
         tip: "Bugnet refuses a call whose price isn't the exact price of that size.",
-        card: (
-            <Card tag="bugnet_start">
+        lines: (
+            <>
                 <p>2 vCPU 2 GiB 10 min</p>
                 <p className="text-accent-2">0.05 USDC</p>
                 <p className="flex gap-(--space-2)">
@@ -65,15 +66,15 @@ const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
                         Deny
                     </span>
                 </p>
-            </Card>
+            </>
         ),
     },
     {
         title: "Pay",
         text: "Pay in USDC on Solana, by link or from your wallet.",
         tip: "x402: no account, no API key.",
-        card: (
-            <Card tag="pay.bugnet.sh" aside={<span className="text-accent-3">Solana</span>}>
+        lines: (
+            <>
                 <Line label="order">
                     <span className="text-accent-2">0.05 USDC</span>
                 </Line>
@@ -81,26 +82,29 @@ const steps: { title: string; text: string; tip: string; card: ReactNode }[] = [
                 <Line label="status">
                     <span className="text-accent">paid</span>
                 </Line>
-            </Card>
+            </>
         ),
     },
     {
         title: "Run",
         text: "Commands run in a fresh cloud sandbox. Results come back.",
         tip: "The sandbox is deleted at the deadline.",
-        card: (
-            <Card tag="2 vCPU 2 GiB" aside={<span className="text-text">09:58</span>}>
-                <p>
-                    <span className={muted}>$</span> npm test
+        lines: (
+            <>
+                <p className="flex justify-between gap-(--space-3)">
+                    <span>
+                        <span className={muted}>$</span> npm test
+                    </span>
+                    <span>09:58</span>
                 </p>
                 <p className="text-accent">✓ 42 passed</p>
                 <p className={muted}>$</p>
-            </Card>
+            </>
         ),
     },
 ];
 
-/** Four steps in a hairline grid: a card that shows the step, then its title and one sentence. */
+/** Four steps in a hairline grid: a title, one sentence, then a terminal joined to the cell's foot. */
 export function How() {
     const id = useId();
     return (
@@ -112,13 +116,11 @@ export function How() {
                     </div>
                     <ol className="grid grid-cols-4 gap-(--hairline) border-t-(length:--hairline) border-line bg-line narrow:grid-cols-2 phone:grid-cols-1">
                         {steps.map((step, i) => (
-                            <li
-                                key={step.title}
-                                className={`bg-bg py-(--space-6) ${cellInset(i, 4, 2)}`}
-                            >
-                                {step.card}
+                            <li key={step.title} className="flex flex-col bg-bg">
                                 {/* Positioned: the tip opens under the title, over the sentence */}
-                                <div className="relative mt-(--space-5) flex items-center gap-(--space-2)">
+                                <div
+                                    className={`relative flex items-center gap-(--space-2) pt-(--space-6) ${cellInset(i, 4, 2)}`}
+                                >
                                     <h3 className="text-(length:--lead-size) leading-(--lead-line) font-semibold">
                                         <span className="mr-(--space-2) font-mono text-text-muted">
                                             {String(i + 1).padStart(2, "0")}
@@ -127,9 +129,12 @@ export function How() {
                                     </h3>
                                     <Tip text={step.tip} label={`About ${step.title}`} />
                                 </div>
-                                <p className="mt-(--space-2) text-(length:--ui-size) leading-(--ui-line) text-text-muted">
+                                <p
+                                    className={`mt-(--space-2) pb-(--space-6) text-(length:--ui-size) leading-(--ui-line) text-text-muted ${cellInset(i, 4, 2)}`}
+                                >
                                     {step.text}
                                 </p>
+                                <Card inset={cellInset(i, 4, 2)}>{step.lines}</Card>
                             </li>
                         ))}
                     </ol>
