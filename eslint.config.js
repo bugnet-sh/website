@@ -100,6 +100,7 @@ export default tseslint.config(
         files: [
             "packages/site/components/waves/sliced-waves.tsx",
             "packages/site/components/backgrounds/gradient-ascii.tsx",
+            "packages/site/components/backgrounds/light-rays.tsx",
         ],
         rules: { "@typescript-eslint/ban-ts-comment": "off" },
     },
