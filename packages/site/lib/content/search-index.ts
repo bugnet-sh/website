@@ -5,6 +5,7 @@ import { unified } from "unified";
 import { readDoc } from "./doc-file";
 import { docHref, type Doc } from "./docs";
 import { headingIds, headingText } from "./heading-ids";
+import { callouts } from "./parts";
 import type { SearchEntry } from "./search";
 
 // Inline content runs together; anything else is a block, so its parts are kept apart by a space
@@ -28,7 +29,8 @@ function plainText(node: Nodes): string {
 
 /** A page's lead (its text before the first h2 or h3) and each h2 or h3 section. */
 function sectionsOf(doc: Doc, body: string): SearchEntry[] {
-    const processor = unified().use(remarkParse).use(remarkGfm).use(headingIds);
+    // A callout's `[!NOTE]` marker is syntax, not words a reader searches for
+    const processor = unified().use(remarkParse).use(remarkGfm).use(headingIds).use(callouts);
     const tree = processor.runSync(processor.parse(body)) as Root;
     const page = docHref(doc);
     const lead: SearchEntry = { page, title: doc.title, heading: doc.title, id: "", text: "" };

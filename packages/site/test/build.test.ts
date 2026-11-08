@@ -28,6 +28,7 @@ const directives = [
     "form-action",
     "frame-ancestors",
     "img-src",
+    "media-src",
     "script-src",
     "style-src",
 ];
@@ -224,6 +225,7 @@ describe("next build", () => {
             expect(policy.get("style-src"), path).toEqual(["'self'", "'unsafe-inline'"]);
             expect(policy.get("font-src"), path).toEqual(["'self'"]);
             expect(policy.get("img-src"), path).toEqual(["'self'", "data:"]);
+            expect(policy.get("media-src"), path).toEqual(["'self'"]);
             expect(policy.get("connect-src"), path).toEqual(["'self'"]);
             expect(policy.get("frame-ancestors"), path).toEqual(["'none'"]);
             expect(policy.get("base-uri"), path).toEqual(["'none'"]);

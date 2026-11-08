@@ -1,17 +1,27 @@
 import type { ReactNode } from "react";
 import ReactMarkdown, { type Components, type ExtraProps } from "react-markdown";
 import remarkGfm from "remark-gfm";
-import { Blockquote } from "../../components/content/blockquote";
+import { Blockquote, Callout, isCalloutKind } from "../../components/content/blockquote";
+import { Clip } from "../../components/content/clip";
 import { CodeBlock } from "../../components/content/code-block";
+import { CodeTabs } from "../../components/content/code-tabs";
 import { Heading } from "../../components/content/heading";
 import { Link } from "../../components/content/link";
 import { Mermaid } from "../../components/content/mermaid";
+import { NextSteps, type NextStep } from "../../components/content/next-steps";
 import { BodyCell, HeadCell, Table } from "../../components/content/table";
 import { cx } from "../cx";
 import { headingIds } from "./heading-ids";
-import { lead } from "./parts";
+import { CLIP, callouts, clips, codeTabs, lead, nextSteps } from "./parts";
 
-type HastNode = NonNullable<ExtraProps["node"]>["children"][number];
+type HastElement = NonNullable<ExtraProps["node"]>;
+type HastNode = HastElement["children"][number];
+
+/** The element children of a hast node, with the newlines between them left out. */
+function elements(node: HastNode | undefined): HastElement[] {
+    if (!node || !("children" in node)) return [];
+    return node.children.filter((child): child is HastElement => child.type === "element");
+}
 
 function hastText(node: HastNode): string {
     if (node.type === "text") return node.value;
@@ -26,6 +36,27 @@ function fenceLang(node: ExtraProps["node"]): string | undefined {
     const names = code.properties.className;
     const name = Array.isArray(names) ? names.find((n) => String(n).startsWith("language-")) : null;
     return name ? String(name).slice("language-".length) : undefined;
+}
+
+/** The tab each fence of a tabbed block names, in order. */
+function tabNames(node: ExtraProps["node"]): string[] {
+    return elements(node).map((pre) => String(elements(pre)[0]?.properties.dataTab ?? ""));
+}
+
+/** A Next steps list's cards, each `[Title](/docs/…/): one sentence.` */
+function cardsOf(node: ExtraProps["node"]): NextStep[] {
+    return elements(node).map((li) => {
+        // A tight list's items hold their text directly, a loose list's in a paragraph
+        const first = elements(li)[0];
+        const line = first?.tagName === "p" ? first : li;
+        const [link, ...rest] = line.children.filter(
+            (child) => child.type !== "text" || child.value.trim() !== "",
+        );
+        const href = link?.type === "element" ? String(link.properties.href ?? "") : "";
+        const title = link ? hastText(link) : "";
+        const text = rest.map(hastText).join("").replace(/^:\s*/, "");
+        return { href, title, text };
+    });
 }
 
 /**
@@ -75,17 +106,30 @@ function componentsOf(look: Look): Components {
             </Heading>
         ),
         // The paragraph under the title is the lead: larger, muted, and further from what follows
-        p: ({ node, children }) =>
-            node?.properties.dataLead === undefined ? (
-                <p className={block}>{children}</p>
+        p: ({ node, children }) => {
+            if (node?.properties.dataLead !== undefined) {
+                return (
+                    <p className="mt-(--space-4) mb-(--space-6) text-(length:--article-lead-size) leading-(--article-lead-line) text-text-muted">
+                        {children}
+                    </p>
+                );
+            }
+            // A callout's title, beside its label
+            if (node?.properties.dataCalloutTitle !== undefined) {
+                return (
+                    <p data-callout-title="" className="font-medium text-text">
+                        {children}
+                    </p>
+                );
+            }
+            return <p className={block}>{children}</p>;
+        },
+        ul: ({ node, children }) =>
+            node?.properties.dataNextSteps === undefined ? (
+                <ul className={cx(block, ul, "[&>li+li]:mt-(--space-2)")}>{children}</ul>
             ) : (
-                <p className="mt-(--space-4) mb-(--space-6) text-(length:--article-lead-size) leading-(--article-lead-line) text-text-muted">
-                    {children}
-                </p>
+                <NextSteps steps={cardsOf(node)} />
             ),
-        ul: ({ children }) => (
-            <ul className={cx(block, ul, "[&>li+li]:mt-(--space-2)")}>{children}</ul>
-        ),
         ol: ({ children, start }) => (
             <ol start={start} className={cx(block, ol, "[&>li+li]:mt-(--space-2)")}>
                 {children}
@@ -94,7 +138,27 @@ function componentsOf(look: Look): Components {
         li: ({ children }) => <li className="[&>p:first-child]:mt-0">{children}</li>,
         strong: ({ children }) => <strong className="font-semibold text-text">{children}</strong>,
         a: ({ href, children }) => <Link href={href}>{children}</Link>,
-        blockquote: ({ children }) => <Blockquote>{children}</Blockquote>,
+        blockquote: ({ node, children }) => {
+            const kind = node?.properties.dataCallout;
+            return isCalloutKind(kind) ? (
+                <Callout kind={kind}>{children}</Callout>
+            ) : (
+                <Blockquote>{children}</Blockquote>
+            );
+        },
+        // Only fences in a row that each name a tab become a div
+        div: ({ node, children }) =>
+            node?.properties.dataCodeTabs === undefined ? (
+                <div>{children}</div>
+            ) : (
+                <CodeTabs names={tabNames(node)}>{children}</CodeTabs>
+            ),
+        img: ({ src, alt }) =>
+            typeof src === "string" && CLIP.test(src) ? (
+                <Clip src={src} title={alt ?? ""} />
+            ) : (
+                <img src={src} alt={alt ?? ""} />
+            ),
         pre: ({ node }) => {
             const text = node ? hastText(node).replace(/\n$/, "") : "";
             const lang = fenceLang(node);
@@ -153,7 +217,10 @@ export function Markdown({
               }
             : components[look];
     return (
-        <ReactMarkdown remarkPlugins={[remarkGfm, headingIds, lead]} components={parts}>
+        <ReactMarkdown
+            remarkPlugins={[remarkGfm, headingIds, lead, callouts, codeTabs, nextSteps, clips]}
+            components={parts}
+        >
             {source}
         </ReactMarkdown>
     );
