@@ -6,9 +6,9 @@ import { DitherLogo } from "./dither-logo/dither-logo";
 import { LandingTitle } from "./title";
 
 const facts = [
-    "x402: payment over HTTP. The server answers 402 with a price; you pay; it runs.",
-    "USDC on Solana mainnet. Settles in seconds.",
-    "Pay by link with any Solana wallet, or with Solana Pay from your phone.",
+    "Your agent asks for a sandbox, Bugnet names the price, and the sandbox starts once you pay. That's x402, an open standard for paying on the web.",
+    "You pay in USDC on Solana, and the payment clears in seconds.",
+    "Pay through a link with any Solana wallet, or scan a Solana Pay code with your phone.",
 ];
 
 /** Why there is no account: the text and its facts left, the logo right, stacked on tablets. */
