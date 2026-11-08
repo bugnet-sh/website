@@ -43,7 +43,7 @@ export function RangeControl({
                         tabIndex={checked ? 0 : -1}
                         onClick={() => onChange(range.value)}
                         className={cx(
-                            "h-(--segment) cursor-pointer border-(length:--hairline) px-(--space-2) text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap",
+                            "relative h-(--segment) cursor-pointer border-(length:--hairline) px-(--space-2) before:absolute before:inset-x-0 before:-inset-y-[calc((var(--hit)-var(--segment))/2)] before:content-[''] text-(length:--fine-size) leading-(--fine-line) whitespace-nowrap",
                             checked
                                 ? "border-line text-text"
                                 : "border-transparent text-text-muted hover:text-text",

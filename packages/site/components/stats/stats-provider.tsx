@@ -21,8 +21,9 @@ export function useStats(): StatsContextValue {
 /** Holds a given summary state, so tests can show the page in any state without a feed. */
 export function StatsState({ summary, children }: { summary: SummaryState; children: ReactNode }) {
     const [chosen, setRange] = useState<Range | null>(null);
-    // Until the reader picks one, the range follows how many days the feed has
-    const range = chosen ?? defaultRange(summary.data?.daily.length ?? 0);
+    // Until the reader picks one, the range follows how many days the feed has. Before the feed
+    // answers it shows the usual 30 days, so the control does not flip as the data arrives.
+    const range = chosen ?? (summary.data ? defaultRange(summary.data.daily.length) : "30d");
     return (
         <StatsContext.Provider value={{ ...summary, range, setRange }}>
             {children}

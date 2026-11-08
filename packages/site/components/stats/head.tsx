@@ -21,13 +21,18 @@ export function StatsHead() {
                     </p>
                     {/* Kept in the row while empty, so the time arriving moves nothing */}
                     <p className="flex min-h-(--lead-line) items-center gap-(--space-2) text-(length:--ui-size) leading-(--ui-line) tabular-nums">
-                        {stats.data && (
+                        {stats.data ? (
                             <>
                                 <span className="text-text-muted">Updated</span>
                                 <time dateTime={stats.data.generatedAt}>
                                     {formatClock(stats.data.generatedAt)}
                                 </time>
                             </>
+                        ) : (
+                            // Unseen text holds the row's baseline, so it keeps its loaded height
+                            <span aria-hidden className="invisible">
+                                Updated 00:00:00
+                            </span>
                         )}
                         {(stats.data || stale) && (
                             <span
