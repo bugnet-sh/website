@@ -3,14 +3,17 @@
 import { useEffect, useRef, useState } from "react";
 import DitherVeil from "./dither-veil";
 import { LogoBoundary } from "./error-boundary";
-import { LOGO, logoSource } from "./logo-source";
 
-/** The text colour, for a stylesheet without the token. */
-const WHITE = "#ededed";
-/** The veil's radius as a share of the drawn mark's height. */
-const REVEAL = 0.24;
+/** The mark as a lit aluminium object on the page ground, as scripts/render-mark.mjs writes it. */
+export const MARK = { src: "/mark.png", width: 999, height: 1200 };
+/** The tokens' values, for a stylesheet without them. */
+const INK = "#0a0a0a";
+const PAPER = "#ededed";
+/** The veil's radius as a share of the box's height, as z402's hero has it. */
+const REVEAL = 0.32;
 
-type Dither = { source: HTMLCanvasElement };
+type Dither = { source: HTMLCanvasElement; ink: string; paper: string };
+type Box = { width: number; height: number };
 
 function hasWebGL2() {
     try {
@@ -22,52 +25,49 @@ function hasWebGL2() {
     }
 }
 
-/** The mark in white only (founder, 2026-11-08). */
-function prepare(): Dither {
-    const white =
-        getComputedStyle(document.documentElement).getPropertyValue("--text").trim() || WHITE;
-    return { source: logoSource(white, white) };
+function token(name: string, fallback: string) {
+    return getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 }
 
-function StaticLogo() {
-    const [x, y, w, h] = LOGO.viewBox;
+function loadMark(): Promise<HTMLCanvasElement> {
+    return new Promise((resolve, reject) => {
+        const image = new Image();
+        image.decoding = "async";
+        image.onload = () => {
+            const canvas = document.createElement("canvas");
+            canvas.width = image.naturalWidth;
+            canvas.height = image.naturalHeight;
+            const context = canvas.getContext("2d");
+            if (!context) return reject(new Error("No 2D canvas"));
+            context.drawImage(image, 0, 0);
+            resolve(canvas);
+        };
+        image.onerror = () => reject(new Error(`${MARK.src} did not load`));
+        image.src = MARK.src;
+    });
+}
+
+function PlainMark() {
     return (
-        <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox={`${x} ${y} ${w} ${h}`}
-            className="block h-full w-full text-text"
-            focusable="false"
-            data-testid="static-logo"
-        >
-            <g fill="currentColor">
-                {LOGO.strokes.map((d) => (
-                    <path
-                        key={d}
-                        d={d}
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth={LOGO.strokeWidth}
-                        strokeLinecap="round"
-                    />
-                ))}
-                {LOGO.circles.map(([cx, cy, r]) => (
-                    <circle key={cx} cx={cx} cy={cy} r={r} />
-                ))}
-                <path fillRule="evenodd" d={LOGO.head} />
-                {LOGO.wings.map((d) => (
-                    <path key={d} d={d} />
-                ))}
-            </g>
-        </svg>
+        <img
+            src={MARK.src}
+            width={MARK.width}
+            height={MARK.height}
+            alt=""
+            loading="lazy"
+            decoding="async"
+            className="block h-full w-full"
+            data-testid="plain-mark"
+        />
     );
 }
 
 /**
- * The Bugnet mark drawn by a dither veil: white dots, and a wandering veil that shows the mark
- * smooth where it passes. It sits centred in its parent, at most `--dither-logo` tall, in a box of
- * the mark's own aspect: a wider box leaves a strip beside the mark that the veil reads as
- * outside the picture and paints. The plain mark stands in until the browser shows it can draw
- * the dither, and stays when it cannot.
+ * The rendered mark under a dither veil: white dots on the page's ground, Bayer, and a wandering
+ * veil that shows the smooth render where it passes. The picture's ground is the page's, so the
+ * box never shows. It sits centred in its parent, at most `--dither-logo` tall, in a box of the
+ * picture's aspect. The plain render stands in until the browser shows it can draw the dither,
+ * and stays when it cannot.
  */
 export function DitherLogo({ className }: { className?: string }) {
     const slot = useRef<HTMLDivElement>(null);
@@ -76,15 +76,20 @@ export function DitherLogo({ className }: { className?: string }) {
     const [reduced, setReduced] = useState(false);
     const [onScreen, setOnScreen] = useState(true);
     const [tabHidden, setTabHidden] = useState(false);
-    const [markHeight, setMarkHeight] = useState(0);
+    const [box, setBox] = useState<Box | null>(null);
 
     useEffect(() => {
+        let cancelled = false;
         if (hasWebGL2()) {
-            try {
-                setDither(prepare());
-            } catch {
-                setFailed(true);
-            }
+            loadMark().then(
+                (source) => {
+                    if (cancelled) return;
+                    setDither({ source, ink: token("--bg", INK), paper: token("--text", PAPER) });
+                },
+                () => {
+                    if (!cancelled) setFailed(true);
+                },
+            );
         }
         setReduced(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false);
         const onVisibility = () => setTabHidden(document.hidden);
@@ -96,24 +101,32 @@ export function DitherLogo({ className }: { className?: string }) {
                       (entries) => setOnScreen(entries.some((e) => e.isIntersecting)),
                       { threshold: 0 },
                   );
-        const [, , w, h] = LOGO.viewBox;
         const resize =
             typeof ResizeObserver === "undefined"
                 ? null
                 : new ResizeObserver(([entry]) => {
-                      const box = entry?.contentRect;
-                      if (box) setMarkHeight(Math.min(box.height, (box.width * h) / w));
+                      const rect = entry?.contentRect;
+                      if (!rect || rect.height <= 0) return;
+                      setBox((b) =>
+                          b?.width === rect.width && b.height === rect.height
+                              ? b
+                              : { width: rect.width, height: rect.height },
+                      );
                   });
         if (slot.current) {
             intersection?.observe(slot.current);
             resize?.observe(slot.current);
         }
         return () => {
+            cancelled = true;
             document.removeEventListener("visibilitychange", onVisibility);
             intersection?.disconnect();
             resize?.disconnect();
         };
     }, []);
+
+    // The fit that makes the picture exactly as tall as the box, whichever way the box rounds
+    const fit = box && box.width / box.height < MARK.width / MARK.height ? "cover" : "contain";
 
     return (
         <div
@@ -121,27 +134,34 @@ export function DitherLogo({ className }: { className?: string }) {
             data-testid="dither-logo"
             className={`absolute inset-0 grid place-items-center ${className ?? ""}`.trim()}
         >
-            <div ref={slot} className="relative aspect-[608/693] h-[min(72%,var(--dither-logo))]">
+            <div
+                ref={slot}
+                className="relative h-[min(72%,var(--dither-logo))]"
+                style={{ aspectRatio: `${MARK.width} / ${MARK.height}` }}
+            >
                 {dither && !failed ? (
-                    <LogoBoundary fallback={<StaticLogo />}>
+                    <LogoBoundary fallback={<PlainMark />}>
                         <DitherVeil
                             source={dither.source}
-                            palette="tint"
-                            pattern="floyd"
-                            inkColor="transparent"
-                            rim={0}
-                            contrast={1}
+                            fit={fit}
+                            pattern="bayer"
                             pixelSize={2}
-                            revealRadius={Math.max(40, Math.round(markHeight * REVEAL))}
+                            inkColor={dither.ink}
+                            paperColor={dither.paper}
+                            // Without it the revealed ground lands half a level above the ink
+                            brightness={-0.02}
+                            revealRadius={Math.max(40, Math.round((box?.height ?? 0) * REVEAL))}
+                            softness={0.6}
+                            linger={1}
                             wander
-                            maxDpr={1.5}
+                            clickBurst={false}
                             intro={!reduced}
                             paused={reduced || !onScreen || tabHidden}
                             onError={() => setFailed(true)}
                         />
                     </LogoBoundary>
                 ) : (
-                    <StaticLogo />
+                    <PlainMark />
                 )}
             </div>
         </div>
