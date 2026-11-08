@@ -170,7 +170,9 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
                             </span>
                             {entry.heading !== entry.title && (
                                 <span className="block text-(length:--fine-size) leading-(--fine-line) text-text-muted">
-                                    {entry.title}
+                                    {entry.section
+                                        ? `${entry.title}: ${entry.section}`
+                                        : entry.title}
                                 </span>
                             )}
                         </a>

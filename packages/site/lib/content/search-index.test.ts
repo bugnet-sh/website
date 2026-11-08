@@ -5,7 +5,7 @@ import { buildSearchIndex } from "./search-index";
 const fixtures = fileURLToPath(new URL("../../test/fixtures/docs", import.meta.url));
 
 describe("buildSearchIndex", () => {
-    it("indexes each page's lead and each h2 or h3 section, front matter left out", () => {
+    it("indexes each page's lead and each h2 or h3 section, an h3 under its h2, front matter left out", () => {
         const pages = [
             { title: "Install", slug: "", file: "install.md", group: "Start" as const },
             { title: "Paying", slug: "paying", file: "paying.md", group: "Paying" as const },
@@ -34,6 +34,14 @@ describe("buildSearchIndex", () => {
                 text: "Pay in USDC. One line. Two line.",
             },
             { page: "/docs/paying/", title: "Paying", heading: "Refunds", id: "refunds", text: "" },
+            {
+                page: "/docs/paying/",
+                title: "Paying",
+                heading: "By link",
+                id: "by-link",
+                text: "Back to the payer.",
+                section: "Refunds",
+            },
         ]);
     });
 });

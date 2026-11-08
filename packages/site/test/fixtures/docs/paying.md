@@ -12,3 +12,7 @@ Pay in **USDC**.
 - Two line.
 
 ## Refunds
+
+### By link
+
+Back to the payer.

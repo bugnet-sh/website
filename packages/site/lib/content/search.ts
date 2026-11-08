@@ -1,10 +1,14 @@
-/** One h2 or h3 section of a docs page, or the page's lead, whose heading is the title. */
+/**
+ * One h2 or h3 section of a docs page, or the page's lead, whose heading is the title. An h3's
+ * `section` is the h2 it sits under.
+ */
 export type SearchEntry = {
     page: string;
     title: string;
     heading: string;
     id: string;
     text: string;
+    section?: string;
 };
 
 const LIMIT = 8;
