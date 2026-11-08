@@ -2,13 +2,15 @@
 
 .iso {
     --anatomy-paper: var(--bg);
-    --anatomy-top: color-mix(in srgb, var(--line) 75%, var(--surface-hover));
-    --anatomy-shade-0: color-mix(in srgb, var(--surface) 50%, var(--bg));
-    --anatomy-shade-1: var(--surface);
-    --anatomy-shade-2: var(--surface-hover);
-    --anatomy-shade-3: color-mix(in srgb, var(--line) 40%, var(--surface-hover));
-    --anatomy-lit-top: color-mix(in srgb, var(--text) 10%, var(--surface-hover));
-    --anatomy-lit-shade: color-mix(in srgb, var(--text) 6%, var(--surface));
+    /* Faces sit close to the page (founder, 2026-11-08: "darker and less gray"), still in their
+       order from the darkest side to the top; the lines carry the shape */
+    --anatomy-top: color-mix(in srgb, var(--surface-hover) 70%, var(--surface));
+    --anatomy-shade-0: color-mix(in srgb, var(--surface) 25%, var(--bg));
+    --anatomy-shade-1: color-mix(in srgb, var(--surface) 50%, var(--bg));
+    --anatomy-shade-2: var(--surface);
+    --anatomy-shade-3: color-mix(in srgb, var(--surface-hover) 40%, var(--surface));
+    --anatomy-lit-top: color-mix(in srgb, var(--text) 6%, var(--surface));
+    --anatomy-lit-shade: color-mix(in srgb, var(--text) 4%, var(--bg));
     --anatomy-hi: color-mix(in srgb, var(--text-muted) 35%, var(--text));
     --anatomy-mid: color-mix(in srgb, var(--text-muted) 66%, var(--line));
     --anatomy-lo: color-mix(in srgb, var(--text-muted) 30%, var(--line));
