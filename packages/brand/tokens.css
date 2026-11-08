@@ -48,6 +48,10 @@
     /* Solana's brand gradient, for the word "Solana" in the hero; brand colour, so no contrast pair */
     --solana-purple: #9945ff;
     --solana-green: #14f195;
+    /* Claude Code's orange, for the word "claude" in commands */
+    --claude: #d97757;
+    /* Inline code in prose: a grey chip, lighter than every surface it sits on */
+    --code-inline: #262626;
     --bad: #ff6b6b;
     --warn: #f5c451;
 

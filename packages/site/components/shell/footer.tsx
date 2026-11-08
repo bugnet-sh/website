@@ -27,6 +27,7 @@ const columns: { heading: string; links: ShellLink[] }[] = [
             { label: "Docs", href: "/docs/" },
             { label: "Install", href: "/#install" },
             { label: "x402", href: "https://x402.org", external: true },
+            { label: "pay.sh", href: "https://pay.sh", external: true },
         ],
     },
     {

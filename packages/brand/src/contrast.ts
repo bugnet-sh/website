@@ -17,6 +17,8 @@ export const contrastPairs: readonly (readonly [string, string])[] = [
     ...[...inks, ...fills].flatMap((fg) => surfaces.map((bg) => [fg, bg] as const)),
     ["--accent-ink", "--accent"],
     ["--accent-3-ink", "--accent-3"],
+    ["--text", "--code-inline"],
+    ["--claude", "--surface"],
 ];
 
 function channel(value: number): number {

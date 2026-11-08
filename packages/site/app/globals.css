@@ -19,6 +19,8 @@
     --color-accent: var(--accent);
     --color-accent-ink: var(--accent-ink);
     --color-accent-2: var(--accent-2);
+    --color-claude: var(--claude);
+    --color-code-inline: var(--code-inline);
     --color-accent-3: var(--accent-3);
     --color-accent-3-ink: var(--accent-3-ink);
     --color-bad: var(--bad);
@@ -46,6 +48,8 @@
 }
 
 html {
+    /* In-page links glide; under reduced motion they jump, as the browser's default does */
+    scroll-behavior: smooth;
     background: var(--bg);
     color: var(--text);
     font-family: var(--font-ui);
@@ -60,6 +64,12 @@ body {
     flex-direction: column;
     min-height: 100svh;
     background: var(--bg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
 }
 
 :focus-visible {

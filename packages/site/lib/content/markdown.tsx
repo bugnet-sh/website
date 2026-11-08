@@ -72,7 +72,9 @@ const components: Components = {
         <CodeBlock code={node ? hastText(node).replace(/\n$/, "") : ""} lang={fenceLang(node)} />
     ),
     // Only inline code reaches here: a fenced block is rendered whole by `pre`
-    code: ({ children }) => <code className="bg-surface px-(--space-1) font-mono">{children}</code>,
+    code: ({ children }) => (
+        <code className="bg-code-inline px-(--space-1) py-px font-mono">{children}</code>
+    ),
     table: ({ children }) => <Table>{children}</Table>,
     th: ({ children }) => <HeadCell>{children}</HeadCell>,
     td: ({ children }) => <BodyCell>{children}</BodyCell>,

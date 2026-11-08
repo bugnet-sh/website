@@ -28,6 +28,7 @@ describe("SiteFooter", () => {
             ["Docs", "/docs/"],
             ["Install", "/#install"],
             ["x402 (opens in a new tab)", "https://x402.org"],
+            ["pay.sh (opens in a new tab)", "https://pay.sh"],
             ["Terms", "/terms/"],
             ["Privacy", "/privacy/"],
         ]);

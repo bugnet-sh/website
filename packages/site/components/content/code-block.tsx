@@ -1,4 +1,4 @@
-import { highlight, type TokenKind } from "../../lib/content/highlight";
+import { highlight, type Token, type TokenKind } from "../../lib/content/highlight";
 import { CopyButton } from "../stats/copy-button";
 
 const colours: Record<Exclude<TokenKind, "plain">, string> = {
@@ -10,6 +10,12 @@ const colours: Record<Exclude<TokenKind, "plain">, string> = {
     comment: "text-text-muted",
     punct: "text-text-muted",
 };
+
+/** A token's colour; the command "claude" wears Claude Code's own orange. */
+function colourOf(token: Token): string {
+    if (token.kind === "command" && token.text === "claude") return "text-claude";
+    return colours[token.kind as Exclude<TokenKind, "plain">];
+}
 
 /**
  * A fenced block: one line per line, scrolled sideways when long, with Copy beside it. A shell or
@@ -26,7 +32,7 @@ export function CodeBlock({ code, lang }: { code: string; lang?: string }) {
                               token.kind === "plain" ? (
                                   token.text
                               ) : (
-                                  <span key={i} className={colours[token.kind]}>
+                                  <span key={i} className={colourOf(token)}>
                                       {token.text}
                                   </span>
                               ),
