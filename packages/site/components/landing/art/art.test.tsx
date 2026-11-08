@@ -75,6 +75,6 @@ it("ends the refund at the coins it goes back to, with its arrowhead inside the 
     const { container } = render(<LimitArt />);
     const heads = [...container.querySelectorAll("path.art-lit")]
         .map((path) => path.getAttribute("d") ?? "")
-        .filter((d) => / L 102 /.test(d));
+        .filter((d) => / L 109 /.test(d));
     expect(heads).toHaveLength(1);
 });
