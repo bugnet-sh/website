@@ -176,10 +176,18 @@ describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("content pages in
             await page
                 .context()
                 .grantPermissions(["clipboard-read", "clipboard-write"], { origin: site.url });
-            await page.getByRole("button", { name: "Copy Markdown" }).click();
+            const button = page.getByRole("button", { name: "Copy Markdown" });
             const markdown = await readFile(join(root, "out", docMarkdownPath(doc)), "utf8");
+            // A click that lands before the page hydrates copies nothing, so each try clicks
+            // again; copying twice puts the same text on the clipboard
             await expect
-                .poll(() => page.evaluate(() => navigator.clipboard.readText()), { timeout: 5000 })
+                .poll(
+                    async () => {
+                        await button.click();
+                        return page.evaluate(() => navigator.clipboard.readText());
+                    },
+                    { timeout: 10_000 },
+                )
                 .toBe(markdown);
             expect(problems, path).toEqual([]);
             await page.context().close();
