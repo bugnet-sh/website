@@ -13,15 +13,16 @@ before your first run.
 |                | By link                                                   | From the `pay` wallet                                  |
 | -------------- | --------------------------------------------------------- | ------------------------------------------------------ |
 | You need       | A browser wallet such as Phantom or Solflare holding USDC | [`pay`](https://pay.sh) set up on this computer        |
-| You approve in | Your wallet, or your phone through the Solana Pay QR code | Touch ID, Windows Hello or polkit                      |
+| You approve in | Your wallet, or Phantom or Solflare on your phone         | Touch ID, Windows Hello or polkit                      |
 | Clients        | Every client, claude.ai included                          | The `bugnet-wallet` plugin, the bridge, Claude Desktop |
 | Setup          | None                                                      | About 5 to 10 minutes, once                            |
 
 ## Paying by link {#paying-by-link}
 
-You need a browser wallet, such as Phantom or Solflare, holding USDC on Solana mainnet. You can
-also scan the pay link's Solana Pay QR code with a wallet on your phone. Nothing needs installing
-on your computer, so this works in every client, claude.ai included.
+You need a browser wallet, such as Phantom or Solflare, holding USDC on Solana mainnet. You can also
+pay from your phone: scan the page's QR code to open it in Phantom, or open the link on your phone
+in Phantom or Solflare. Nothing needs installing on your computer, so this works in every client,
+claude.ai included.
 
 ## Paying from the `pay` wallet {#paying-from-the-pay-wallet}
 

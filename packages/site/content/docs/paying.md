@@ -60,8 +60,8 @@ tools.
 ## Paying by link {#paying-by-link}
 
 1. Open the pay link your agent shows you, `https://pay.bugnet.sh/o/<order>`.
-2. Pay with a browser wallet such as Phantom or Solflare, or scan the page's Solana Pay QR code
-   with your phone.
+2. Pay with a browser wallet such as Phantom or Solflare, or scan the page's QR code to open it
+   in Phantom on your phone.
 3. Tell your agent you paid.
 
 Your agent then calls `bugnet_redeem`. This works in every client, claude.ai included.

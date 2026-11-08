@@ -32,9 +32,9 @@ You see the price before you pay, and you pay exactly that price. See
 
 ## Which wallets can pay?
 
-Any Solana wallet holding USDC can pay a pay link, such as Phantom or Solflare in a browser, or a
-wallet on your phone through the Solana Pay QR code. The `pay` wallet pays from your computer. See
-[Before you pay](/docs/before-you-pay/).
+Any Solana wallet holding USDC can pay a pay link in a browser, such as Phantom or Solflare. On your
+phone, scan the page's QR code to open it in Phantom, or open the link in Phantom or Solflare. The
+`pay` wallet pays from your computer. See [Before you pay](/docs/before-you-pay/).
 
 ## Can I be charged twice for one order?
 
