@@ -17,6 +17,8 @@ export type Column<T> = {
     fold?: boolean;
     /** The folded line's cell that gives way, cut with an ellipsis, when the line is full. */
     grow?: boolean;
+    /** The cell on the folded line, when it differs from the table's. */
+    foldCell?: (row: T) => ReactNode;
     /** A column no loaded row fills is left out (founder decision 25). */
     filled?: (row: T) => boolean;
 };
@@ -57,27 +59,35 @@ function usePaged<T>(load: Load<T>) {
     return { rows, next, phase, more, showMore };
 }
 
+/**
+ * One folded row. The rows share the list's columns, as a table's rows do, so a short provider
+ * or status never moves the price beside it.
+ */
 function FoldRow<T>({ row, fold, rest }: { row: T; fold: Column<T>[]; rest: Column<T>[] }) {
     const [open, setOpen] = useState(false);
     return (
-        <li className="border-b-(length:--hairline) border-line">
+        <li className="col-span-full grid grid-cols-subgrid border-b-(length:--hairline) border-line">
             <button
                 type="button"
                 aria-expanded={open}
                 onClick={() => setOpen((o) => !o)}
-                className="flex h-(--row) w-full cursor-pointer items-center gap-(--space-3) text-left whitespace-nowrap"
+                className="col-span-full grid h-(--row) cursor-pointer grid-cols-subgrid items-center text-left whitespace-nowrap"
             >
                 {fold.map((column) => (
                     <span
                         key={column.label}
-                        className={column.grow ? "min-w-0 flex-1 truncate" : "shrink-0"}
+                        className={cx(
+                            "min-w-0",
+                            column.grow && "truncate",
+                            column.numeric && "justify-self-end",
+                        )}
                     >
-                        {column.cell(row)}
+                        {(column.foldCell ?? column.cell)(row)}
                     </span>
                 ))}
             </button>
             {open && (
-                <dl className="grid gap-(--space-2) pb-(--space-3) text-(length:--fine-size) leading-(--fine-line)">
+                <dl className="col-span-full grid gap-(--space-2) pb-(--space-3) text-(length:--fine-size) leading-(--fine-line)">
                     {rest.map((column) => (
                         <div
                             key={column.label}
@@ -95,8 +105,8 @@ function FoldRow<T>({ row, fold, rest }: { row: T; fold: Column<T>[]; rest: Colu
 
 /**
  * A band holding a table fed 50 rows at a time. It keeps a fixed height and scrolls inside it
- * under a sticky header, so a page of rows arriving moves nothing below. On phones each row folds
- * to one line that opens the rest.
+ * under a sticky header, so a page of rows arriving moves nothing below. On tablets and phones each
+ * row folds to one line that opens the rest.
  */
 export function PagedTable<T>({
     title,
@@ -116,6 +126,7 @@ export function PagedTable<T>({
     const shown = columns.filter((c) => c.filled === undefined || rows.some(c.filled));
     const fold = shown.filter((c) => c.fold);
     const rest = shown.filter((c) => !c.fold);
+    const foldColumns = fold.map((c) => (c.grow ? "minmax(0,1fr)" : "auto")).join(" ");
 
     return (
         <Band>
@@ -123,11 +134,11 @@ export function PagedTable<T>({
                 <h2 className="text-(length:--ui-size) leading-(--ui-line) font-semibold">
                     {title}
                 </h2>
-                <div className="relative mt-(--space-4) h-(--table) border-b-(length:--hairline) border-line text-(length:--ui-size) leading-(--ui-line)">
+                <div className="relative mt-(--space-4) h-(--table) border-b-(length:--hairline) border-line text-(length:--ui-size) leading-(--ui-line) tablet:h-(--table-fold)">
                     {phase === "ready" && (
                         <>
                             {/* Relative so the links' sr-only text is clipped here, not by the page */}
-                            <div className="relative h-full overflow-auto phone:hidden">
+                            <div className="relative h-full overflow-auto tablet:hidden">
                                 <table className={cx(tableClass, "min-w-(--table-min)")}>
                                     <thead>
                                         <tr>
@@ -159,7 +170,10 @@ export function PagedTable<T>({
                                     </tbody>
                                 </table>
                             </div>
-                            <ul className="hidden h-full overflow-y-auto phone:block">
+                            <ul
+                                className="hidden h-full content-start gap-x-(--space-3) overflow-y-auto tablet:grid phone:gap-x-(--space-2)"
+                                style={{ gridTemplateColumns: foldColumns }}
+                            >
                                 {rows.map((row, i) => (
                                     <FoldRow key={i} row={row} fold={fold} rest={rest} />
                                 ))}
@@ -171,6 +185,8 @@ export function PagedTable<T>({
                     )}
                     {phase === "ready" && rows.length === 0 && <Unavailable text={empty} />}
                 </div>
+                {/* Kept while the first page loads, as most tables have more to show */}
+                {phase === "loading" && <div aria-hidden className="h-(--row)" />}
                 {phase === "ready" && next !== null && (
                     <button
                         type="button"

@@ -36,13 +36,20 @@ const columns: Column<SessionRow>[] = [
         // Null when the session never started
         cell: (row) => row.provider !== null && <Cut>{providerLabel(row.provider)}</Cut>,
         fold: true,
-        grow: true,
     },
     { label: "Size", cell: sizeText },
     { label: "Duration", cell: (row) => formatDuration(row.seconds), numeric: true },
     { label: "Commands", cell: (row) => formatCount(row.commands), numeric: true },
     { label: "Price", cell: (row) => <Usdc micros={row.priceMicros} />, numeric: true, fold: true },
-    { label: "Status", cell: (row) => <Status row={row} />, fold: true },
+    {
+        label: "Status",
+        cell: (row) => <Status row={row} />,
+        // Ended already reads "Running" on the folded line, so it is not said twice
+        foldCell: (row) => row.status !== "running" && <Status row={row} />,
+        fold: true,
+        // The reason is the folded line's longest text, so it gives way before the provider
+        grow: true,
+    },
     {
         label: "Wallet",
         cell: (row) => <WalletCell wallet={row.wallet} />,
