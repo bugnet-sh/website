@@ -1,9 +1,12 @@
 import { CodeBlock } from "../../components/content/code-block";
+import { Contact } from "../../components/landing/contact";
+import { Faq } from "../../components/landing/faq";
 import { Hero } from "../../components/landing/hero";
 import { How } from "../../components/landing/how";
 import { Install } from "../../components/landing/install";
 import { Pricing } from "../../components/landing/pricing";
 import { Safety } from "../../components/landing/safety";
+import { SandboxPay } from "../../components/landing/sandbox-pay";
 import { X402 } from "../../components/landing/x402";
 import { StatsProvider } from "../../components/stats/stats-provider";
 import { readDoc } from "../../lib/content/doc-file";
@@ -38,10 +41,13 @@ export default function HomePage() {
             <main>
                 <Hero installLine={lines.hero} />
                 <How />
-                <Safety />
                 <Install tabs={tabs} />
                 <X402 />
+                <Safety />
+                <SandboxPay />
                 <Pricing />
+                <Faq />
+                <Contact />
             </main>
         </StatsProvider>
     );
