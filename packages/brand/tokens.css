@@ -137,14 +137,13 @@
     --how-term: 216px;
     --how-code-size: 13px;
     --how-code-line: 20px;
-    /* The x402 band's logo box, and the logo's size inside it until the dither replaces it */
+    /* The x402 band's logo box, on wide screens and stacked */
     --x402-figure: 480px;
     --x402-figure-phone: 400px;
     /* The dithered mark's height at most, centred in its column */
     --dither-logo: 360px;
     /* The pricing band's light rays, from its top edge down */
     --rays: clamp(320px, 40vw, 560px);
-    --x402-mark: 200px;
     /* Uppercase labels, such as the footer's link rows and the step cards' tags */
     --caps-tracking: 0.08em;
 
