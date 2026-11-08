@@ -133,7 +133,7 @@
     --how-code-line: 20px;
     /* The x402 band's logo box, and the logo's size inside it until the dither replaces it */
     --x402-figure: 480px;
-    --x402-figure-phone: 320px;
+    --x402-figure-phone: 400px;
     /* The dithered mark's height at most, centred in its column */
     --dither-logo: 360px;
     /* The pricing band's light rays, from its top edge down */
