@@ -70,7 +70,9 @@ describe("llms-full.txt", () => {
     it("is every page's clean Markdown, in the sidebar's order", () => {
         const full = llmsFullTxt(dir);
         expect(full).toBe(docs.map((doc) => docMarkdown(doc, dir)).join("\n"));
-        expect(full.match(/^# .+$/gm)).toEqual(docs.map((doc) => `# ${doc.title}`));
+        // A comment line in a fence, such as TOML's "# …", is not a title
+        const prose = full.replace(/^```[^\n]*\n[\s\S]*?^```$/gm, "");
+        expect(prose.match(/^# .+$/gm)).toEqual(docs.map((doc) => `# ${doc.title}`));
     });
 });
 
