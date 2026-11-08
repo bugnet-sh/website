@@ -1,3 +1,4 @@
+import { cx } from "../../lib/cx";
 import { highlight, type Token, type TokenKind } from "../../lib/content/highlight";
 import { CopyButton } from "../stats/copy-button";
 
@@ -19,13 +20,30 @@ function colourOf(token: Token): string {
 
 /**
  * A fenced block: one line per line, scrolled sideways when long, with Copy beside it. A shell or
- * JSON block is coloured by token; any other language shows as plain text.
+ * JSON block is coloured by token; any other language shows as plain text. In a row beside a
+ * button, `inRow` makes a one-line block that button's height; phones stack the row, and the
+ * block wraps there instead of scrolling.
  */
-export function CodeBlock({ code, lang }: { code: string; lang?: string }) {
+export function CodeBlock({
+    code,
+    lang,
+    inRow = false,
+}: {
+    code: string;
+    lang?: string;
+    inRow?: boolean;
+}) {
     const tokens = highlight(code, lang);
     return (
         <div className="mt-(--space-4) flex items-start border-(length:--hairline) border-line bg-surface first:mt-0">
-            <pre className="min-w-0 flex-1 overflow-x-auto py-(--space-3) pl-(--space-4) font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre">
+            <pre
+                className={cx(
+                    "min-w-0 flex-1 overflow-x-auto pl-(--space-4) font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre",
+                    inRow
+                        ? "py-[calc((var(--button)-var(--ui-line))/2-var(--hairline))] phone:wrap-anywhere phone:whitespace-pre-wrap phone:py-(--space-3)"
+                        : "py-(--space-3)",
+                )}
+            >
                 <code>
                     {tokens
                         ? tokens.map((token, i) =>
@@ -40,8 +58,16 @@ export function CodeBlock({ code, lang }: { code: string; lang?: string }) {
                         : code}
                 </code>
             </pre>
-            {/* Centred on the first line: 8 px + half a 28 px button = 12 px + half a 20 px line */}
-            <div className="shrink-0 p-(--space-2)">
+            {/* Centred on the first line: 8 px + half a 28 px button = 12 px + half a 20 px line,
+                or in a row, 2 px + 14 px = 6 px + 10 px */}
+            <div
+                className={cx(
+                    "shrink-0",
+                    inRow
+                        ? "py-[calc((var(--button)-var(--segment))/2-var(--hairline))] pr-[calc((var(--button)-var(--segment))/2-var(--hairline))] pl-(--space-2) phone:p-(--space-2)"
+                        : "p-(--space-2)",
+                )}
+            >
                 <CopyButton text={code} label="Copy code" icon />
             </div>
         </div>
