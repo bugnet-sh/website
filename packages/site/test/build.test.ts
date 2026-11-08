@@ -7,6 +7,7 @@ import { fileURLToPath } from "node:url";
 import { promisify } from "node:util";
 import { JSDOM } from "jsdom";
 import { fakeValues } from "../lib/stats/testing/fake-data";
+import { caddyHeaders, parseHeadersTxt, servedPaths } from "../scripts/caddy-headers";
 import { beforeAll, describe, expect, it } from "vitest";
 
 const require = createRequire(import.meta.url);
@@ -173,6 +174,15 @@ describe("next build", () => {
             expect(block.get("Referrer-Policy"), path).toBe("no-referrer");
             expect(block.get("X-Content-Type-Options"), path).toBe("nosniff");
             expect(block.get("Permissions-Policy"), path).toBe("interest-cohort=()");
+        }
+    });
+
+    it("writes the same headers for Caddy, at every path that serves each page", async () => {
+        const caddy = await read("headers.caddy");
+        expect(caddy).toBe(caddyHeaders(parseHeadersTxt(await read("headers.txt"))));
+        for (const [path, block] of headers) {
+            for (const served of servedPaths(path)) expect(caddy).toContain(`"${served}"`);
+            for (const value of block.values()) expect(caddy).toContain(`"${value}"`);
         }
     });
 

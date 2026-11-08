@@ -3,6 +3,7 @@ import { copyFile, mkdir, readdir, readFile, writeFile } from "node:fs/promises"
 import { createRequire } from "node:module";
 import { join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { writeCaddyHeaders } from "./caddy-headers";
 
 const out = fileURLToPath(new URL("../out", import.meta.url));
 const require = createRequire(import.meta.url);
@@ -74,6 +75,7 @@ async function main(): Promise<void> {
         ),
     );
     await writeFile(join(out, "headers.txt"), `${blocks.join("\n")}\n`);
+    await writeCaddyHeaders(out);
 
     // The bundler ships the fonts themselves; the OFL asks that their licences travel with them
     await mkdir(join(out, "fonts"), { recursive: true });
