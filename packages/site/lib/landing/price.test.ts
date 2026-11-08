@@ -1,5 +1,12 @@
 import { describe, expect, it } from "vitest";
-import { lengthText, packageFacts, priceText, pricingPackages } from "./price";
+import {
+    lengthText,
+    packageFacts,
+    priceText,
+    pricingCells,
+    SOON_GPUS,
+    type PricingCell,
+} from "./price";
 import type { PackageRow } from "../stats/types";
 
 it("shows a price with the decimals it needs and at least two", () => {
@@ -37,57 +44,50 @@ it("says what a package's price buys", () => {
     expect(lengthText({ minutes: 90 })).toBe("/ 1 h 30 min");
 });
 
-describe("pricingPackages", () => {
-    const pack = (id: string, priceMicros: number, gpu = false): PackageRow => ({
+describe("pricingCells", () => {
+    const pack = (id: string, priceMicros: number, model?: string): PackageRow => ({
         id,
         vcpu: 2,
         memoryMiB: 2048,
         diskGiB: 10,
-        gpu: gpu ? { count: 1, memoryGiB: 24 } : null,
+        gpu: model ? { count: 1, memoryGiB: 20, model } : null,
         minutes: 10,
         priceMicros,
     });
-    const ids = (rows: PackageRow[]) => rows.map((p) => p.id);
+    const names = (cells: PricingCell[]) =>
+        cells.map((c) => (c.kind === "package" ? c.p.id : `soon:${c.model}`));
 
-    it("lists CPU packages then GPU packages, each from the lowest rate up", () => {
-        const rows = [
-            pack("g2", 900, true),
-            pack("c2", 200),
-            pack("g1", 500, true),
-            pack("c1", 100),
-        ];
-        expect(ids(pricingPackages(rows))).toEqual(["c1", "c2", "g1", "g2"]);
-    });
-
-    it("keeps at most eight, half of them GPUs when both kinds overflow", () => {
-        const cpu = Array.from({ length: 10 }, (_, i) => pack(`c${i}`, 100 + i));
-        const gpu = Array.from({ length: 10 }, (_, i) => pack(`g${i}`, 1000 + i, true));
-        expect(ids(pricingPackages([...gpu, ...cpu]))).toEqual([
-            "c0",
+    it("lists CPU packages from the lowest rate up, then fills with GPUs coming soon", () => {
+        expect(names(pricingCells([pack("c2", 200), pack("c1", 100)]))).toEqual([
             "c1",
             "c2",
-            "c3",
-            "g0",
-            "g1",
-            "g2",
-            "g3",
+            ...SOON_GPUS.map((g) => `soon:${g.model}`),
         ]);
     });
 
-    it("gives the spare places to the kind that has more", () => {
+    it("keeps at most six CPU packages and eight cells, two of them GPUs", () => {
         const cpu = Array.from({ length: 10 }, (_, i) => pack(`c${i}`, 100 + i));
-        expect(pricingPackages([...cpu, pack("g0", 900, true)])).toHaveLength(8);
-        expect(ids(pricingPackages([...cpu, pack("g0", 900, true)])).at(-1)).toBe("g0");
-        const gpu = Array.from({ length: 10 }, (_, i) => pack(`g${i}`, 1000 + i, true));
-        expect(ids(pricingPackages([pack("c0", 100), ...gpu]))).toEqual([
-            "c0",
+        const cells = pricingCells(cpu);
+        expect(cells).toHaveLength(8);
+        expect(names(cells).slice(0, 6)).toEqual(["c0", "c1", "c2", "c3", "c4", "c5"]);
+        expect(names(cells).slice(6)).toEqual(["soon:NVIDIA H100", "soon:NVIDIA A100"]);
+    });
+
+    it("puts GPUs on sale before those coming soon, and never shows one twice", () => {
+        const rows = [pack("c1", 100), pack("g1", 900, "NVIDIA L4"), pack("g0", 500, "RTX 4000")];
+        expect(names(pricingCells(rows))).toEqual([
+            "c1",
             "g0",
             "g1",
-            "g2",
-            "g3",
-            "g4",
-            "g5",
-            "g6",
+            "soon:NVIDIA H100",
+            "soon:NVIDIA A100",
+            "soon:NVIDIA L40S",
         ]);
+    });
+
+    it("shows no prices for GPUs coming soon", () => {
+        const soon = pricingCells([]).filter((c) => c.kind === "soon");
+        expect(soon).toHaveLength(4);
+        for (const cell of soon) expect(cell).not.toHaveProperty("priceMicros");
     });
 });
