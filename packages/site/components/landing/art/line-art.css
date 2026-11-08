@@ -1,0 +1,139 @@
+/* The line drawings of Safety and of paying from the sandbox: thin green lines on the dark ground,
+   with a soft green light behind. Each draws at 1 px a unit and shrinks only when its cell is
+   narrower than it. */
+
+.art {
+    display: block;
+    width: var(--art-w);
+    max-width: 100%;
+    height: auto;
+    overflow: visible;
+}
+
+.art :is(path, line, rect, circle, ellipse, polyline) {
+    vector-effect: non-scaling-stroke;
+}
+
+/* The light behind a drawing, brightest at its middle and gone before the cell's edge */
+.art-glow {
+    background: radial-gradient(closest-side, var(--art-glow), transparent);
+}
+
+.art-line,
+.art-lit,
+.art-dim,
+.art-faint,
+.art-off {
+    fill: none;
+    stroke-width: var(--art-stroke);
+    stroke-linejoin: miter;
+    stroke-linecap: butt;
+}
+
+.art-lit {
+    stroke: var(--accent);
+}
+
+.art-dim {
+    stroke: var(--art-dim);
+}
+
+.art-faint {
+    stroke: var(--art-faint);
+}
+
+.art-off {
+    stroke: var(--art-off);
+}
+
+.art-dash {
+    stroke-dasharray: var(--art-dash);
+}
+
+.art-flow {
+    stroke-dasharray: var(--art-flow-dash);
+}
+
+/* The lit lines glow a little, as light on glass */
+.art-halo {
+    filter: drop-shadow(0 0 var(--art-halo-blur) var(--art-halo));
+}
+
+.art-wash {
+    fill: var(--art-wash);
+    stroke: none;
+}
+
+.art-ground {
+    fill: var(--bg);
+    stroke: none;
+}
+
+.art-solid {
+    fill: var(--accent);
+    stroke: none;
+}
+
+.art-stop {
+    stop-color: var(--accent);
+}
+
+.art-text {
+    font-family: var(--font-mono);
+    font-size: var(--art-type);
+    white-space: pre;
+    fill: var(--text-muted);
+}
+
+.art-text-lit {
+    fill: var(--text);
+}
+
+/* A control code the output arrived with, struck out in green */
+.art-struck {
+    fill: var(--art-off);
+    text-decoration: line-through;
+    text-decoration-color: var(--accent);
+}
+
+.art-tag {
+    font-family: var(--font-mono);
+    font-size: var(--art-type);
+    font-weight: 600;
+    fill: var(--accent-ink);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    /* Bits of a deleted sandbox drift up and fade, each on its own beat */
+    .art-drift {
+        animation: art-drift 3.2s ease-out infinite;
+        animation-delay: calc(var(--i, 0) * -0.37s);
+    }
+
+    /* Payments run along the line from cell to cell */
+    .art-flow {
+        animation: art-flow 1.6s linear infinite;
+    }
+}
+
+@keyframes art-drift {
+    0% {
+        opacity: 0;
+        transform: translate(0, 0);
+    }
+
+    25% {
+        opacity: 1;
+    }
+
+    100% {
+        opacity: 0;
+        transform: translate(var(--art-drift-x), var(--art-drift-y));
+    }
+}
+
+@keyframes art-flow {
+    to {
+        stroke-dashoffset: calc(-1 * var(--art-flow-step));
+    }
+}
