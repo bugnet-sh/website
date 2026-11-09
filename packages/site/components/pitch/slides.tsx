@@ -90,7 +90,6 @@ export const roadmap: { step: string; text: string; stage: "now" | "next" | "las
         stage: "next",
     },
     { step: "GPU sandboxes", text: "Machines with GPUs for AI models.", stage: "next" },
-    { step: "More clients", text: "Live tests in Cursor, Codex and VS Code.", stage: "next" },
     {
         step: "An open network",
         text: "Anyone can be a sandbox provider on their own machine and get paid per run. It is the hardest step, because untrusted code has to stay isolated on machines we don't control.",
