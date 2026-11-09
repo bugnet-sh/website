@@ -1,0 +1,70 @@
+/* Wide screens show one slide at a time, and the track glides to the next; phones scroll a column */
+@media (min-width: 721px) {
+    html:has([data-deck]),
+    body:has([data-deck]) {
+        height: 100%;
+        overflow: hidden;
+        overscroll-behavior: none;
+    }
+
+    [data-deck] {
+        position: fixed;
+        inset: 0;
+        overflow: hidden;
+    }
+
+    .deck-track {
+        will-change: transform;
+    }
+
+    [data-ready] .deck-track {
+        transition: transform 700ms cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    .deck-slot {
+        height: 100dvh;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    [data-ready] .deck-track {
+        transition: none;
+    }
+}
+
+@media print {
+    @page {
+        size: 1600px 900px;
+        margin: 0;
+    }
+
+    html:has([data-deck]),
+    body:has([data-deck]) {
+        height: auto;
+        overflow: visible;
+        -webkit-print-color-adjust: exact;
+        print-color-adjust: exact;
+    }
+
+    [data-deck] {
+        position: static;
+    }
+
+    .deck-track {
+        transform: none !important;
+    }
+
+    .deck-slot {
+        height: 900px;
+        break-after: page;
+    }
+
+    [data-slide] {
+        height: 900px;
+    }
+
+    [data-slide] > div {
+        width: 1600px;
+        height: 900px;
+    }
+}

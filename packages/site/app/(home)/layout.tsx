@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { SiteFooter } from "../../components/shell/footer";
 import { SiteHeader } from "../../components/shell/header";
 
 // The root layout cannot tell which route it wraps without a client hook, so each route group
@@ -8,6 +9,7 @@ export default function HomeLayout({ children }: { children: ReactNode }) {
         <>
             <SiteHeader current="home" />
             {children}
+            <SiteFooter />
         </>
     );
 }
