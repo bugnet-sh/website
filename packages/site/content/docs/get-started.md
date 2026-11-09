@@ -27,7 +27,7 @@ This entry pays by link. To pay from the pay.sh wallet or a wallet file on this 
 tool shows up twice:
 
 ```sh
-claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0
+claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.2
 ```
 
 The [Claude Code plugin](/docs/install/#claude-code) adds a skill and hints on top of the server.
@@ -40,7 +40,8 @@ to pay:
 
 - **By link:** a browser wallet such as Phantom or Solflare.
 - **From the pay.sh wallet:** on this computer, with Touch ID.
-- **From a wallet file:** no extra confirmation, within limits you set.
+- **From a wallet file:** a key in your project's `.env` or the bridge's own file, with no extra
+  confirmation, within limits you set.
 
 ### By link {#ready-by-link}
 
@@ -68,41 +69,50 @@ pay topup
 
 ### From a wallet file {#ready-wallet-file}
 
-The bridge signs Bugnet orders itself from a wallet file, with no extra confirmation, within the
-limits you set. It needs the bridge from step 1, `npx -y @bugnet/mcp@0.1.0`, not the URL entry. It
+The bridge signs Bugnet orders itself from a Solana key, with no extra confirmation, within the
+limits you set. It needs the bridge from step 1, `npx -y @bugnet/mcp@0.1.2`, not the URL entry. It
 works on macOS and Linux. On Windows, payments go to the pay.sh wallet or the pay link.
 
-1. Run `npx -y @bugnet/mcp@0.1.0 key new` in your own terminal. It creates
-   `~/.config/bugnet/wallet.json` and prints only its address. To move a key you already have from a
-   `.env` file instead, run this, then delete that line as it tells you:
+It takes the key one of three ways, simplest first:
+
+1. **The key in your project's `.env`.** Add `BUGNET_WALLET_KEY=<key>`, as base58 or a JSON array
+   of 64 numbers, to the `.env` in the folder the bridge runs in, and set `wallet_env` below.
+2. **The key moved into the bridge's wallet file.** Run this in your own terminal, then delete the
+   line from `.env`:
 
     ```sh
-    npx -y @bugnet/mcp@0.1.0 key import --from ./.env --var NAME
+    npx -y @bugnet/mcp@0.1.2 key import --from ./.env --var BUGNET_WALLET_KEY
     ```
 
-2. Send that address a little USDC on Solana. It needs no SOL: Bugnet pays the fee.
-3. Turn it on in `~/.config/bugnet/mcp.toml`. The bridge reads these settings only from that file,
-   which must be yours and not writable by group or others.
+3. **A fresh wallet.** Run `npx -y @bugnet/mcp@0.1.2 key new` in your own terminal. It creates
+   `~/.config/bugnet/wallet.json` and prints only its address.
+
+Send the wallet's address a little USDC on Solana. It needs no SOL: Bugnet pays the fee. Then turn
+it on in `~/.config/bugnet/mcp.toml`, which must be yours and not writable by group or others, in a
+`~/.config/bugnet` folder of your own with mode 0700. For the `.env` way:
 
 ```toml
-pay_signer = "key"           # "pay", the default, uses the pay CLI
-max_payment_usd = 1          # per payment: default 1, at most 20
-daily_usd = 5                # per UTC day: default 5, at most 100
+pay_signer = "key"                # "pay", the default, uses the pay CLI
+wallet_env = "BUGNET_WALLET_KEY"  # leave it out to use wallet.json
+max_payment_usd = 1               # per payment: default 1, at most 20
+daily_usd = 5                     # per UTC day: default 5, at most 100
 # Bugnet's wallets; without them the bridge signs nothing
-pay_to = ["<bugnet sandbox wallet>"]
-fee_payer = ["<bugnet fee payer>"]
+pay_to = ["4JJ6XsUTFKQSCdJ6Qo8AQENvexWLtm5uHLeinbv4AScD"]
+fee_payer = ["AxsYqFSYfxJKJgj8iTCJhVWLi1mphAx6Sh3cMLMdqyyr"]
 # Bugnet's x402 allowance wallet, never a pay_to wallet
-allowance_pay_to = ["<bugnet allowance wallet>"]
-key_pays_allowances = true   # false sends allowances to pay.sh
+allowance_pay_to = ["DG9LtTcLRYgKHCvDkoxd4DcVLfCndQFFBnzVf8ACmwzA"]
+key_pays_allowances = true        # false sends allowances to pay.sh
 ```
 
-Bugnet publishes its real wallet addresses at launch. Put those in place of the placeholders.
-The daily cap counts every bridge on this computer together.
-Claude Code still asks you to approve each paid tool call.
+For `key import` and `key new`, leave out the `wallet_env` line. The three addresses are Bugnet's
+production wallets. The daily cap counts every bridge on this computer together. When the key is
+missing or not valid, the bridge signs nothing and you get the pay link. Claude Code still asks you
+to approve each paid tool call.
 
 > [!WARNING]
 > **Keep a small balance**
-> Use a wallet just for this. Any process running as you can read the file.
+> Use a wallet just for this. The agent working in a folder can read its `.env`, and any process
+> running as you can read the wallet file.
 
 Refunds go back automatically to the USDC token account that paid, so keep it open.
 [Before you pay](/docs/before-you-pay/) compares the three ways.
