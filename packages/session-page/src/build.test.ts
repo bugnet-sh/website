@@ -103,9 +103,10 @@ describe("buildPage", () => {
         expect(await asset(icon)).toEqual(await brand("icon.svg"));
     });
 
-    it("preloads the five brand fonts the stylesheet uses", async () => {
+    it("preloads the four fonts the page sets, not the docs' Manrope 500", async () => {
         const preloads = [...doc.querySelectorAll('link[rel="preload"]')];
-        expect(preloads).toHaveLength(fonts.length);
+        expect(preloads).toHaveLength(4);
+        expect(preloads.map((l) => l.getAttribute("href")).join()).not.toContain("manrope-500");
         for (const link of preloads) {
             expect(link.getAttribute("as")).toBe("font");
             expect(link.getAttribute("type")).toBe("font/woff2");
@@ -115,7 +116,8 @@ describe("buildPage", () => {
         const css = (
             await asset(doc.querySelector('link[rel="stylesheet"]')?.getAttribute("href"))
         ).toString("utf8");
-        for (const [i, font] of fonts.entries()) {
+        const preloaded = fonts.filter((font) => font !== "manrope-500");
+        for (const [i, font] of preloaded.entries()) {
             const href = hrefs[i] ?? "";
             expect(href).toMatch(new RegExp(`^/assets/${font}-[A-Z0-9]{8}\\.woff2$`));
             expect(await asset(href)).toEqual(await brand(`fonts/${font}.woff2`));

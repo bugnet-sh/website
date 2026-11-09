@@ -3,8 +3,8 @@
  *
  * The bundle is index.html, headers.txt (the response headers the role sends with every file)
  * and assets/ with hashed names: the script, the stylesheet, the five brand fonts and the icon.
- * index.html loads the script and the stylesheet by path and SHA-384, preloads the fonts, and
- * carries the logo inline.
+ * index.html loads the script and the stylesheet by path and SHA-384, preloads the four fonts the
+ * page sets, and carries the logo inline.
  */
 import { createHash } from "node:crypto";
 import { copyFile, mkdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -18,6 +18,9 @@ const pageDir = join(here, "page");
 const require = createRequire(import.meta.url);
 
 export const headersFile = "headers.txt";
+
+/** The faces page.css sets: Lexend Deca 200, Manrope 400 and 600, Obel Mono 400 */
+const PRELOADED = /^(lexend-deca-200|manrope-400|manrope-600|obel-mono-400)-[A-Z0-9]{8}\.woff2$/;
 
 export interface BuildOptions {
     outdir: string;
@@ -105,7 +108,9 @@ export async function buildPage(opts: BuildOptions): Promise<BuildResult> {
     await copyFile(join(pageDir, headersFile), join(opts.outdir, headersFile));
 
     const href = (path: string) => `/assets/${basename(path)}`;
+    // Only the faces page.css sets; the brand's other weights load if ever used, never ahead
     const preloads = fonts
+        .filter((f) => PRELOADED.test(basename(f.path)))
         .map((f) => href(f.path))
         .sort()
         .map((h) => `<link rel="preload" as="font" type="font/woff2" crossorigin href="${h}" />`);
