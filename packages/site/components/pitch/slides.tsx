@@ -78,11 +78,24 @@ export const founder: { value: string; label: string; accent?: boolean }[] = [
 
 export const wins = ["EDU Chain Semester 3", "HackaTRON", "Sui Overflow 2025"];
 
-export const next = [
-    "Public launch of the server and the site",
-    "GPU sandboxes for AI models",
-    "Agents that pay from their own wallet",
-    "Live tests in Cursor, Codex and VS Code",
+export const roadmap: { step: string; text: string; stage: "now" | "next" | "last" }[] = [
+    {
+        step: "Today",
+        text: "Sandbox time bought from cloud providers and sold per run.",
+        stage: "now",
+    },
+    {
+        step: "Our own servers",
+        text: "Runs move from rented clouds onto machines we operate.",
+        stage: "next",
+    },
+    { step: "GPU sandboxes", text: "Machines with GPUs for AI models.", stage: "next" },
+    { step: "More clients", text: "Live tests in Cursor, Codex and VS Code.", stage: "next" },
+    {
+        step: "An open network",
+        text: "Anyone can be a sandbox provider on their own machine and get paid per run. It is the hardest step, because untrusted code has to stay isolated on machines we don't control.",
+        stage: "last",
+    },
 ];
 
 const usd = (micros: number) => `${(micros / 1e6).toFixed(2)}\u00a0USDC`;
@@ -253,6 +266,55 @@ function Facts() {
                 </div>
             ))}
         </dl>
+    );
+}
+
+/** The roadmap as one track, from today's rented clouds to the open network */
+function Roadmap() {
+    return (
+        <ol>
+            {roadmap.map((r, i) => (
+                <li
+                    key={r.step}
+                    className="grid grid-cols-[max(14px,1.4cqi)_minmax(0,1fr)] gap-x-[1.8cqi] phone:gap-x-(--space-4)"
+                >
+                    <div
+                        aria-hidden="true"
+                        className="flex flex-col items-center pt-[0.55cqi] phone:pt-(--space-1)"
+                    >
+                        <span
+                            className={cx(
+                                "size-[max(10px,1cqi)] shrink-0 border-(length:--hairline)",
+                                r.stage === "now" && "border-text bg-text",
+                                r.stage === "next" && "border-text-muted",
+                                r.stage === "last" && "border-accent bg-accent",
+                            )}
+                        />
+                        {i < roadmap.length - 1 && (
+                            <span className="mt-[0.5cqi] w-(--hairline) flex-1 bg-line phone:mt-(--space-1)" />
+                        )}
+                    </div>
+                    <div className={cx(i < roadmap.length - 1 && "pb-[2cqi] phone:pb-(--space-5)")}>
+                        <p
+                            className={cx(
+                                "font-head text-[max(20px,2.2cqi)] leading-[1.1] font-extralight",
+                                r.stage === "last" && "text-accent",
+                            )}
+                        >
+                            {r.step}
+                        </p>
+                        <p
+                            className={cx(
+                                type.text,
+                                "mt-[0.5cqi] max-w-[52ch] phone:mt-(--space-1)",
+                            )}
+                        >
+                            {r.text}
+                        </p>
+                    </div>
+                </li>
+            ))}
+        </ol>
     );
 }
 
@@ -584,18 +646,12 @@ export function pitchSlides(): ReactElement[] {
             </div>
         </Slide>,
 
-        <Slide key="next" n={15} label="Next">
-            <Split title="What comes next." lead="The core works. Next we open it to everyone.">
-                <ul className="border-t-(length:--hairline) border-line">
-                    {next.map((item) => (
-                        <li
-                            key={item}
-                            className="border-b-(length:--hairline) border-line py-[1.8cqi] text-[max(16px,2cqi)] leading-[1.3] phone:py-(--space-4)"
-                        >
-                            {item}
-                        </li>
-                    ))}
-                </ul>
+        <Slide key="roadmap" n={15} label="Roadmap">
+            <Split
+                title="From rented clouds to an open network."
+                lead="The core works on mainnet. Next, runs move onto our own servers, and last onto machines anyone can offer."
+            >
+                <Roadmap />
             </Split>
         </Slide>,
 
