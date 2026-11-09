@@ -23,6 +23,7 @@ export const docs: readonly Doc[] = [
     },
     { title: "Safety", slug: "safety", file: "safety.md", group: "Safety" },
     { title: "FAQ", slug: "faq", file: "faq.md", group: "Help" },
+    { title: "Roadmap", slug: "roadmap", file: "roadmap.md", group: "Help" },
 ];
 
 /** The sidebar's groups, each with its pages in reading order. */

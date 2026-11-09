@@ -104,6 +104,7 @@ describe("docMarkdown", () => {
             "/docs/watching-a-run.md",
             "/docs/safety.md",
             "/docs/faq.md",
+            "/docs/roadmap.md",
         ]);
     });
 

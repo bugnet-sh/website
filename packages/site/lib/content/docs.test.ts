@@ -13,6 +13,7 @@ describe("docs", () => {
             "/docs/watching-a-run/",
             "/docs/safety/",
             "/docs/faq/",
+            "/docs/roadmap/",
         ]);
         expect(docBySlug("paying")?.title).toBe("Paying");
         expect(docBySlug("nope")).toBeUndefined();
@@ -20,7 +21,7 @@ describe("docs", () => {
 
     it("gives the first page no previous and the last no next", () => {
         expect(prevNext("")).toEqual({ prev: undefined, next: docBySlug("install") });
-        expect(prevNext("faq")).toEqual({ prev: docBySlug("safety"), next: undefined });
+        expect(prevNext("roadmap")).toEqual({ prev: docBySlug("faq"), next: undefined });
     });
 
     it("gives a middle page both neighbours", () => {
@@ -35,7 +36,7 @@ describe("docs", () => {
             ["Paying", ["Before you pay", "Paying"]],
             ["Using Bugnet", ["Tools", "Limits", "Watching a run"]],
             ["Safety", ["Safety"]],
-            ["Help", ["FAQ"]],
+            ["Help", ["FAQ", "Roadmap"]],
         ]);
         expect(docsByGroup().flatMap((g) => g.docs)).toEqual(docs);
     });

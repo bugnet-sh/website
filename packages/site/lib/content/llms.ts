@@ -17,6 +17,7 @@ const summaries: Record<string, string> = {
     "watching-a-run":
         "Following a run in the chat and on its session page, and how the page's link works.",
     faq: "Short answers on accounts, costs, wallets, refunds, files, CI and the source code.",
+    roadmap: "What comes next, from our own servers to an open network of sandbox providers.",
 };
 
 const url = (path: string) => `${siteOrigin}${path}`;
