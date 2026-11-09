@@ -137,6 +137,8 @@
     --not-found-size: clamp(96px, 16vw, 200px);
     /* The hero fills the screen under the header, but never less than this on a short laptop */
     --hero-min: 640px;
+    /* ...nor more than this, so on a tall screen How it works shows under it (founder, 2026-11-09) */
+    --hero-max: 760px;
     /* How it works: each step's number, and its terminal, the same height in every column */
     --how-number-size: 48px;
     --how-number-line: 48px;
