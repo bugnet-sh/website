@@ -14,7 +14,7 @@ Every client takes one of two entries.
 | Entry                                             | Pays                                                                              | Needs                                                                                          |
 | ------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
 | The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                                          | Nothing else                                                                                   |
-| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the pay.sh wallet or a wallet file on this computer, or by link without them | Node 20.19.3 or newer, plus [`pay`](https://pay.sh) or a wallet file to pay from this computer |
+| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.2` | From the pay.sh wallet or a wallet file on this computer, or by link without them | Node 20.19.3 or newer, plus [`pay`](https://pay.sh) or a wallet file to pay from this computer |
 
 > [!WARNING]
 > Add one entry, not both, or every tool shows up twice.
@@ -117,7 +117,7 @@ the URL one:
 ```json
 {
     "mcpServers": {
-        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.2"] }
     }
 }
 ```
@@ -154,7 +154,7 @@ the URL one:
 ```json
 {
     "servers": {
-        "bugnet": { "type": "stdio", "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+        "bugnet": { "type": "stdio", "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.2"] }
     }
 }
 ```
@@ -164,7 +164,7 @@ the URL one:
 To pay from the [pay.sh](https://pay.sh) wallet on this computer, add the bridge:
 
 ```sh
-codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
+codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.2
 ```
 
 Then give it more time in `~/.codex/config.toml`, since a paid call waits while you approve the
@@ -173,7 +173,7 @@ payment and the first start downloads the bridge:
 ```toml
 [mcp_servers.bugnet]
 command = "npx"
-args = ["-y", "@bugnet/mcp@0.1.0"]
+args = ["-y", "@bugnet/mcp@0.1.2"]
 startup_timeout_sec = 30
 tool_timeout_sec = 400
 ```
@@ -219,7 +219,7 @@ entry in the file that Cascade's **Open MCP config file** opens.
 | URL       | `https://mcp.bugnet.sh/mcp`                    |
 | Transport | Streamable HTTP                                |
 | Sign-in   | None, no headers and no API key                |
-| Stdio     | `npx -y @bugnet/mcp@0.1.0`, needs Node 20.19.3 |
+| Stdio     | `npx -y @bugnet/mcp@0.1.2`, needs Node 20.19.3 |
 
 Most clients take one of these two shapes.
 
@@ -234,7 +234,7 @@ Most clients take one of these two shapes.
 ```json tab="Bridge"
 {
     "mcpServers": {
-        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.2"] }
     }
 }
 ```
@@ -263,17 +263,17 @@ Use the bridge instead of the URL, not both, or every tool shows up twice. It ne
 or newer.
 
 ```sh tab="Claude Code"
-claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0
+claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.2
 ```
 
 ```sh tab="Codex CLI"
-codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
+codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.2
 ```
 
 ```json tab="Cursor"
 {
     "mcpServers": {
-        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.2"] }
     }
 }
 ```
@@ -283,7 +283,7 @@ codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
 ```json tab="Devin Desktop"
 {
     "mcpServers": {
-        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.2"] }
     }
 }
 ```
@@ -291,7 +291,7 @@ codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
 ```json tab="VS Code"
 {
     "servers": {
-        "bugnet": { "type": "stdio", "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+        "bugnet": { "type": "stdio", "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.2"] }
     }
 }
 ```
