@@ -23,12 +23,15 @@ Check it with `claude mcp list`. The list shows
 `bugnet: https://mcp.bugnet.sh/mcp (HTTP) - ✔ Connected`.
 
 This entry pays by link. To pay from the pay.sh wallet or a wallet file on this computer, add the
-[bridge](/docs/install/#bridge) instead, which needs Node 20.19.3 or newer. Add one, not both, or every
-tool shows up twice:
+[bridge](/docs/install/#bridge) instead, which needs Node 20.19.3 or newer. Add one, not both, or
+every tool shows up twice:
 
 ```sh
 claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.2
 ```
+
+Wait until `/mcp` shows bugnet as connected before your first prompt. The first `npx` start takes
+a few seconds.
 
 The [Claude Code plugin](/docs/install/#claude-code) adds a skill and hints on top of the server.
 Every other client is on [Install](/docs/install/).
