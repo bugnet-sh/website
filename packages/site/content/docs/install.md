@@ -11,9 +11,9 @@ sign-in, header or API key. By installing Bugnet you accept the [Terms](/terms/)
 
 Every client takes one of two entries.
 
-| Entry                                             | Pays                                                                              | Needs                                                                                       |
-| ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
-| The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                                          | Nothing else                                                                                |
+| Entry                                             | Pays                                                                              | Needs                                                                                          |
+| ------------------------------------------------- | --------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                                          | Nothing else                                                                                   |
 | The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the pay.sh wallet or a wallet file on this computer, or by link without them | Node 20.19.3 or newer, plus [`pay`](https://pay.sh) or a wallet file to pay from this computer |
 
 > [!WARNING]
@@ -214,11 +214,11 @@ entry in the file that Cascade's **Open MCP config file** opens.
 
 ### Any MCP client {#any-mcp-client}
 
-| Setting   | Value                                       |
-| --------- | ------------------------------------------- |
-| URL       | `https://mcp.bugnet.sh/mcp`                 |
-| Transport | Streamable HTTP                             |
-| Sign-in   | None, no headers and no API key             |
+| Setting   | Value                                          |
+| --------- | ---------------------------------------------- |
+| URL       | `https://mcp.bugnet.sh/mcp`                    |
+| Transport | Streamable HTTP                                |
+| Sign-in   | None, no headers and no API key                |
 | Stdio     | `npx -y @bugnet/mcp@0.1.0`, needs Node 20.19.3 |
 
 Most clients take one of these two shapes.
