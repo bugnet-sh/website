@@ -75,16 +75,20 @@ daily_usd = 5                # per UTC day: default 5, at most 100
 # Bugnet's wallets; without them the bridge signs nothing
 pay_to = ["<bugnet sandbox wallet>"]
 fee_payer = ["<bugnet fee payer>"]
+# Bugnet's x402 allowance wallet, never a pay_to wallet
 allowance_pay_to = ["<bugnet allowance wallet>"]
 key_pays_allowances = true   # false sends allowances to pay.sh
 ```
 
 Bugnet publishes its real wallet addresses at launch. Put those in place of the placeholders.
+The daily cap counts every bridge on this computer together.
 
 Setting `pay_signer = "key"` is your approval for the agent to spend from this wallet, within the
 caps: it pays sandbox time, and by default x402 allowances too. Claude Code still asks you to
-approve each paid tool call. Keep `daily_usd` low, or set `key_pays_allowances = false` to send
-allowances to `pay` instead.
+approve each paid tool call. An allowance later pays the sellers your agent picks, so without Touch
+ID an agent that was tricked could send up to `daily_usd` a day to a host of its own. Keep
+`daily_usd` low, or set `key_pays_allowances = false` to send allowances to the pay.sh wallet
+instead.
 
 > [!WARNING]
 > **Keep a small balance**

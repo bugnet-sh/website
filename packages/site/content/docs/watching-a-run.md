@@ -7,6 +7,8 @@ title: Watching a run
 You follow a run in two places: in the chat, where your agent reports each result, and on the
 session page, which shows the whole run in a browser.
 
+![Session summary](/docs/clips/summary.mp4)
+
 ## In the chat {#in-the-chat}
 
 - `bugnet_exec` runs a shell command and returns its exit code and the last 8 KiB of its output

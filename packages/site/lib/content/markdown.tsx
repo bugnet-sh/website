@@ -123,7 +123,7 @@ function componentsOf(look: Look): Components {
                     </p>
                 );
             }
-            return <p className={block}>{children}</p>;
+            return <p className={cx(block, "text-pretty")}>{children}</p>;
         },
         ul: ({ node, children }) =>
             node?.properties.dataNextSteps === undefined ? (
@@ -136,7 +136,7 @@ function componentsOf(look: Look): Components {
                 {children}
             </ol>
         ),
-        li: ({ children }) => <li className="[&>p:first-child]:mt-0">{children}</li>,
+        li: ({ children }) => <li className="text-pretty [&>p:first-child]:mt-0">{children}</li>,
         strong: ({ children }) => <strong className="font-semibold text-text">{children}</strong>,
         a: ({ href, children }) => <Link href={href}>{children}</Link>,
         blockquote: ({ node, children }) => {
@@ -176,7 +176,12 @@ function componentsOf(look: Look): Components {
         },
         // Only inline code reaches here: a fenced block is rendered whole by `pre`
         code: ({ children }) => (
-            <code className={cx("bg-code-inline px-(--space-1) py-px font-mono", code)}>
+            <code
+                className={cx(
+                    "bg-code-inline box-decoration-clone px-(--space-1) py-px font-mono",
+                    code,
+                )}
+            >
                 {children}
             </code>
         ),

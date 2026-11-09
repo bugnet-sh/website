@@ -23,7 +23,7 @@ Check it with `claude mcp list`. The list shows
 `bugnet: https://mcp.bugnet.sh/mcp (HTTP) - ✔ Connected`.
 
 This entry pays by link. To pay from the pay.sh wallet or a wallet file on this computer, add the
-[bridge](/docs/install/#bridge) instead, which needs Node 20.3 or newer. Add one, not both, or every
+[bridge](/docs/install/#bridge) instead, which needs Node 20.19.3 or newer. Add one, not both, or every
 tool shows up twice:
 
 ```sh
@@ -91,11 +91,13 @@ daily_usd = 5                # per UTC day: default 5, at most 100
 # Bugnet's wallets; without them the bridge signs nothing
 pay_to = ["<bugnet sandbox wallet>"]
 fee_payer = ["<bugnet fee payer>"]
+# Bugnet's x402 allowance wallet, never a pay_to wallet
 allowance_pay_to = ["<bugnet allowance wallet>"]
 key_pays_allowances = true   # false sends allowances to pay.sh
 ```
 
 Bugnet publishes its real wallet addresses at launch. Put those in place of the placeholders.
+The daily cap counts every bridge on this computer together.
 Claude Code still asks you to approve each paid tool call.
 
 > [!WARNING]
@@ -106,6 +108,8 @@ Refunds go back automatically to the USDC token account that paid, so keep it op
 [Before you pay](/docs/before-you-pay/) compares the three ways.
 
 ## 3. Ask your agent {#ask-your-agent}
+
+![Ask for a sandbox](/docs/clips/ask.mp4)
 
 ```mermaid
 sequenceDiagram
@@ -187,6 +191,8 @@ charged.
 
 1. Approve the payment with Touch ID when `pay` asks.
 
+![Approve and pay with Touch ID](/docs/clips/pay.mp4)
+
 ### From a wallet file {#pay-from-a-wallet-file}
 
 Nothing more to approve. The bridge pays from the wallet file, within your caps.
@@ -199,8 +205,8 @@ waits up to 10 minutes for you to pay there.
 ## 7. The sandbox starts {#the-sandbox-starts}
 
 After a link payment, your agent calls `bugnet_redeem` with the order and its claim. When the bridge
-pays, from the pay.sh wallet or a wallet file, it finishes the order itself. `bugnet_redeem` is free and asks for no approval,
-because your wallet signature was the payment approval.
+pays, from the pay.sh wallet or a wallet file, it finishes the order itself. `bugnet_redeem` is free
+and asks for no approval, because your wallet signature was the payment approval.
 
 Bugnet starts a fresh sandbox, and your agent gets two things:
 
@@ -214,6 +220,8 @@ the time left.
 ## 8. Run commands {#run-commands}
 
 1. Ask for the work, such as "install it and run the tests".
+
+![Run in the sandbox](/docs/clips/run.mp4)
 
 The agent runs each shell command with `bugnet_exec`, which returns the exit code and the last 8 KiB
 of the output and of the errors. The agent reads the results and tells you what happened.
@@ -245,6 +253,8 @@ you name another file, and never overwrite a file you have.
 
 1. Open the session page link the agent showed you.
 
+![Session summary](/docs/clips/summary.mp4)
+
 While the sandbox runs, the page shows its output live. After it ends, the page shows:
 
 - a map of the calls Bugnet saw, with Bugnet's own payments, their amounts and transaction
@@ -269,6 +279,8 @@ Extend before the deadline: an ended sandbox cannot get more time.
 
 1. Download what you need.
 2. Tell the agent you are done.
+
+![Stop the sandbox](/docs/clips/stop.mp4)
 
 The agent calls `bugnet_stop`, which deletes the sandbox and everything in it at once. Its answer
 carries the session link again, with the time the page is deleted: "Summary and logs: `<url>`

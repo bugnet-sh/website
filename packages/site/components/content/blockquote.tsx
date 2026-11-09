@@ -39,7 +39,7 @@ export function Callout({ kind, children }: { kind: CalloutKind; children?: Reac
         <div
             role="note"
             className={cx(
-                "mt-(--prose-gap) grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-(--space-4) gap-y-(--space-2) border-l-(length:--callout-edge) bg-surface px-(--space-5) py-(--space-4) first:mt-0",
+                "mt-(--prose-gap) grid grid-cols-[auto_minmax(0,1fr)] items-baseline gap-x-(--space-4) gap-y-(--space-2) border-l-(length:--callout-edge) bg-surface px-(--space-5) py-(--space-4) first:mt-0",
                 "[&>*]:col-span-2 [&>*]:mt-0! [&>[data-callout-head]]:col-span-1 [&>[data-callout-title]]:col-span-1",
                 edge,
             )}
@@ -47,11 +47,14 @@ export function Callout({ kind, children }: { kind: CalloutKind; children?: Reac
             <p
                 data-callout-head=""
                 className={cx(
-                    "flex items-center gap-(--space-2) text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) uppercase",
+                    "flex items-baseline gap-(--space-2) text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) uppercase",
                     ink,
                 )}
             >
-                <Icon aria-hidden="true" className="block size-(--callout-icon) shrink-0" />
+                <Icon
+                    aria-hidden="true"
+                    className="block size-(--callout-icon) shrink-0 self-center"
+                />
                 {label}
             </p>
             {children}

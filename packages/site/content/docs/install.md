@@ -14,7 +14,7 @@ Every client takes one of two entries.
 | Entry                                             | Pays                                                                              | Needs                                                                                       |
 | ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
 | The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                                          | Nothing else                                                                                |
-| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the pay.sh wallet or a wallet file on this computer, or by link without them | Node 20.3 or newer, plus [`pay`](https://pay.sh) or a wallet file to pay from this computer |
+| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the pay.sh wallet or a wallet file on this computer, or by link without them | Node 20.19.3 or newer, plus [`pay`](https://pay.sh) or a wallet file to pay from this computer |
 
 > [!WARNING]
 > Add one entry, not both, or every tool shows up twice.
@@ -39,7 +39,7 @@ claude plugin install bugnet-wallet@bugnet   # pays from the pay.sh wallet on th
 3. Start a new Claude Code session.
 
 - `bugnet` connects to `https://mcp.bugnet.sh/mcp` and needs nothing else.
-- `bugnet-wallet` runs the [bridge](#bridge) with `npx`, so it needs Node 20.3 or newer, and pays
+- `bugnet-wallet` runs the [bridge](#bridge) with `npx`, so it needs Node 20.19.3 or newer, and pays
   with [`pay`](https://pay.sh) set up on this computer.
 - Start Claude Code as plain `claude`, never `pay claude`, which loads only pay's own server and
   hides Bugnet.
@@ -219,9 +219,9 @@ entry in the file that Cascade's **Open MCP config file** opens.
 | URL       | `https://mcp.bugnet.sh/mcp`                 |
 | Transport | Streamable HTTP                             |
 | Sign-in   | None, no headers and no API key             |
-| Stdio     | `npx -y @bugnet/mcp@0.1.0`, needs Node 20.3 |
+| Stdio     | `npx -y @bugnet/mcp@0.1.0`, needs Node 20.19.3 |
 
-Most clients take one of these two shapes. The second runs the [bridge](#bridge).
+Most clients take one of these two shapes.
 
 ```json tab="URL"
 {
@@ -259,8 +259,8 @@ for a payment step. You only need it for these:
 Without either, the bridge opens the pay link in your client when the client can open links, and
 waits up to 10 minutes for you to pay.
 
-Use the bridge instead of the URL, not both, or every tool shows up twice. It needs Node 20.3 or
-newer.
+Use the bridge instead of the URL, not both, or every tool shows up twice. It needs Node 20.19.3
+or newer.
 
 ```sh tab="Claude Code"
 claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0
@@ -277,6 +277,8 @@ codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
     }
 }
 ```
+
+![Add Bugnet to Claude Code](/docs/clips/install.mp4)
 
 ```json tab="Devin Desktop"
 {

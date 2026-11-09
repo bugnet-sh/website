@@ -79,8 +79,8 @@ With the `bugnet-wallet` plugin, the [bridge](/docs/install/#bridge) or Claude D
 pays the order with [`pay`](https://pay.sh) on your computer, then finishes the order. It pays only
 links on `pay.bugnet.sh`, only on Solana mainnet, and never more than the price you approved.
 
-Without `pay`, the bridge opens the pay link in your client when the client can open links, and
-waits up to 10 minutes for you to pay.
+Without the pay.sh wallet or a wallet file, the bridge opens the pay link in your client when the
+client can open links, and waits up to 10 minutes for you to pay.
 
 ## Paying from a wallet file {#paying-from-a-wallet-file}
 
@@ -91,8 +91,8 @@ the order from your wallet file with no extra confirmation, then finishes the or
 signs, it checks that the request is the `pay.bugnet.sh` link for this order, in USDC on Solana
 mainnet, paid to one of Bugnet's wallets, and within the price you approved, the per-payment cap
 and what is left of the daily cap. It builds the transfer itself. A payment that fails a check is
-not signed, and you get the pay link or the payment step back. [Before you pay](/docs/before-you-pay/#paying-from-a-wallet-file)
-sets it up.
+not signed, and you get the pay link or the payment step back.
+[Before you pay](/docs/before-you-pay/#paying-from-a-wallet-file) sets it up.
 
 ## The claim {#the-claim}
 

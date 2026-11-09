@@ -37,6 +37,7 @@ export function CodeTabs({ names, children }: { names: string[]; children?: Reac
         <div className="mt-(--prose-gap) first:mt-0">
             <div
                 role="tablist"
+                aria-label="Versions"
                 onKeyDown={onKeyDown}
                 className="flex overflow-x-auto border-(length:--hairline) border-b-0 border-line bg-surface [scrollbar-width:none] print:hidden"
             >
@@ -44,7 +45,7 @@ export function CodeTabs({ names, children }: { names: string[]; children?: Reac
                     const selected = i === at;
                     return (
                         <button
-                            key={name}
+                            key={i}
                             ref={(el) => {
                                 buttons.current[i] = el;
                             }}
@@ -69,7 +70,7 @@ export function CodeTabs({ names, children }: { names: string[]; children?: Reac
             </div>
             {panels.map((panel, i) => (
                 <div
-                    key={names[i] ?? i}
+                    key={i}
                     role="tabpanel"
                     id={`${base}-panel-${i}`}
                     aria-labelledby={`${base}-tab-${i}`}
