@@ -10,7 +10,7 @@ import { makeScenarios, sampleStrings } from "./testing/fixtures.ts";
 
 const require = createRequire(import.meta.url);
 const brand = (name: string) => readFile(require.resolve(`@bugnet/brand/${name}`));
-const fonts = ["lexend-deca-200", "manrope-400", "manrope-600", "obel-mono-400"];
+const fonts = ["lexend-deca-200", "manrope-400", "manrope-500", "manrope-600", "obel-mono-400"];
 
 let root = "";
 let out = "";
@@ -103,9 +103,9 @@ describe("buildPage", () => {
         expect(await asset(icon)).toEqual(await brand("icon.svg"));
     });
 
-    it("preloads the four brand fonts the stylesheet uses", async () => {
+    it("preloads the five brand fonts the stylesheet uses", async () => {
         const preloads = [...doc.querySelectorAll('link[rel="preload"]')];
-        expect(preloads).toHaveLength(4);
+        expect(preloads).toHaveLength(fonts.length);
         for (const link of preloads) {
             expect(link.getAttribute("as")).toBe("font");
             expect(link.getAttribute("type")).toBe("font/woff2");

@@ -2,7 +2,7 @@
  * Builds the session page into a static bundle for the sessions role (session-page.md 7.2).
  *
  * The bundle is index.html, headers.txt (the response headers the role sends with every file)
- * and assets/ with hashed names: the script, the stylesheet, the four brand fonts and the icon.
+ * and assets/ with hashed names: the script, the stylesheet, the five brand fonts and the icon.
  * index.html loads the script and the stylesheet by path and SHA-384, preloads the fonts, and
  * carries the logo inline.
  */

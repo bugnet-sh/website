@@ -107,7 +107,7 @@ describe("pages and assets", () => {
             woff2: "font/woff2",
         };
         const names = await readdir(join(dist, "assets"));
-        expect(names).toHaveLength(7);
+        expect(names).toHaveLength(8);
         for (const name of names) {
             const res = await fetch(`${r.origin}/assets/${name}`);
             expect(res.status, name).toBe(200);
