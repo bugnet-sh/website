@@ -64,6 +64,7 @@ cut() { # source weight unicodes features output
 }
 
 cut "$work/manrope.ttf" 400 "$ui_set" "$ui_features" "$out/manrope-400.woff2"
+cut "$work/manrope.ttf" 500 "$ui_set" "$ui_features" "$out/manrope-500.woff2"
 cut "$work/manrope.ttf" 600 "$ui_set" "$ui_features" "$out/manrope-600.woff2"
 cut "$work/lexend.ttf" 200 "$ui_set" "$ui_features" "$out/lexend-deca-200.woff2"
 cut "$work/obel.ttf" 400 "$mono_set" "$mono_features" "$out/obel-mono-400.woff2"

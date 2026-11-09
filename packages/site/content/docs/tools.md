@@ -52,8 +52,8 @@ stateDiagram-v2
 2. **Unpaid.** `bugnet_start` makes an order with a pay link. It expires after 15 minutes, and
    nothing is charged.
 3. **Paid.** You paid the order. If no sandbox starts from it within 30 minutes, it is refunded.
-4. **Starting.** `bugnet_redeem`, or the bridge after a `pay` payment, starts the sandbox. A sandbox
-   that fails before it is ready is refunded in full.
+4. **Starting.** `bugnet_redeem`, or the bridge after it pays from the pay.sh wallet or a wallet
+   file, starts the sandbox. A sandbox that fails before it is ready is refunded in full.
 5. **Running.** Paid time starts when the sandbox is ready. `bugnet_extend` adds time, paid as a new
    order.
 6. **Deleted.** `bugnet_stop` or the deadline deletes the sandbox and everything in it. The session

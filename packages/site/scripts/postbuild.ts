@@ -47,6 +47,8 @@ function policy(hashes: readonly string[]): string {
         "style-src 'self' 'unsafe-inline'",
         "font-src 'self'",
         "img-src 'self' data:",
+        // The docs' clips, served from the site itself
+        "media-src 'self'",
         "connect-src 'self'",
         "frame-ancestors 'none'",
         "base-uri 'none'",

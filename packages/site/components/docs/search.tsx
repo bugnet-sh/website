@@ -1,9 +1,28 @@
 "use client";
 
-import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
+import { Search as SearchMark } from "lucide-react";
+import {
+    useEffect,
+    useId,
+    useRef,
+    useState,
+    useSyncExternalStore,
+    type KeyboardEvent,
+} from "react";
 import { flushSync } from "react-dom";
 import { cx } from "../../lib/cx";
 import { entryHref, search, type SearchEntry } from "../../lib/content/search";
+
+const never = () => () => undefined;
+
+/** Whether this is an Apple keyboard, so the hint reads ⌘K; unknown while the server renders. */
+function useApple(): boolean | undefined {
+    return useSyncExternalStore(
+        never,
+        () => /Mac|iPhone|iPad/.test(navigator.userAgent),
+        () => undefined,
+    );
+}
 
 /** Typing in a field must not trigger the `/` shortcut. */
 function isTyping(target: EventTarget | null): boolean {
@@ -27,6 +46,7 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
     const [active, setActive] = useState(0);
     const results = index ? search(index, query) : [];
     const shown = open && query.trim() !== "" && index !== undefined;
+    const apple = useApple();
 
     function load() {
         if (index) return;
@@ -80,6 +100,10 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
 
     return (
         <div ref={root} role="search" className="relative">
+            <SearchMark
+                aria-hidden="true"
+                className="pointer-events-none absolute top-1/2 left-(--space-3) block size-(--search-icon) -translate-y-1/2 text-text-muted"
+            />
             <input
                 ref={input}
                 type="text"
@@ -89,6 +113,7 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
                 aria-controls={listId}
                 aria-autocomplete="list"
                 aria-activedescendant={shown && results.length ? `${listId}-${active}` : undefined}
+                aria-keyshortcuts="Meta+K Control+K /"
                 placeholder="Search"
                 autoComplete="off"
                 spellCheck={false}
@@ -103,8 +128,17 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
                     setOpen(true);
                 }}
                 onKeyDown={onKeyDown}
-                className="block h-(--button) w-full border-(length:--hairline) border-line bg-bg px-(--space-3) text-(length:--ui-size) leading-(--ui-line) text-text placeholder:text-text-muted"
+                className="block h-(--hit) w-full border-(length:--hairline) border-line bg-bg pr-(--space-3) pl-[calc(var(--space-3)+var(--search-icon)+var(--space-2))] text-(length:--ui-size) leading-(--ui-line) text-text placeholder:text-text-muted"
             />
+            {/* The shortcut, for a keyboard: touch screens and a typed query hide it */}
+            {apple !== undefined && query === "" && (
+                <kbd
+                    aria-hidden
+                    className="pointer-events-none absolute top-1/2 right-(--space-2) grid h-(--kbd) -translate-y-1/2 place-items-center border-(length:--hairline) border-line bg-surface px-(--space-1) font-ui text-(length:--fine-size) leading-(--fine-line) text-text-muted pointer-coarse:hidden"
+                >
+                    {apple ? "⌘K" : "Ctrl K"}
+                </kbd>
+            )}
             <ul
                 id={listId}
                 role="listbox"
@@ -136,7 +170,9 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
                             </span>
                             {entry.heading !== entry.title && (
                                 <span className="block text-(length:--fine-size) leading-(--fine-line) text-text-muted">
-                                    {entry.title}
+                                    {entry.section
+                                        ? `${entry.title}: ${entry.section}`
+                                        : entry.title}
                                 </span>
                             )}
                         </a>

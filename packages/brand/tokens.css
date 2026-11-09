@@ -5,6 +5,14 @@
     src: url("./fonts/manrope-400.woff2") format("woff2");
 }
 
+/* Docs headings (founder, 2026-11-08) */
+@font-face {
+    font-family: "Manrope";
+    font-weight: 500;
+    font-display: block;
+    src: url("./fonts/manrope-500.woff2") format("woff2");
+}
+
 @font-face {
     font-family: "Manrope";
     font-weight: 600;
@@ -176,18 +184,53 @@
     /* What is yours in a drawing, such as your laptop: grey, so green stays the sandbox's */
     --art-off: color-mix(in srgb, var(--text-muted) 55%, var(--line));
 
-    /* Articles: docs, terms and privacy */
-    --article: 72ch;
+    /* Articles: docs, terms and privacy, measured against z402.net/docs (2026-11-08) */
+    --article: 720px;
     --toc: 200px;
     --sidebar: 240px;
     --chevron: 16px;
     /* A diagram's box until the diagram replaces its source, so the swap moves little */
     --diagram: 240px;
-    --prose-line: 1.65;
-    --h2-size: 20px;
-    --h2-line: 28px;
-    --h3-size: 16px;
-    --h3-line: 24px;
+    /* Body text, a third of the way from the text colour to the muted one, so headings and bold
+       in full --text stand out from it; it lies between two inks that pass, so it passes too */
+    --prose: color-mix(in srgb, var(--text) 67%, var(--text-muted));
+    --prose-size: 16px;
+    --prose-line: 26px;
+    /* The space between blocks, and above each heading */
+    --prose-gap: 20px;
+    --h2-gap: 60px;
+    --h3-gap: 40px;
+    --h4-gap: 28px;
+    /* The paragraph under the title */
+    --article-lead-size: 18px;
+    --article-lead-line: 28px;
+    /* Headings, in Manrope 500 */
+    --h1-size: 40px;
+    --h1-line: 44px;
+    --h2-size: 28px;
+    --h2-line: 32px;
+    --h3-size: 20px;
+    --h3-line: 28px;
+    --h4-size: 16px;
+    --h4-line: 24px;
+    /* Inline code, a step smaller than the text round it */
+    --code-inline-size: 0.875em;
+    /* How far a list's text sits in: past a square bullet, or past a mono "01." */
+    --list-indent: 24px;
+    --list-indent-ordered: 36px;
+    /* A numbered step's marker before its heading */
+    --step-marker: 32px;
+    /* The sidebar's rows and the search box's key hint */
+    --nav-row: 32px;
+    --search-icon: 16px;
+    --kbd: 20px;
+    /* A callout's coloured edge and icon */
+    --callout-edge: 2px;
+    --callout-icon: 16px;
+    /* A clip's play button */
+    --clip-button: 32px;
+    /* A table cell's narrowest on a phone: a table with more columns than fit scrolls sideways */
+    --prose-cell: 136px;
 
     --max: 1200px;
     --inset: 24px;
@@ -216,5 +259,16 @@
 @media (max-width: 767.98px) {
     :root {
         --inset: 16px;
+    }
+}
+
+/* Phones: article headings a size down, so a long title keeps to two or three lines */
+@media (max-width: 720px) {
+    :root {
+        --h1-size: 32px;
+        --h1-line: 38px;
+        --h2-size: 24px;
+        --h2-line: 30px;
+        --h2-gap: 48px;
     }
 }

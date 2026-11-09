@@ -2,13 +2,14 @@
 
 import { useCallback, useId, useState } from "react";
 import { cx } from "../../lib/cx";
-import { docHref, docs } from "../../lib/content/docs";
+import { docHref, docsByGroup } from "../../lib/content/docs";
 import { ChevronIcon } from "../icons";
 import { Search } from "./search";
 
 /**
- * Search and the docs pages, the current one marked. At tablet width and under it folds into
- * the Docs menu button above the article.
+ * Search and the docs pages in their groups, the current one a filled row. At tablet width and
+ * under it folds into the Docs menu button above the article. The list scrolls, so a row draws its
+ * focus ring inside itself; the filled row's is ink, set in from its edge so it reads as a ring.
  */
 export function Sidebar({ current }: { current: string }) {
     const [open, setOpen] = useState(false);
@@ -36,19 +37,37 @@ export function Sidebar({ current }: { current: string }) {
             >
                 <Search onReveal={reveal} />
                 <nav aria-label="Docs" className="mt-(--space-5) min-h-0 overflow-y-auto">
-                    <ul className="border-l-(length:--hairline) border-line">
-                        {docs.map((doc) => (
-                            <li key={doc.file}>
-                                <a
-                                    href={docHref(doc)}
-                                    aria-current={doc.slug === current ? "page" : undefined}
-                                    className="-ml-(--hairline) block border-l-(length:--hairline) border-transparent py-(--space-1) pl-(--space-3) text-(length:--ui-size) leading-(--ui-line) text-text-muted hover:text-text aria-[current=page]:border-accent aria-[current=page]:text-text"
-                                >
-                                    {doc.title}
-                                </a>
-                            </li>
-                        ))}
-                    </ul>
+                    {docsByGroup().map(({ group, docs }, i) => (
+                        <div key={group} className={cx(i > 0 && "mt-(--space-5)")}>
+                            <p
+                                id={`${panelId}-${i}`}
+                                className="px-(--space-3) text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) text-text-muted uppercase"
+                            >
+                                {group}
+                            </p>
+                            <ul aria-labelledby={`${panelId}-${i}`} className="mt-(--space-2)">
+                                {docs.map((doc) => {
+                                    const here = doc.slug === current;
+                                    return (
+                                        <li key={doc.file}>
+                                            <a
+                                                href={docHref(doc)}
+                                                aria-current={here ? "page" : undefined}
+                                                className={cx(
+                                                    "flex min-h-(--nav-row) items-center px-(--space-3) py-(--space-1) text-(length:--ui-size) leading-(--ui-line) focus-visible:-outline-offset-(--ring)",
+                                                    here
+                                                        ? "bg-accent text-accent-ink focus-visible:-outline-offset-[calc(var(--ring)*2)] focus-visible:outline-accent-ink"
+                                                        : "text-text-muted hover:bg-surface hover:text-text",
+                                                )}
+                                            >
+                                                {doc.title}
+                                            </a>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                        </div>
+                    ))}
                 </nav>
             </div>
         </div>

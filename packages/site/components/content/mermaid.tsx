@@ -1,8 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useId, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { cx } from "../../lib/cx";
 import { mermaidConfig } from "../../lib/content/mermaid-config";
+import { fade, useMore } from "./scroll-x";
 
 type Api = (typeof import("mermaid"))["default"];
 
@@ -10,7 +12,7 @@ let loading: Promise<Api> | undefined;
 
 const SEQUENCE_TAIL = 20;
 
-/** Mermaid, fetched once for the first diagram near the screen and set up in the site's tokens. */
+/** Mermaid, fetched once for the page's first diagram and set up in the site's tokens. */
 function load(): Promise<Api> {
     loading ??= Promise.all([import("mermaid"), document.fonts.ready]).then(([module]) => {
         const styles = getComputedStyle(document.documentElement);
@@ -36,8 +38,8 @@ function toSvg(markup: string): SVGSVGElement | null {
 }
 
 /**
- * A Mermaid diagram, drawn in the browser once it nears the screen. Until then, and without
- * JavaScript, its box shows the source as plain code; a source Mermaid cannot read stays as code.
+ * A Mermaid diagram, drawn in the browser as the page opens. Until then, and without JavaScript, its
+ * box shows the source as plain code; a source Mermaid cannot read stays as code.
  */
 export function Mermaid({ source }: { source: string }) {
     const id = `mermaid-${useId().replace(/[^\w-]/g, "")}`;
@@ -46,24 +48,22 @@ export function Mermaid({ source }: { source: string }) {
     const stage = useRef<HTMLDivElement>(null);
     const diagram = useRef<HTMLDivElement>(null);
     const [drawn, setDrawn] = useState(false);
-    const [more, setMore] = useState(false);
-
+    // Until Mermaid has drawn or given up, the page jumps rather than glides to a link's heading
+    const [drawing, setDrawing] = useState(true);
     // Whether the diagram runs on past the right edge, so a phone shows that it scrolls
-    const measure = useCallback(() => {
-        const el = scroller.current;
-        if (el) setMore(el.scrollLeft + el.clientWidth < el.scrollWidth - 1);
-    }, []);
-
-    useEffect(() => {
-        measure();
-        window.addEventListener("resize", measure);
-        return () => window.removeEventListener("resize", measure);
-    }, [drawn, measure]);
+    const more = useMore(scroller);
 
     useEffect(() => {
         const target = box.current;
         if (!target) return;
         let live = true;
+        // Whether the reader has scrolled by hand since the page opened
+        let steered = false;
+        const steer = () => {
+            steered = true;
+        };
+        const inputs = ["wheel", "touchmove", "keydown"] as const;
+        for (const type of inputs) window.addEventListener(type, steer, { passive: true });
         const draw = async () => {
             const mermaid = await load();
             // Drawn inside the box, so Mermaid measures labels under the article's own type
@@ -71,28 +71,30 @@ export function Mermaid({ source }: { source: string }) {
             const node = toSvg(svg);
             if (!live || !node || !diagram.current) return;
             diagram.current.replaceChildren(node);
-            setDrawn(true);
+            flushSync(() => setDrawn(true));
+            // A jump to a heading below landed before the diagram grew and pushed it down. A
+            // browser that keeps the reader's place has moved it back already; any other lands
+            // it again here
+            const goal = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+            const below =
+                goal && target.compareDocumentPosition(goal) & Node.DOCUMENT_POSITION_FOLLOWING;
+            if (below && !steered) goal.scrollIntoView({ behavior: "instant" });
         };
-        const observer = new IntersectionObserver(
-            (entries) => {
-                if (!entries.some((entry) => entry.isIntersecting)) return;
-                observer.disconnect();
-                draw().catch(() => undefined);
-            },
-            { rootMargin: "50% 0px" },
-        );
-        observer.observe(target);
+        draw()
+            .catch(() => undefined)
+            .finally(() => live && setDrawing(false));
         return () => {
             live = false;
-            observer.disconnect();
+            for (const type of inputs) window.removeEventListener(type, steer);
         };
     }, [id, source]);
 
     return (
         <div
             ref={box}
+            data-drawing={drawing || undefined}
             className={cx(
-                "relative mt-(--space-4) border-(length:--hairline) border-line first:mt-0",
+                "relative mt-(--prose-gap) border-(length:--hairline) border-line first:mt-0",
                 !drawn && "min-h-(--diagram)",
             )}
         >
@@ -100,9 +102,8 @@ export function Mermaid({ source }: { source: string }) {
                 until it reaches its end */}
             <div
                 ref={scroller}
-                onScroll={measure}
                 data-more={more || undefined}
-                className="overflow-x-auto p-(--space-5) data-more:[mask-image:linear-gradient(to_left,transparent,#000_var(--space-7))]"
+                className={cx("overflow-x-auto p-(--space-5)", fade)}
             >
                 {!drawn && (
                     <pre className="font-mono text-(length:--ui-size) leading-(--ui-line) whitespace-pre">

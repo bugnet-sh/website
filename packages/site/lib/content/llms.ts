@@ -9,7 +9,7 @@ const summaries: Record<string, string> = {
     install:
         "Add the MCP server to Claude Code, claude.ai, Claude Desktop, Cursor, VS Code, Codex CLI, Devin Desktop or any MCP client.",
     "before-you-pay":
-        "The two ways to pay, by link in a browser wallet or from the pay wallet, and how to set each up.",
+        "The three ways to pay, by link in a browser wallet, from the pay.sh wallet or from a wallet file, and how to set each up.",
     paying: "How a run is paid with x402 in USDC on Solana: the approval prompt, prices and refunds.",
     tools: "Every tool your agent gets, what it does, what it costs and which ones ask you first.",
     limits: "Time limits, output and file sizes, call rates, and what Bugnet will not run.",
@@ -17,6 +17,7 @@ const summaries: Record<string, string> = {
     "watching-a-run":
         "Following a run in the chat and on its session page, and how the page's link works.",
     faq: "Short answers on accounts, costs, wallets, refunds, files, CI and the source code.",
+    roadmap: "What comes next, from our own servers to an open network of sandbox providers.",
 };
 
 const url = (path: string) => `${siteOrigin}${path}`;

@@ -143,6 +143,11 @@ const languages: Record<string, (code: string) => Token[]> = {
     json,
 };
 
+/** Whether a fenced block's language is a shell, whose long lines can wrap. */
+export function isShell(lang: string | undefined): boolean {
+    return lang !== undefined && languages[lang.toLowerCase()] === shell;
+}
+
 /** Neighbouring tokens of one kind become one, so the page renders as few spans as it can. */
 function merge(tokens: Token[]): Token[] {
     const merged: Token[] = [];

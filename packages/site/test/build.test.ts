@@ -16,7 +16,7 @@ import { beforeAll, describe, expect, it } from "vitest";
 const require = createRequire(import.meta.url);
 const site = fileURLToPath(new URL("..", import.meta.url));
 const out = join(site, "out");
-const fonts = ["lexend-deca-200", "manrope-400", "manrope-600", "obel-mono-400"];
+const fonts = ["lexend-deca-200", "manrope-400", "manrope-500", "manrope-600", "obel-mono-400"];
 const licenses = ["OFL-lexend-deca.txt", "OFL-manrope.txt", "OFL-obel-mono.txt"];
 const outside = ["fonts.googleapis", "fonts.gstatic", "vercel", "analytics"];
 const textFile = /\.(html|css|js|json|txt|md|map|svg)$/;
@@ -28,6 +28,7 @@ const directives = [
     "form-action",
     "frame-ancestors",
     "img-src",
+    "media-src",
     "script-src",
     "style-src",
 ];
@@ -224,6 +225,7 @@ describe("next build", () => {
             expect(policy.get("style-src"), path).toEqual(["'self'", "'unsafe-inline'"]);
             expect(policy.get("font-src"), path).toEqual(["'self'"]);
             expect(policy.get("img-src"), path).toEqual(["'self'", "data:"]);
+            expect(policy.get("media-src"), path).toEqual(["'self'"]);
             expect(policy.get("connect-src"), path).toEqual(["'self'"]);
             expect(policy.get("frame-ancestors"), path).toEqual(["'none'"]);
             expect(policy.get("base-uri"), path).toEqual(["'none'"]);

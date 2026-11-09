@@ -16,6 +16,7 @@
     --color-line: var(--line);
     --color-text: var(--text);
     --color-text-muted: var(--text-muted);
+    --color-prose: var(--prose);
     --color-accent: var(--accent);
     --color-accent-ink: var(--accent-ink);
     --color-accent-2: var(--accent-2);
@@ -66,15 +67,25 @@ body {
     background: var(--bg);
 }
 
+/* While a diagram is still to draw, an in-page link jumps instead of gliding: a glide aims at where
+   its heading was, and the diagram growing above moves the heading on */
+html:has([data-drawing]) {
+    scroll-behavior: auto;
+}
+
 @media (prefers-reduced-motion: reduce) {
     html {
         scroll-behavior: auto;
     }
 }
 
-:focus-visible {
-    outline: var(--ring) solid var(--accent);
-    outline-offset: var(--ring);
+/* In the base layer, so a part that draws its ring inside itself, where a scrolling parent would
+   clip one drawn outside, can say so with a utility */
+@layer base {
+    :focus-visible {
+        outline: var(--ring) solid var(--accent);
+        outline-offset: var(--ring);
+    }
 }
 
 /* A text field matches :focus-visible on a click as well, so it marks focus with its border */

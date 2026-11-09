@@ -5,6 +5,7 @@ import { unified } from "unified";
 import { readDoc } from "./doc-file";
 import { docHref, type Doc } from "./docs";
 import { headingIds, headingText } from "./heading-ids";
+import { callouts } from "./parts";
 import type { SearchEntry } from "./search";
 
 // Inline content runs together; anything else is a block, so its parts are kept apart by a space
@@ -28,18 +29,25 @@ function plainText(node: Nodes): string {
 
 /** A page's lead (its text before the first h2 or h3) and each h2 or h3 section. */
 function sectionsOf(doc: Doc, body: string): SearchEntry[] {
-    const processor = unified().use(remarkParse).use(remarkGfm).use(headingIds);
+    // A callout's `[!NOTE]` marker is syntax, not words a reader searches for
+    const processor = unified().use(remarkParse).use(remarkGfm).use(headingIds).use(callouts);
     const tree = processor.runSync(processor.parse(body)) as Root;
     const page = docHref(doc);
     const lead: SearchEntry = { page, title: doc.title, heading: doc.title, id: "", text: "" };
     const entries = [lead];
     const texts: string[][] = [[]];
+    let h2: string | undefined;
     for (const node of tree.children) {
         const id = node.type === "heading" ? String(node.data?.hProperties?.id) : "";
         if (node.type === "heading" && node.depth === 1) {
             lead.id = id;
         } else if (node.type === "heading" && (node.depth === 2 || node.depth === 3)) {
-            entries.push({ page, title: doc.title, heading: headingText(node), id, text: "" });
+            const heading = headingText(node);
+            const entry: SearchEntry = { page, title: doc.title, heading, id, text: "" };
+            // Two steps can hold h3s of the same name, so an h3 names the h2 it sits under
+            if (node.depth === 2) h2 = heading;
+            else if (h2) entry.section = h2;
+            entries.push(entry);
             texts.push([]);
         } else {
             texts.at(-1)?.push(plainText(node));

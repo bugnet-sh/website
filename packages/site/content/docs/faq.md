@@ -6,8 +6,8 @@ title: FAQ
 
 ## Do I need an account or an API key?
 
-No. You pay per run in USDC on Solana, at the order's pay link or from the `pay` wallet on your
-computer.
+No. You pay per run in USDC on Solana: at the order's pay link, from the pay.sh wallet on your
+computer, or from a wallet file.
 
 ## Does Bugnet use AI or read my code?
 
@@ -34,7 +34,8 @@ You see the price before you pay, and you pay exactly that price. See
 
 Any Solana wallet holding USDC can pay a pay link in a browser, such as Phantom or Solflare. On your
 phone, scan the page's QR code to open it in Phantom, or open the link in Phantom or Solflare. The
-`pay` wallet pays from your computer. See [Before you pay](/docs/before-you-pay/).
+pay.sh wallet pays from your computer with Touch ID, and the bridge can pay from a wallet file with
+no extra confirmation, within limits you set. See [Before you pay](/docs/before-you-pay/).
 
 ## Can I be charged twice for one order?
 

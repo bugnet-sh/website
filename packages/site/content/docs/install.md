@@ -9,12 +9,15 @@ sign-in, header or API key. By installing Bugnet you accept the [Terms](/terms/)
 
 ## Pick an entry {#pick-an-entry}
 
-Every client takes one of two entries. Add one, not both, or every tool shows up twice.
+Every client takes one of two entries.
 
-| Entry                                             | Pays                                                          | Needs                                                                      |
-| ------------------------------------------------- | ------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                      | Nothing else                                                               |
-| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the `pay` wallet on this computer, or by link without it | Node 20.3 or newer, plus [`pay`](https://pay.sh) to pay from this computer |
+| Entry                                             | Pays                                                                              | Needs                                                                                       |
+| ------------------------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| The URL, `https://mcp.bugnet.sh/mcp`              | By link, in your browser                                                          | Nothing else                                                                                |
+| The [bridge](#bridge), `npx -y @bugnet/mcp@0.1.0` | From the pay.sh wallet or a wallet file on this computer, or by link without them | Node 20.19.3 or newer, plus [`pay`](https://pay.sh) or a wallet file to pay from this computer |
+
+> [!WARNING]
+> Add one entry, not both, or every tool shows up twice.
 
 ## Clients {#clients}
 
@@ -28,15 +31,15 @@ comes in two forms. Install one, not both, or every tool shows up twice.
 ```sh
 claude plugin marketplace add bugnet-sh/bugnet
 claude plugin install bugnet@bugnet          # pays by link, in your browser
-claude plugin install bugnet-wallet@bugnet   # pays from the pay wallet on this computer
+claude plugin install bugnet-wallet@bugnet   # pays from the pay.sh wallet on this computer
 ```
 
 1. Add the marketplace with `claude plugin marketplace add bugnet-sh/bugnet`.
-2. Install `bugnet@bugnet` to pay by link, or `bugnet-wallet@bugnet` to pay from the `pay` wallet.
+2. Install `bugnet@bugnet` to pay by link, or `bugnet-wallet@bugnet` to pay from the pay.sh wallet.
 3. Start a new Claude Code session.
 
 - `bugnet` connects to `https://mcp.bugnet.sh/mcp` and needs nothing else.
-- `bugnet-wallet` runs the [bridge](#bridge) with `npx`, so it needs Node 20.3 or newer, and pays
+- `bugnet-wallet` runs the [bridge](#bridge) with `npx`, so it needs Node 20.19.3 or newer, and pays
   with [`pay`](https://pay.sh) set up on this computer.
 - Start Claude Code as plain `claude`, never `pay claude`, which loads only pay's own server and
   hides Bugnet.
@@ -91,7 +94,7 @@ the order's pay link, you pay in your browser, and the agent finishes the order 
 2. Open it with Claude Desktop.
 3. Confirm the install when Claude Desktop asks.
 
-It runs the [bridge](#bridge), so it pays from the `pay` wallet on this computer when you have one,
+It runs the [bridge](#bridge), so it pays from the pay.sh wallet on this computer when you have one,
 and by link otherwise.
 
 ### Cursor {#cursor}
@@ -108,7 +111,7 @@ Add this to `.cursor/mcp.json` in your project, or to `~/.cursor/mcp.json` for e
 }
 ```
 
-To pay from the [`pay`](https://pay.sh) wallet on this computer, use the bridge entry instead of
+To pay from the [pay.sh](https://pay.sh) wallet on this computer, use the bridge entry instead of
 the URL one:
 
 ```json
@@ -145,7 +148,7 @@ to your user profile from a terminal:
 code --add-mcp '{"name":"bugnet","type":"http","url":"https://mcp.bugnet.sh/mcp"}'
 ```
 
-To pay from the [`pay`](https://pay.sh) wallet on this computer, use the bridge entry instead of
+To pay from the [pay.sh](https://pay.sh) wallet on this computer, use the bridge entry instead of
 the URL one:
 
 ```json
@@ -158,7 +161,7 @@ the URL one:
 
 ### Codex CLI {#codex-cli}
 
-To pay from the [`pay`](https://pay.sh) wallet on this computer, add the bridge:
+To pay from the [pay.sh](https://pay.sh) wallet on this computer, add the bridge:
 
 ```sh
 codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
@@ -216,11 +219,11 @@ entry in the file that Cascade's **Open MCP config file** opens.
 | URL       | `https://mcp.bugnet.sh/mcp`                 |
 | Transport | Streamable HTTP                             |
 | Sign-in   | None, no headers and no API key             |
-| Stdio     | `npx -y @bugnet/mcp@0.1.0`, needs Node 20.3 |
+| Stdio     | `npx -y @bugnet/mcp@0.1.0`, needs Node 20.19.3 |
 
-Most clients take one of these two shapes. The second runs the [bridge](#bridge).
+Most clients take one of these two shapes.
 
-```json
+```json tab="URL"
 {
     "mcpServers": {
         "bugnet": { "url": "https://mcp.bugnet.sh/mcp" }
@@ -228,7 +231,7 @@ Most clients take one of these two shapes. The second runs the [bridge](#bridge)
 }
 ```
 
-```json
+```json tab="Bridge"
 {
     "mcpServers": {
         "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
@@ -246,26 +249,61 @@ The bridge is a small program that runs on your computer. Your client talks to i
 it passes every call on to Bugnet's server unchanged, except that it pays or opens the pay link
 for a payment step. You only need it for these:
 
-- **Paying from the `pay` wallet on your computer.** When a paid call needs a payment, the bridge
+- **Paying from the pay.sh wallet on your computer.** When a paid call needs a payment, the bridge
   has [`pay`](https://pay.sh) pay it after you approve with Touch ID, then finishes the order. It
   pays only links on `pay.bugnet.sh`, on Solana mainnet, up to the price you approved.
+- **Paying from a wallet file**, with no extra confirmation, within limits you set.
+  [Before you pay](/docs/before-you-pay/#paying-from-a-wallet-file) sets it up.
 - **Clients that only run local servers.**
 
-Without `pay`, the bridge opens the pay link in your client when the client can open links, and
+Without either, the bridge opens the pay link in your client when the client can open links, and
 waits up to 10 minutes for you to pay.
 
-Use the bridge instead of the URL, not both, or every tool shows up twice. It needs Node 20.3 or
-newer.
+Use the bridge instead of the URL, not both, or every tool shows up twice. It needs Node 20.19.3
+or newer.
 
-| Client      | Setup                                                                                  |
-| ----------- | -------------------------------------------------------------------------------------- |
-| Claude Code | `claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0`     |
-| Codex CLI   | `codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0`                                     |
-| Cursor      | `"bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }`                  |
-| Devin       | `"bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }`                  |
-| VS Code     | `"bugnet": { "type": "stdio", "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }` |
+```sh tab="Claude Code"
+claude mcp add --scope user --transport stdio bugnet -- npx -y @bugnet/mcp@0.1.0
+```
+
+```sh tab="Codex CLI"
+codex mcp add bugnet -- npx -y @bugnet/mcp@0.1.0
+```
+
+```json tab="Cursor"
+{
+    "mcpServers": {
+        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+    }
+}
+```
+
+![Add Bugnet to Claude Code](/docs/clips/install.mp4)
+
+```json tab="Devin Desktop"
+{
+    "mcpServers": {
+        "bugnet": { "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+    }
+}
+```
+
+```json tab="VS Code"
+{
+    "servers": {
+        "bugnet": { "type": "stdio", "command": "npx", "args": ["-y", "@bugnet/mcp@0.1.0"] }
+    }
+}
+```
 
 The bridge reads `~/.config/bugnet/mcp.toml` if it exists, or the file `--config` names.
 `--gateway URL` points it at another server. The settings file holds no secrets. Every setting
 with its default is in
 [`packages/bridge/config/example.toml`](https://github.com/bugnet-sh/bugnet/blob/main/packages/bridge/config/example.toml).
+
+## Next steps {#next-steps}
+
+- [Get started](/docs/): Install, pay and run your first commands, step by step.
+- [Before you pay](/docs/before-you-pay/): Set up one of the three ways to pay.
+- [Tools](/docs/tools/): What each tool does, what it costs and which ones ask you.
+- [FAQ](/docs/faq/): Short answers on accounts, costs, wallets and refunds.
