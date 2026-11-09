@@ -40,7 +40,8 @@ to pay:
 
 - **By link:** a browser wallet such as Phantom or Solflare.
 - **From the pay.sh wallet:** on this computer, with Touch ID.
-- **From a wallet file:** no extra confirmation, within limits you set.
+- **From a wallet file:** a key in your project's `.env` or the bridge's own file, with no extra
+  confirmation, within limits you set.
 
 ### By link {#ready-by-link}
 
