@@ -437,7 +437,7 @@ export function pitchSlides(): ReactElement[] {
                 <Terminal
                     lines={[
                         shell(),
-                        prompt("Someone sent me vitesse-lite. Get it running?"),
+                        prompt("Someone sent me a repo. Get it running?"),
                         blank,
                         call("bugnet_assess", "(repo)"),
                         result(m("fits   "), t("small-10m")),
