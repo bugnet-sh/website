@@ -67,6 +67,12 @@ body {
     background: var(--bg);
 }
 
+/* Selected text wears the accent green, not the browser's blue (founder, 2026-11-10) */
+::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+
 /* While a diagram is still to draw, an in-page link jumps instead of gliding: a glide aims at where
    its heading was, and the diagram growing above moves the heading on */
 html:has([data-drawing]) {

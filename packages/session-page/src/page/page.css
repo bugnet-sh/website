@@ -4,6 +4,12 @@
     display: none !important;
 }
 
+/* Selected text wears the accent green, not the browser's blue (founder, 2026-11-10) */
+::selection {
+    background: var(--accent);
+    color: var(--accent-ink);
+}
+
 /* The page's own sizes, on the brand's grid */
 
 :root {

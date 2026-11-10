@@ -115,6 +115,11 @@ describe("page.css", () => {
         expect(rules[0]?.body).toMatch(/display:\s*none\s*!important/);
     });
 
+    it("marks selected text in the accent green", () => {
+        expect(ruleFor("::selection")).toContain("background: var(--accent)");
+        expect(ruleFor("::selection")).toContain("color: var(--accent-ink)");
+    });
+
     it("takes every colour, font and size from a token", () => {
         expect(declarations.length).toBeGreaterThan(100);
         for (const { property, value } of declarations) {
