@@ -54,6 +54,12 @@ describe("sizeFor", () => {
         expect(boxd && sizeFor(boxd, medium)?.name).toBe("2x8");
     });
 
+    it("never picks a size the provider won't start yet", () => {
+        const boat = cloudProviders[0] as (typeof cloudProviders)[number];
+        // Only Boat's large covers 8 vCPU, and Boat's trial holds it back
+        expect(sizeFor(boat, pack("eight", 8, 16_384, 100))).toBeNull();
+    });
+
     it("never picks a size for a GPU package", () => {
         const gpu = { ...pack("gpu", 2, 2048, 10), gpu: { count: 1, memoryGiB: 20 } };
         for (const p of cloudProviders) expect(sizeFor(p, gpu)).toBeNull();
