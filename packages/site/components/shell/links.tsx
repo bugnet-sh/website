@@ -8,7 +8,7 @@ export type ShellLink = {
     external?: boolean;
 };
 
-export type Page = "home" | "docs";
+export type Page = "home" | "cloud" | "docs";
 
 export const github: ShellLink = {
     label: "GitHub",
@@ -21,6 +21,7 @@ export const supportEmail = "support@bugnet.org";
 
 export const headerLinks: (ShellLink & { page?: Page })[] = [
     { label: "Home", href: "/", page: "home" },
+    { label: "Cloud", href: "/cloud/", page: "cloud" },
     { label: "Docs", href: "/docs/", page: "docs" },
     github,
 ];
