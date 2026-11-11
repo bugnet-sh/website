@@ -103,16 +103,16 @@ export function ServerCard({ server, live }: { server: Server; live: Live }) {
             </dl>
             <div
                 className={cx(
-                    "flex flex-wrap items-baseline justify-between gap-x-(--space-5) gap-y-(--space-2) border-t-(length:--hairline) border-line py-(--space-3) text-(length:--fine-size) leading-(--fine-line)",
+                    "flex items-baseline gap-x-(--space-5) gap-y-(--space-2) border-t-(length:--hairline) border-line py-(--space-3) text-(length:--fine-size) leading-(--fine-line) phone:flex-col",
                     inset,
                 )}
             >
-                <LiveNumbers live={live} />
+                <LiveNumbers name={provider.name} live={live} />
                 <a
                     href={provider.url}
                     target="_blank"
                     rel="noreferrer"
-                    className="inline-flex items-center gap-(--space-1) text-text-muted hover:text-text"
+                    className="inline-flex shrink-0 items-center gap-(--space-1) text-text-muted hover:text-text"
                 >
                     {new URL(provider.url).host}{" "}
                     <span className="sr-only">(opens in a new tab)</span>

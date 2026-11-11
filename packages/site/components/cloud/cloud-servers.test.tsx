@@ -164,6 +164,9 @@ describe("a card's live provider numbers", () => {
             ]),
         );
         const boat = card("Boat 2 vCPU, 4 GiB small");
+        // Every size of a provider shows the same numbers, so they follow its name
+        const foot = within(boat).getByRole("link", { name: /^boat\.dev/ }).parentElement;
+        expect(foot?.textContent).toMatch(/^BoatRunning now:3/);
         expect(fact(boat, "Running now:")).toBe("3");
         expect(fact(boat, "Sandboxes in 7 days:")).toBe("120");
         expect(fact(boat, "Median start:")).toBe("2.3 s");
@@ -182,16 +185,17 @@ describe("a card's live provider numbers", () => {
         expect(fact(boxd, "Failed in 7 days:")).toBe("0");
     });
 
-    it("says Unavailable when the feed is off, and nothing while it loads", () => {
+    it("says once that stats are unavailable when the feed is off, and nothing while it loads", () => {
         show(off);
         const boat = card("Boat 2 vCPU, 4 GiB small");
-        expect(fact(boat, "Running now:")).toBe("Unavailable");
-        expect(card("Boat 2 vCPU, 4 GiB small").querySelector("p")?.textContent).toBe(
-            "From 0.05 USDC / 10 min",
-        );
+        expect(within(boat).getAllByText("Stats are unavailable right now.")).toHaveLength(1);
+        expect(
+            within(boat).getByText("Running now:").closest("dl")?.getAttribute("aria-hidden"),
+        ).toBe("true");
+        expect(boat.querySelector("p")?.textContent).toBe("From 0.05 USDC / 10 min");
         cleanup();
         show(loading);
-        expect(fact(card("Boat 2 vCPU, 4 GiB small"), "Running now:")).toBe("");
+        expect(fact(card("Boat 2 vCPU, 4 GiB small"), "Running now:")).toBe("\u00a0");
     });
 
     it("prices from the live feed's packages when it answers", () => {
