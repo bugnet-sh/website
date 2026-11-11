@@ -61,13 +61,12 @@ describe("sizeFor", () => {
 });
 
 describe("cloudServers", () => {
-    it("lists the eight sizes the catalog's packages land on, each with its packages", () => {
+    it("lists the seven sizes the catalog's packages land on, each with its packages", () => {
         expect(
             servers.map((s) => [`${s.provider.id} ${s.size.name}`, s.packages.map((p) => p.id)]),
         ).toEqual([
             ["boat small", ["small-10m", "medium-10m"]],
             ["boat default", ["large-10m"]],
-            ["boat large", ["xlarge-10m"]],
             ["e2b 2x2", ["small-10m"]],
             ["e2b 4x8", ["large-10m"]],
             ["boxd 2x8", ["medium-10m"]],
@@ -80,9 +79,10 @@ describe("cloudServers", () => {
         expect(names(servers)).not.toContain("boxd 1x4");
     });
 
-    it("leaves out a size Bugnet can't start, and a package no other size fits", () => {
-        expect(names(servers)).not.toContain("boat xlarge");
-        expect(servers.flatMap((s) => s.packages.map((p) => p.id))).not.toContain("2xlarge-10m");
+    it("leaves out a size the provider won't start yet, and lands its packages elsewhere", () => {
+        expect(names(servers)).not.toContain("boat large");
+        const xlarge = servers.filter((s) => s.packages.some((p) => p.id === "xlarge-10m"));
+        expect(names(xlarge)).toEqual(["boxd 8x32"]);
     });
 
     it("leaves a package off a size the router refuses it on", () => {
@@ -100,7 +100,7 @@ describe("cloudServers", () => {
 
 describe("filterServers", () => {
     it("keeps every server with no filter set", () => {
-        expect(filterServers(servers, noFilters)).toHaveLength(8);
+        expect(filterServers(servers, noFilters)).toHaveLength(7);
         expect(activeFilters(noFilters)).toBe(0);
     });
 
@@ -108,7 +108,7 @@ describe("filterServers", () => {
         const find = (query: string) => names(filterServers(servers, { ...noFilters, query }));
         expect(find("BOXD")).toEqual(["boxd 2x8", "boxd 4x16", "boxd 8x32"]);
         expect(find(" 4x8 ")).toEqual(["e2b 4x8"]);
-        expect(find("xlarge")).toEqual(["boat large", "boxd 8x32"]);
+        expect(find("xlarge")).toEqual(["boxd 8x32"]);
     });
 
     it("ORs within a group and ANDs across groups and the search", () => {
@@ -120,7 +120,7 @@ describe("filterServers", () => {
 
     it("counts the servers of each provider and each package", () => {
         expect(providerCounts(servers)).toEqual([
-            { id: "boat", label: "Boat", count: 3 },
+            { id: "boat", label: "Boat", count: 2 },
             { id: "e2b", label: "E2B", count: 2 },
             { id: "boxd", label: "boxd", count: 3 },
         ]);
@@ -128,7 +128,7 @@ describe("filterServers", () => {
             "small-10m 2",
             "medium-10m 2",
             "large-10m 3",
-            "xlarge-10m 2",
+            "xlarge-10m 1",
         ]);
     });
 });
@@ -142,7 +142,6 @@ describe("sortServers", () => {
             "e2b 4x8",
             "boat default",
             "boxd 4x16",
-            "boat large",
             "boxd 8x32",
         ]);
     });
@@ -154,7 +153,6 @@ describe("sortServers", () => {
             "boat small",
         ]);
         expect(sortServers(servers, "provider").map((s) => s.provider.name)).toEqual([
-            "Boat",
             "Boat",
             "Boat",
             "boxd",

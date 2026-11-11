@@ -33,11 +33,12 @@ export const cloudProviders: readonly CloudProvider[] = [
         user: "user",
         // Boat picks the country; we can't choose it
         location: "Germany, Finland or France",
+        // Production's [boat.types] leaves out xlarge, which Boat sells only on a plan Bugnet
+        // doesn't hold
         sizes: [
             { name: "small", vcpu: 2, memoryMiB: 4096, diskGiB: 51 },
             { name: "default", vcpu: 4, memoryMiB: 8192, diskGiB: 51 },
             { name: "large", vcpu: 8, memoryMiB: 16_384, diskGiB: 111 },
-            { name: "xlarge", vcpu: 16, memoryMiB: 32_768, diskGiB: 251 },
         ],
     },
     {
@@ -79,16 +80,15 @@ export const refused: readonly { provider: string; size: string; package: string
 ];
 
 /**
- * Sizes a provider sells that Bugnet's account with it can't start: Boat sells xlarge only on a
- * plan Bugnet doesn't hold (founder, 2026-11-11). Once production lists [boat.types], a test
- * checks it leaves these out.
+ * Sizes production sells that the provider won't start for Bugnet's account yet, which the router
+ * skips: Boat's free trial holds large back until Bugnet's first payment to Boat (2026-11-11)
  */
-export const noAccess: readonly { provider: string; size: string }[] = [
-    { provider: "boat", size: "xlarge" },
+export const locked: readonly { provider: string; size: string }[] = [
+    { provider: "boat", size: "large" },
 ];
 
 const usable = (provider: CloudProvider, size: Size) =>
-    !noAccess.some((n) => n.provider === provider.id && n.size === size.name);
+    !locked.some((n) => n.provider === provider.id && n.size === size.name);
 
 /** The router refuses an extension that would take a sandbox this close to its provider's limit */
 export const lifetimeSlackMinutes = 5;

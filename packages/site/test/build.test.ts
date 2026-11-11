@@ -251,8 +251,8 @@ describe("next build", () => {
         const doc = await page("cloud/index.html");
         const current = [...doc.querySelectorAll('header [aria-current="page"]')];
         expect(current.map((a) => a.getAttribute("href"))).toEqual(["/cloud/", "/cloud/"]);
-        expect(doc.querySelectorAll("main article")).toHaveLength(8);
-        expect(doc.querySelector("main")?.textContent).toContain("Showing 8 of 8 servers");
+        expect(doc.querySelectorAll("main article")).toHaveLength(7);
+        expect(doc.querySelector("main")?.textContent).toContain("Showing 7 of 7 servers");
     });
 
     it("hides the bar of each On this page rail, which still scrolls", async () => {
