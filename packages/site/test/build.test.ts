@@ -246,6 +246,21 @@ describe("next build", () => {
         expect(stats.querySelectorAll("[aria-current]")).toHaveLength(0);
     });
 
+    it("hides the bar of each On this page rail, which still scrolls", async () => {
+        const css = (
+            await Promise.all(files.filter((f) => f.endsWith(".css")).map((f) => read(f)))
+        ).join("\n");
+        expect(css).toMatch(/\.scrollbar-hidden\{[^}]*scrollbar-width:none/);
+        expect(css).toMatch(/\.scrollbar-hidden::-webkit-scrollbar\{display:none\}/);
+        for (const file of ["privacy/index.html", "docs/index.html"]) {
+            const toc = (await page(file)).querySelector("nav[aria-labelledby='on-this-page']");
+            const rail = toc?.closest("aside")?.className.split(" ") ?? [];
+            expect(rail, file).toEqual(
+                expect.arrayContaining(["overflow-y-auto", "scrollbar-hidden"]),
+            );
+        }
+    });
+
     it("has inline scripts on the stats page for the policy to hash", async () => {
         const doc = await page("stats/index.html");
         expect(doc.querySelectorAll("script:not([src])").length).toBeGreaterThan(0);

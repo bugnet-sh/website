@@ -17,7 +17,7 @@ export function ArticlePage({ updated, source }: { updated?: string; source: str
                         )}
                         <Markdown source={source} look="article" />
                     </article>
-                    <aside className="sticky top-[calc(var(--nav)+var(--space-6))] max-h-[calc(100svh-var(--nav)-2*var(--space-6))] self-start overflow-y-auto narrow:hidden">
+                    <aside className="sticky top-[calc(var(--nav)+var(--space-6))] max-h-[calc(100svh-var(--nav)-2*var(--space-6))] self-start overflow-y-auto scrollbar-hidden narrow:hidden">
                         <OnThisPage items={tocOf(source)} />
                     </aside>
                 </Frame>

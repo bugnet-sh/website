@@ -85,6 +85,15 @@ html:has([data-drawing]) {
     }
 }
 
+/* A side rail that scrolls on its own, without the wide bar Windows draws beside it (founder,
+   2026-11-11); the wheel, touch and keys still scroll it */
+@utility scrollbar-hidden {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 /* In the base layer, so a part that draws its ring inside itself, where a scrolling parent would
    clip one drawn outside, can say so with a utility */
 @layer base {

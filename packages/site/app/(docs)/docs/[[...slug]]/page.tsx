@@ -71,7 +71,7 @@ export default async function DocPage({ params }: Props) {
                             <PrevNext slug={doc.slug} />
                         </div>
                     </div>
-                    <aside className={`${rail} overflow-y-auto narrow:hidden`}>
+                    <aside className={`${rail} overflow-y-auto scrollbar-hidden narrow:hidden`}>
                         {toc.length > 0 && <OnThisPage items={toc} />}
                     </aside>
                 </Frame>
