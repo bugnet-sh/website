@@ -51,9 +51,10 @@ describe("llms.txt", () => {
         for (const item of items) expect(item.note.length, item.name).toBeGreaterThan(20);
     });
 
-    it("puts the full docs, the Terms and the Privacy notice under Optional", () => {
+    it("puts the full docs, the servers, the Terms and the Privacy notice under Optional", () => {
         expect(section("Optional").map((item) => item.url)).toEqual([
             "https://bugnet.sh/llms-full.txt",
+            "https://bugnet.sh/cloud/",
             "https://bugnet.sh/terms/",
             "https://bugnet.sh/privacy/",
         ]);

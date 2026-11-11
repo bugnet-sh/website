@@ -55,6 +55,7 @@ export function llmsTxt(dir?: string): string {
         "## Optional",
         "",
         `- [All docs](${url("/llms-full.txt")}): every page above in one file`,
+        `- [Cloud](${url("/cloud/")}): every server a sandbox runs on, by provider, with its size and price`,
         `- [Terms](${url("/terms/")}): the terms of service and acceptable use`,
         `- [Privacy](${url("/privacy/")}): what data Bugnet handles and why`,
         "",
