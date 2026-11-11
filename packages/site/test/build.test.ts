@@ -115,8 +115,9 @@ beforeAll(async () => {
 }, 300_000);
 
 describe("next build", () => {
-    it("exports the home page and the stats page as folders", () => {
+    it("exports the home page, the cloud page and the stats page as folders", () => {
         expect(files).toContain("index.html");
+        expect(files).toContain("cloud/index.html");
         expect(files).toContain("stats/index.html");
         expect(files.some((f) => f.startsWith("_next/static/"))).toBe(true);
     });
@@ -246,6 +247,29 @@ describe("next build", () => {
         expect(stats.querySelectorAll("[aria-current]")).toHaveLength(0);
     });
 
+    it("exports the cloud page with every server listed and Cloud marked current", async () => {
+        const doc = await page("cloud/index.html");
+        const current = [...doc.querySelectorAll('header [aria-current="page"]')];
+        expect(current.map((a) => a.getAttribute("href"))).toEqual(["/cloud/", "/cloud/"]);
+        expect(doc.querySelectorAll("main article")).toHaveLength(9);
+        expect(doc.querySelector("main")?.textContent).toContain("Showing 9 of 9 servers");
+    });
+
+    it("hides the bar of each On this page rail, which still scrolls", async () => {
+        const css = (
+            await Promise.all(files.filter((f) => f.endsWith(".css")).map((f) => read(f)))
+        ).join("\n");
+        expect(css).toMatch(/\.scrollbar-hidden\{[^}]*scrollbar-width:none/);
+        expect(css).toMatch(/\.scrollbar-hidden::-webkit-scrollbar\{display:none\}/);
+        for (const file of ["privacy/index.html", "docs/index.html"]) {
+            const toc = (await page(file)).querySelector("nav[aria-labelledby='on-this-page']");
+            const rail = toc?.closest("aside")?.className.split(" ") ?? [];
+            expect(rail, file).toEqual(
+                expect.arrayContaining(["overflow-y-auto", "scrollbar-hidden"]),
+            );
+        }
+    });
+
     it("has inline scripts on the stats page for the policy to hash", async () => {
         const doc = await page("stats/index.html");
         expect(doc.querySelectorAll("script:not([src])").length).toBeGreaterThan(0);
@@ -346,7 +370,7 @@ describe("next build", () => {
         const urls = [...(await read("sitemap.xml")).matchAll(/<loc>([^<]+)<\/loc>/g)].map(
             (m) => m[1] ?? "",
         );
-        const expected = ["/", "/stats/", ...docs.map(docHref), "/terms/", "/privacy/"];
+        const expected = ["/", "/cloud/", "/stats/", ...docs.map(docHref), "/terms/", "/privacy/"];
         expect(urls.sort()).toEqual(expected.map((p) => `https://bugnet.sh${p}`).sort());
         for (const url of urls) {
             const { pathname } = new URL(url);
@@ -361,7 +385,12 @@ describe("next build", () => {
 
     it("ships one 1200 by 630 PNG share image, named in the meta of the main pages", async () => {
         expect(pngSize(await readFile(join(out, "og.png")))).toEqual([1200, 630]);
-        for (const file of ["index.html", "stats/index.html", "docs/index.html"]) {
+        for (const file of [
+            "index.html",
+            "cloud/index.html",
+            "stats/index.html",
+            "docs/index.html",
+        ]) {
             const doc = await page(file);
             const meta = (selector: string) => doc.querySelector(selector)?.getAttribute("content");
             expect(meta('meta[property="og:image"]'), file).toBe("https://bugnet.sh/og.png");

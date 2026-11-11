@@ -15,10 +15,13 @@ function panelOf(button: HTMLElement) {
 }
 
 describe("SiteHeader", () => {
-    it("links Home, Docs and GitHub, which opens in a new tab", () => {
+    it("links Home, Cloud, Docs and GitHub, which opens in a new tab", () => {
         render(<SiteHeader />);
         const banner = screen.getByRole("banner");
         expect(within(banner).getByRole("link", { name: "Home" }).getAttribute("href")).toBe("/");
+        expect(within(banner).getByRole("link", { name: "Cloud" }).getAttribute("href")).toBe(
+            "/cloud/",
+        );
         expect(within(banner).getByRole("link", { name: "Docs" }).getAttribute("href")).toBe(
             "/docs/",
         );
@@ -39,6 +42,14 @@ describe("SiteHeader", () => {
             "page",
         );
         expect(screen.getByRole("link", { name: "Home" }).hasAttribute("aria-current")).toBe(false);
+    });
+
+    it("marks Cloud on the cloud page", () => {
+        render(<SiteHeader current="cloud" />);
+        const marked = screen.getAllByRole("link").filter((l) => l.hasAttribute("aria-current"));
+        expect(marked.map((l) => [l.textContent, l.getAttribute("aria-current")])).toEqual([
+            ["Cloud", "page"],
+        ]);
     });
 
     it("marks no link on a page the header does not list", () => {
@@ -95,7 +106,7 @@ describe("the phone menu", () => {
         expect(panelOf(button).hidden).toBe(true);
     });
 
-    it("opens on a click, showing the three links, and closes on a second click", () => {
+    it("opens on a click, showing the four links, and closes on a second click", () => {
         render(<SiteHeader current="home" />);
         const button = menuButton();
         fireEvent.click(button);
@@ -105,6 +116,7 @@ describe("the phone menu", () => {
         const links = within(panel).getAllByRole("link");
         expect(links.map((l) => l.textContent)).toEqual([
             "Home",
+            "Cloud",
             "Docs",
             "GitHub (opens in a new tab)",
         ]);

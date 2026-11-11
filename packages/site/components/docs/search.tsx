@@ -1,6 +1,5 @@
 "use client";
 
-import { Search as SearchMark } from "lucide-react";
 import {
     useEffect,
     useId,
@@ -10,6 +9,7 @@ import {
     type KeyboardEvent,
 } from "react";
 import { flushSync } from "react-dom";
+import { SearchIcon } from "../icons";
 import { cx } from "../../lib/cx";
 import { entryHref, search, type SearchEntry } from "../../lib/content/search";
 
@@ -100,10 +100,7 @@ export function Search({ onReveal }: { onReveal?: () => void }) {
 
     return (
         <div ref={root} role="search" className="relative">
-            <SearchMark
-                aria-hidden="true"
-                className="pointer-events-none absolute top-1/2 left-(--space-3) block size-(--search-icon) -translate-y-1/2 text-text-muted"
-            />
+            <SearchIcon />
             <input
                 ref={input}
                 type="text"

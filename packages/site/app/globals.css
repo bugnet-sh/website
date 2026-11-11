@@ -85,6 +85,15 @@ html:has([data-drawing]) {
     }
 }
 
+/* A side rail that scrolls on its own, without the wide bar Windows draws beside it (founder,
+   2026-11-11); the wheel, touch and keys still scroll it */
+@utility scrollbar-hidden {
+    scrollbar-width: none;
+    &::-webkit-scrollbar {
+        display: none;
+    }
+}
+
 /* In the base layer, so a part that draws its ring inside itself, where a scrolling parent would
    clip one drawn outside, can say so with a utility */
 @layer base {
@@ -95,7 +104,7 @@ html:has([data-drawing]) {
 }
 
 /* A text field matches :focus-visible on a click as well, so it marks focus with its border */
-input:focus-visible {
+input:not([type="checkbox"], [type="radio"]):focus-visible {
     outline: none;
     border-color: var(--accent);
 }

@@ -1,4 +1,4 @@
-import { ArrowUpRight, Check, ChevronDown, Copy, Menu, X } from "lucide-react";
+import { ArrowUpRight, Check, ChevronDown, Copy, Menu, Search, X } from "lucide-react";
 
 // Sizes come from CSS tokens; the class outranks the width and height lucide writes as attributes
 
@@ -32,6 +32,23 @@ export function CopyIcon() {
 
 export function CheckIcon() {
     return <Check aria-hidden="true" className="block size-(--copy-icon)" />;
+}
+
+/** The mark inside a ticked box; the box decides when it shows */
+export function TickIcon({ className }: { className: string }) {
+    return (
+        <Check aria-hidden="true" strokeWidth={3} className={`size-(--check-mark) ${className}`} />
+    );
+}
+
+/** The magnifier inside a search box, set in from its left edge */
+export function SearchIcon() {
+    return (
+        <Search
+            aria-hidden="true"
+            className="pointer-events-none absolute top-1/2 left-(--space-3) block size-(--search-icon) -translate-y-1/2 text-text-muted"
+        />
+    );
 }
 
 export function FailIcon() {

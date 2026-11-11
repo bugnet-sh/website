@@ -186,6 +186,15 @@
     /* What is yours in a drawing, such as your laptop: grey, so green stays the sandbox's */
     --art-off: color-mix(in srgb, var(--text-muted) 55%, var(--line));
 
+    /* The cloud page's filter panel beside its server list, and the panel's tick boxes */
+    --filters: 300px;
+    --check: 16px;
+    --check-mark: 12px;
+    /* A server card's live numbers keep this room while they load, so a count up to "1,234", or
+       words such as "Under 5 starts", arriving moves nothing */
+    --live-count: 5ch;
+    --live-words: 12ch;
+
     /* Articles: docs, terms and privacy, measured against z402.net/docs (2026-11-08) */
     --article: 720px;
     --toc: 200px;
