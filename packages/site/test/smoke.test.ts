@@ -142,7 +142,7 @@ describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("stats page in Ch
     }, 60_000);
 });
 
-const pages = ["/", "/docs/", "/docs/paying/", "/privacy/"];
+const pages = ["/", "/cloud/", "/docs/", "/docs/paying/", "/privacy/"];
 
 describe.skipIf(!existsSync(join(root, "out", "headers.txt")))("content pages in Chromium", () => {
     for (const width of [1440, 375]) {
