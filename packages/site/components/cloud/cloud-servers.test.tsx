@@ -94,6 +94,16 @@ describe("CloudServers", () => {
         expect(cards()).toHaveLength(9);
     });
 
+    it("moves focus to the Filters button when a clear from the keyboard takes its button away", () => {
+        show(loading);
+        tick("Boat 4");
+        // A key press clicks with no detail; jsdom draws no layout, so the Filters button shows
+        fireEvent.click(screen.getAllByRole("button", { name: "Clear all" })[0] as HTMLElement, {
+            detail: 0,
+        });
+        expect(document.activeElement).toBe(screen.getByRole("button", { name: /^Filters/ }));
+    });
+
     it("searches, and offers to clear the filters when nothing matches", () => {
         show(loading);
         const search = screen.getByRole("textbox", { name: "Search servers" });

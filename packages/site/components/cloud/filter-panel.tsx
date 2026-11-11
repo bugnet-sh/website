@@ -1,5 +1,6 @@
+import type { MouseEvent, Ref } from "react";
 import { cx } from "../../lib/cx";
-import { noFilters, type Count, type Filters } from "../../lib/cloud/servers";
+import type { Count, Filters } from "../../lib/cloud/servers";
 import { SearchIcon, TickIcon } from "../icons";
 
 const caps =
@@ -11,7 +12,8 @@ const toggle = (list: readonly string[], id: string) =>
 
 /**
  * A tick box per choice, with how many servers it has. The box is drawn from tokens; the panel
- * scrolls, so a row marks keyboard focus with a ring inside itself.
+ * scrolls, so a row marks keyboard focus with a ring inside itself, and the box draws none. A row
+ * reaches into the panel's padding, so its box and count line up with the search field.
  */
 function Choices({
     legend,
@@ -32,13 +34,13 @@ function Choices({
             <ul className="mt-(--space-2)">
                 {counts.map((c) => (
                     <li key={c.id}>
-                        <label className="flex min-h-(--nav-row) cursor-pointer items-center gap-(--space-3) px-(--space-1) text-(length:--ui-size) leading-(--ui-line) text-text-muted hover:text-text has-checked:text-text has-focus-visible:outline-(length:--ring) has-focus-visible:-outline-offset-(--ring) has-focus-visible:outline-accent has-focus-visible:outline-solid">
+                        <label className="-mx-(--space-2) flex min-h-(--nav-row) cursor-pointer items-center gap-(--space-3) px-(--space-2) text-(length:--ui-size) leading-(--ui-line) text-text-muted hover:text-text has-checked:text-text has-focus-visible:outline-(length:--ring) has-focus-visible:-outline-offset-(--ring) has-focus-visible:outline-accent has-focus-visible:outline-solid">
                             <span className="relative grid size-(--check) shrink-0 place-items-center">
                                 <input
                                     type="checkbox"
                                     checked={chosen.includes(c.id)}
                                     onChange={() => onChange(toggle(chosen, c.id))}
-                                    className="peer absolute inset-0 m-0 cursor-pointer appearance-none border-(length:--hairline) border-line bg-bg checked:border-accent checked:bg-accent"
+                                    className="peer absolute inset-0 m-0 cursor-pointer appearance-none border-(length:--hairline) border-text-muted bg-bg checked:border-accent checked:bg-accent focus-visible:outline-none"
                                 />
                                 <TickIcon className="pointer-events-none relative hidden text-accent-ink peer-checked:block" />
                             </span>
@@ -56,7 +58,13 @@ function Choices({
     );
 }
 
-function ClearAll({ onClick, className }: { onClick: () => void; className?: string }) {
+function ClearAll({
+    onClick,
+    className,
+}: {
+    onClick: (e: MouseEvent) => void;
+    className?: string;
+}) {
     return (
         <button
             type="button"
@@ -75,17 +83,20 @@ function ClearAll({ onClick, className }: { onClick: () => void; className?: str
 export function FilterPanel({
     filters,
     onChange,
+    onClear,
+    searchRef,
     providers,
     packages,
     active,
 }: {
     filters: Filters;
     onChange: (next: Filters) => void;
+    onClear: (e: MouseEvent) => void;
+    searchRef: Ref<HTMLInputElement>;
     providers: readonly Count[];
     packages: readonly Count[];
     active: number;
 }) {
-    const clear = () => onChange(noFilters);
     return (
         <div className="flex flex-col gap-(--space-5)">
             {/* Narrow screens name the panel on the button that opens it */}
@@ -94,11 +105,12 @@ export function FilterPanel({
                     Filters
                 </h2>
                 {/* Kept in the row while hidden, so it showing moves nothing */}
-                <ClearAll onClick={clear} className={cx(active === 0 && "invisible")} />
+                <ClearAll onClick={onClear} className={cx(active === 0 && "invisible")} />
             </div>
             <div role="search" className="relative">
                 <SearchIcon />
                 <input
+                    ref={searchRef}
                     type="text"
                     aria-label="Search servers"
                     placeholder="Search"
@@ -126,7 +138,7 @@ export function FilterPanel({
                 />
             </div>
             {/* Under the choices on narrow screens, in reading order, only while one is set */}
-            {active > 0 && <ClearAll onClick={clear} className="hidden self-start narrow:flex" />}
+            {active > 0 && <ClearAll onClick={onClear} className="hidden self-start narrow:flex" />}
         </div>
     );
 }

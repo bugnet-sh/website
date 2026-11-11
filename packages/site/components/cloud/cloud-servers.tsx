@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useState } from "react";
+import { useId, useRef, useState, type MouseEvent } from "react";
 import {
     activeFilters,
     cloudServers,
@@ -71,6 +71,8 @@ export function CloudServers() {
     const [sort, setSort] = useState<SortKey>("price");
     const [open, setOpen] = useState(false);
     const panelId = useId();
+    const toggle = useRef<HTMLButtonElement>(null);
+    const search = useRef<HTMLInputElement>(null);
 
     const live = stats.data?.packages ?? [];
     const packages = live.length > 0 ? live : catalogPackages();
@@ -78,18 +80,30 @@ export function CloudServers() {
     const shown = sortServers(filterServers(servers, filters), sort);
     const active = activeFilters(filters);
 
+    /**
+     * A clear takes away the button that was pressed. From the keyboard, a click with no detail,
+     * focus goes on to the Filters button, which only narrow screens show, or else to the search.
+     */
+    const clear = (e: MouseEvent) => {
+        setFilters(noFilters);
+        if (e.detail !== 0) return;
+        toggle.current?.focus();
+        if (document.activeElement !== toggle.current) search.current?.focus();
+    };
+
     return (
         <Band rail={false}>
             <Frame className="grid grid-cols-[minmax(0,1fr)_var(--filters)] gap-x-(--space-7) pt-(--space-6) pb-(--band) narrow:grid-cols-1">
-                {/* Pads its edge by the focus ring, so the ring of a part at the edge is not cut */}
+                {/* Padded so a focus ring at its edge is not cut; the filter rows reach into the pad */}
                 <aside
                     aria-label="Filters"
                     className={cx(
                         rail,
-                        "col-start-2 row-start-1 -m-(--space-1) overflow-y-auto scrollbar-hidden p-(--space-1) narrow:static narrow:col-start-1 narrow:max-h-none narrow:overflow-visible",
+                        "col-start-2 row-start-1 -m-(--space-2) overflow-y-auto scrollbar-hidden p-(--space-2) narrow:static narrow:col-start-1 narrow:max-h-none narrow:overflow-visible",
                     )}
                 >
                     <button
+                        ref={toggle}
                         type="button"
                         aria-expanded={open}
                         aria-controls={panelId}
@@ -116,6 +130,8 @@ export function CloudServers() {
                         <FilterPanel
                             filters={filters}
                             onChange={setFilters}
+                            onClear={clear}
+                            searchRef={search}
                             providers={providerCounts(servers)}
                             packages={packageCounts(servers)}
                             active={active}
@@ -126,9 +142,10 @@ export function CloudServers() {
                     <div className="flex min-h-(--button) items-center justify-between gap-x-(--space-4) gap-y-(--space-3) phone:flex-col phone:items-start">
                         <p
                             aria-live="polite"
+                            aria-atomic="true"
                             className="text-(length:--ui-size) leading-(--ui-line) text-text-muted"
                         >
-                            Showing {shown.length} of {servers.length} servers
+                            {`Showing ${shown.length} of ${servers.length} servers`}
                         </p>
                         <SortSelect value={sort} onChange={setSort} />
                     </div>
@@ -148,11 +165,7 @@ export function CloudServers() {
                             <p className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
                                 No server matches.
                             </p>
-                            <button
-                                type="button"
-                                onClick={() => setFilters(noFilters)}
-                                className={secondaryButton}
-                            >
+                            <button type="button" onClick={clear} className={secondaryButton}>
                                 Clear filters
                             </button>
                         </div>
