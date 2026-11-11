@@ -42,7 +42,7 @@ const showing = () => screen.getByText(/^Showing/).textContent;
 const tick = (name: string) => fireEvent.click(screen.getByRole("checkbox", { name }));
 
 describe("CloudServers", () => {
-    it("shows the nine servers from the catalog while the feed loads, cheapest first", () => {
+    it("shows the eight servers from the catalog while the feed loads, cheapest first", () => {
         show(loading);
         expect(titles()).toEqual([
             "E2B 2 vCPU, 2 GiB 2x2",
@@ -53,9 +53,8 @@ describe("CloudServers", () => {
             "boxd 4 vCPU, 16 GiB 4x16",
             "Boat 8 vCPU, 16 GiB large",
             "boxd 8 vCPU, 32 GiB 8x32",
-            "Boat 16 vCPU, 32 GiB xlarge",
         ]);
-        expect(showing()).toBe("Showing 9 of 9 servers");
+        expect(showing()).toBe("Showing 8 of 8 servers");
     });
 
     it("shows a server's specs, its packages and its cheapest package's price", () => {
@@ -83,20 +82,20 @@ describe("CloudServers", () => {
 
     it("filters by provider and package, counts what shows, and clears", () => {
         show(loading);
-        tick("Boat 4 servers");
-        expect(cards()).toHaveLength(4);
-        expect(showing()).toBe("Showing 4 of 9 servers");
+        tick("Boat 3 servers");
+        expect(cards()).toHaveLength(3);
+        expect(showing()).toBe("Showing 3 of 8 servers");
         tick("xlarge-10m 2 servers");
         expect(titles()).toEqual(["Boat 8 vCPU, 16 GiB large"]);
         // The second Clear all is the narrow screens' own, under the choices
         expect(screen.getAllByRole("button", { name: "Clear all" })).toHaveLength(2);
         fireEvent.click(screen.getAllByRole("button", { name: "Clear all" })[0] as HTMLElement);
-        expect(cards()).toHaveLength(9);
+        expect(cards()).toHaveLength(8);
     });
 
     it("moves focus to the Filters button when a clear from the keyboard takes its button away", () => {
         show(loading);
-        tick("Boat 4 servers");
+        tick("Boat 3 servers");
         // A key press clicks with no detail; jsdom draws no layout, so the Filters button shows
         fireEvent.click(screen.getAllByRole("button", { name: "Clear all" })[0] as HTMLElement, {
             detail: 0,
@@ -113,7 +112,7 @@ describe("CloudServers", () => {
         expect(screen.queryAllByRole("article")).toHaveLength(0);
         expect(screen.getByText("No server matches.")).not.toBeNull();
         fireEvent.click(screen.getByRole("button", { name: "Clear filters" }));
-        expect(cards()).toHaveLength(9);
+        expect(cards()).toHaveLength(8);
         expect((search as HTMLInputElement).value).toBe("");
     });
 
@@ -123,7 +122,7 @@ describe("CloudServers", () => {
         expect((sort as HTMLSelectElement).value).toBe("price");
         fireEvent.change(sort, { target: { value: "memory" } });
         expect(titles().slice(0, 2)).toEqual(["E2B 2 vCPU, 2 GiB 2x2", "Boat 2 vCPU, 4 GiB small"]);
-        expect(titles().at(-1)).toBe("Boat 16 vCPU, 32 GiB xlarge");
+        expect(titles().at(-1)).toBe("boxd 8 vCPU, 32 GiB 8x32");
     });
 
     it("folds the filters behind a button that counts them, for narrow screens", () => {

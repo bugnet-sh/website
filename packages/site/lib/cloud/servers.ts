@@ -78,18 +78,35 @@ export const refused: readonly { provider: string; size: string; package: string
     { provider: "boxd", size: "2x8", package: "small-10m" },
 ];
 
+/**
+ * Sizes a provider sells that Bugnet's account with it can't start: Boat sells xlarge only on a
+ * plan Bugnet doesn't hold (founder, 2026-11-11). Once production lists [boat.types], a test
+ * checks it leaves these out.
+ */
+export const noAccess: readonly { provider: string; size: string }[] = [
+    { provider: "boat", size: "xlarge" },
+];
+
+const usable = (provider: CloudProvider, size: Size) =>
+    !noAccess.some((n) => n.provider === provider.id && n.size === size.name);
+
 /** The router refuses an extension that would take a sandbox this close to its provider's limit */
 export const lifetimeSlackMinutes = 5;
 
 /**
  * The size the router's SizeFor picks for a package: the first in the provider's order with
- * enough vCPU, memory and disk. None of these providers has a GPU.
+ * enough vCPU, memory and disk, among the sizes Bugnet can start. None of these providers has a
+ * GPU.
  */
 export function sizeFor(provider: CloudProvider, p: PackageRow): Size | null {
     if (p.gpu) return null;
     return (
         provider.sizes.find(
-            (s) => s.vcpu >= p.vcpu && s.memoryMiB >= p.memoryMiB && s.diskGiB >= p.diskGiB,
+            (s) =>
+                usable(provider, s) &&
+                s.vcpu >= p.vcpu &&
+                s.memoryMiB >= p.memoryMiB &&
+                s.diskGiB >= p.diskGiB,
         ) ?? null
     );
 }

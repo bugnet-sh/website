@@ -5,6 +5,7 @@ import { catalogPackages } from "../landing/catalog";
 import {
     cloudProviders,
     lifetimeSlackMinutes,
+    noAccess,
     refused,
     sizeFor,
     type CloudProvider,
@@ -67,9 +68,22 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
     });
 
     it("leave each adapter's defaults as they are", () => {
-        // No [boat] types, no [e2b] domain or lifetime, no [boxd] region
+        // No [e2b] domain or lifetime, no [boxd] region, no other [boat] setting
         expect(toml).not.toMatch(/^\[(boat|boxd|e2b)\]/m);
-        expect(toml).not.toMatch(/^\[boat\.types\]/m);
+    });
+
+    it("start no size Bugnet's account lacks, once production lists Boat's types", () => {
+        const boat = provider("boat");
+        for (const n of noAccess) {
+            expect(provider(n.provider).sizes.map((s) => s.name)).toContain(n.size);
+        }
+        const table = /^\[boat\.types\]\n((?:[^[\n].*\n|\n)*)/m.exec(toml)?.[1];
+        if (table === undefined) return;
+        const sold = [...table.matchAll(/^(\w+)\s*=/gm)].map((m) => m[1]);
+        const usable = boat.sizes
+            .map((s) => s.name)
+            .filter((name) => !noAccess.some((n) => n.provider === "boat" && n.size === name));
+        expect(sold).toEqual(usable);
     });
 
     it("sell Boat's machine types in their written order, for 30 days, run as user", () => {
