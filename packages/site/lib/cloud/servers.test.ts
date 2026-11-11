@@ -7,10 +7,11 @@ import {
     cloudProviders,
     cloudServers,
     filterServers,
-    lifetimeText,
+    longestRun,
     noFilters,
     packageCounts,
     providerCounts,
+    runText,
     sizeFor,
     sortServers,
     type Server,
@@ -35,12 +36,11 @@ describe("the providers", () => {
         for (const p of cloudProviders) expect(providerLabel(p.id)).toBe(p.name);
     });
 
-    it("words each longest run", () => {
-        expect(cloudProviders.map((p) => lifetimeText(p.lifetimeHours))).toEqual([
-            "30 days",
-            "1 hour",
-            "No limit",
-        ]);
+    it("run as long as whole packages fit, 5 minutes short of the provider's limit", () => {
+        const run = (id: string) => runText(longestRun(servers.find((s) => s.id === id) as Server));
+        expect(run("boat-small")).toBe("30 days");
+        expect(run("e2b-2x2")).toBe("50 minutes");
+        expect(run("boxd-2x8")).toBe("No limit");
     });
 });
 
@@ -71,7 +71,7 @@ describe("cloudServers", () => {
             ["boat xlarge", ["2xlarge-10m"]],
             ["e2b 2x2", ["small-10m"]],
             ["e2b 4x8", ["large-10m"]],
-            ["boxd 2x8", ["small-10m", "medium-10m"]],
+            ["boxd 2x8", ["medium-10m"]],
             ["boxd 4x16", ["large-10m"]],
             ["boxd 8x32", ["xlarge-10m"]],
         ]);
@@ -79,6 +79,11 @@ describe("cloudServers", () => {
 
     it("leaves out a size no package picks, such as boxd's 1 vCPU", () => {
         expect(names(servers)).not.toContain("boxd 1x4");
+    });
+
+    it("leaves a package off a size the router refuses it on", () => {
+        const boxd = servers.find((s) => s.id === "boxd-2x8");
+        expect(boxd?.packages.map((p) => p.id)).not.toContain("small-10m");
     });
 
     it("lists a server's packages cheapest first, by price per minute", () => {
@@ -116,7 +121,7 @@ describe("filterServers", () => {
             { id: "boxd", label: "boxd", count: 3 },
         ]);
         expect(packageCounts(servers).map((p) => `${p.id} ${p.count}`)).toEqual([
-            "small-10m 3",
+            "small-10m 2",
             "medium-10m 2",
             "large-10m 3",
             "xlarge-10m 2",

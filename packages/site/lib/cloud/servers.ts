@@ -9,8 +9,8 @@ export type CloudProvider = {
     /** As the brand writes it: boxd stays lower case even at the start of a sentence */
     name: string;
     url: string;
-    /** The longest a sandbox may live, or null when the provider sets no limit */
-    lifetimeHours: number | null;
+    /** The longest the provider lets a sandbox live, in minutes, or null when it sets no limit */
+    lifetimeMinutes: number | null;
     /** The user commands run as */
     user: string;
     location: string;
@@ -28,7 +28,7 @@ export const cloudProviders: readonly CloudProvider[] = [
         id: "boat",
         name: "Boat",
         url: "https://boat.dev",
-        lifetimeHours: 30 * 24,
+        lifetimeMinutes: 30 * 24 * 60,
         user: "user",
         // Boat picks the country; we can't choose it
         location: "Germany, Finland or France",
@@ -43,7 +43,7 @@ export const cloudProviders: readonly CloudProvider[] = [
         id: "e2b",
         name: "E2B",
         url: "https://e2b.dev",
-        lifetimeHours: 1,
+        lifetimeMinutes: 60,
         user: "root",
         // Production uses E2B's default domain, e2b.app, which is its US-West-1 region
         location: "United States",
@@ -56,7 +56,7 @@ export const cloudProviders: readonly CloudProvider[] = [
         id: "boxd",
         name: "boxd",
         url: "https://boxd.sh",
-        lifetimeHours: null,
+        lifetimeMinutes: null,
         user: "boxd",
         location: "Frankfurt, Germany",
         sizes: [
@@ -68,15 +68,17 @@ export const cloudProviders: readonly CloudProvider[] = [
     },
 ];
 
-/** "30 days", "1 hour", or "No limit" */
-export function lifetimeText(hours: number | null): string {
-    if (hours === null) return "No limit";
-    if (hours >= 24 && hours % 24 === 0) {
-        const days = hours / 24;
-        return `${days} ${days === 1 ? "day" : "days"}`;
-    }
-    return `${hours} ${hours === 1 ? "hour" : "hours"}`;
-}
+/**
+ * Packages a size fits but the router never starts on it, as what the size costs Bugnet leaves
+ * too little of the package's price. A test works the list out from the router's source, so no
+ * cost is written here.
+ */
+export const refused: readonly { provider: string; size: string; package: string }[] = [
+    { provider: "boxd", size: "2x8", package: "small-10m" },
+];
+
+/** The router refuses an extension that would take a sandbox this close to its provider's limit */
+export const lifetimeSlackMinutes = 5;
 
 /**
  * The size the router's SizeFor picks for a package: the first in the provider's order with
@@ -102,6 +104,9 @@ export type Server = {
 const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
 const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
 
+const isRefused = (provider: CloudProvider, size: Size, p: PackageRow) =>
+    refused.some((r) => r.provider === provider.id && r.size === size.name && r.package === p.id);
+
 /** Every size at least one package lands on, provider by provider in the router's order */
 export function cloudServers(
     packages: readonly PackageRow[],
@@ -109,12 +114,37 @@ export function cloudServers(
 ): Server[] {
     return providers.flatMap((provider) =>
         provider.sizes.flatMap((size) => {
-            const fits = packages.filter((p) => sizeFor(provider, p) === size).sort(byRate);
+            const fits = packages
+                .filter((p) => sizeFor(provider, p) === size && !isRefused(provider, size, p))
+                .sort(byRate);
             return fits.length > 0
                 ? [{ id: `${provider.id}-${size.name}`, provider, size, packages: fits }]
                 : [];
         }),
     );
+}
+
+/**
+ * The longest a server's sandbox runs, extended a package at a time, in minutes, or null when its
+ * provider sets no limit
+ */
+export function longestRun(s: Server): number | null {
+    const limit = s.provider.lifetimeMinutes;
+    if (limit === null) return null;
+    return Math.max(
+        ...s.packages.map(
+            (p) => Math.floor((limit - lifetimeSlackMinutes) / p.minutes) * p.minutes,
+        ),
+    );
+}
+
+/** "50 minutes", "30 days", or "No limit"; a run some minutes short of whole days reads as days */
+export function runText(minutes: number | null): string {
+    if (minutes === null) return "No limit";
+    const count = (n: number, unit: string) => `${n} ${unit}${n === 1 ? "" : "s"}`;
+    if (minutes >= 24 * 60) return count(Math.round(minutes / (24 * 60)), "day");
+    if (minutes >= 60 && minutes % 60 === 0) return count(minutes / 60, "hour");
+    return count(minutes, "minute");
 }
 
 export type Filters = {

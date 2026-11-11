@@ -68,6 +68,7 @@ describe("CloudServers", () => {
         expect(fact(boat, "GPU")).toBe("None");
         expect(fact(boat, "Location")).toBe("Germany, Finland or France");
         expect(fact(boat, "Longest run")).toBe("30 days");
+        expect(fact(card("E2B 2 vCPU, 2 GiB 2x2"), "Longest run")).toBe("50 minutes");
         expect(fact(boat, "Runs as")).toBe("user");
         expect(
             within(boat)

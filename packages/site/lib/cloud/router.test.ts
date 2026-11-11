@@ -1,7 +1,15 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { cloudProviders, type CloudProvider, type Size } from "./servers";
+import { catalogPackages } from "../landing/catalog";
+import {
+    cloudProviders,
+    lifetimeSlackMinutes,
+    refused,
+    sizeFor,
+    type CloudProvider,
+    type Size,
+} from "./servers";
 
 // The router's repository, when it is checked out beside this one
 const router = join(__dirname, "../../../../../bugnet-router");
@@ -13,12 +21,15 @@ function provider(id: string): CloudProvider {
     return p;
 }
 
-/** The text of a Go function, from its signature to the closing brace at the line's start */
+/** The text of a Go function or method, from its name to the closing brace at the line's start */
 function goFunc(source: string, name: string): string {
-    const at = source.indexOf(`) ${name}(`);
+    const at = Math.max(source.indexOf(`) ${name}(`), source.indexOf(`func ${name}(`));
     expect(at, name).toBeGreaterThan(-1);
     return source.slice(at, source.indexOf("\n}", at));
 }
+
+/** A Go integer literal, such as 1_000 */
+const goInt = (literal: string | undefined) => BigInt((literal ?? "").replaceAll("_", ""));
 
 /** The values of one TOML key in each table of an array of tables, such as [[e2b.templates]] */
 function tomlTables(toml: string, header: string): Record<string, string>[] {
@@ -76,7 +87,7 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
         const boat = provider("boat");
         expect(boat.sizes).toEqual(types);
         const days = /maxTTL\s*=\s*(\d+) \* 24 \* time\.Hour/.exec(go)?.[1];
-        expect(boat.lifetimeHours).toBe(Number(days) * 24);
+        expect(boat.lifetimeMinutes).toBe(Number(days) * 24 * 60);
         const caps = goFunc(go, "Capabilities");
         expect(caps).toContain("MaxLifetime: maxTTL");
         expect(caps).toContain(`ExecUser: "${boat.user}"`);
@@ -101,7 +112,7 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
         const e2b = provider("e2b");
         expect(e2b.sizes).toEqual(ordered);
         expect(go).toMatch(/defaultMaxLifetime\s*=\s*time\.Hour\n/);
-        expect(e2b.lifetimeHours).toBe(1);
+        expect(e2b.lifetimeMinutes).toBe(60);
         expect(goFunc(go, "Capabilities")).not.toContain("ExecUser");
         expect(read("internal/provider/provider.go")).toContain(
             "ExecUser is the user Exec runs as, root when empty",
@@ -127,9 +138,113 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
         expect(boxd.sizes).toEqual(sizes);
         const caps = goFunc(go, "Capabilities");
         expect(caps).not.toContain("MaxLifetime");
-        expect(boxd.lifetimeHours).toBeNull();
+        expect(boxd.lifetimeMinutes).toBeNull();
         expect(caps).toContain(`ExecUser: "${boxd.user}"`);
         expect(go).toMatch(/defaultRegion\s*=\s*"fra"/);
         expect(boxd.location).toBe("Frankfurt, Germany");
+    });
+
+    it("stop a run its slack short of the provider's limit", () => {
+        const saga = read("internal/saga/saga.go");
+        for (const go of [saga, read("internal/placement/placement.go")]) {
+            const slack = /lifetimeSlack\s*=\s*(\d+) \* time\.Minute/.exec(go)?.[1];
+            expect(Number(slack)).toBe(lifetimeSlackMinutes);
+        }
+        const within = goFunc(saga, "withinLifetime");
+        expect(within).toContain("life := deadline.Add(lifetimeSlack).Sub(born)");
+        expect(within).toContain("life > limit");
+    });
+
+    it("never start a package on a size that leaves too little of its price, as refused says", () => {
+        // The figures are read here and never written down: what Bugnet pays stays out of the repo
+        const config = read("internal/config/config.go");
+        const defaults = config.slice(config.indexOf("func defaults() file {"));
+        const floor = Number(
+            /^margin_floor\s*=\s*([\d.]+)/m.exec(toml)?.[1] ??
+                /MarginFloor:\s*([\d.]+),/.exec(defaults)?.[1],
+        );
+        expect(floor).toBeGreaterThan(0);
+
+        // Placing an order tries every provider's pick with no hold before the paid clock
+        const place = read("internal/placement/placement.go");
+        expect(place).toContain(
+            "billed := time.Duration(pk.Minutes)*time.Minute + max(in.Hold, 0)",
+        );
+        expect(place).toContain("cost := costMicros(hourly, billed, p.BillingIncrement())");
+        expect(place).toContain("margin = float64(pk.PriceMicros-cost) / float64(pk.PriceMicros)");
+        expect(place).toContain("if margin < in.MarginFloor {");
+        expect(goFunc(read("internal/saga/saga.go"), "inputs")).not.toContain("Hold");
+
+        // Each adapter's hourly cost of a size, in micro-USD
+        const boat = read("internal/provider/boat/boat.go");
+        const boatRate = new Map(
+            [...boat.matchAll(/\{"(\w+)", provider\.Resources\{[^}]*\}, ([\d_]+)\}/g)].map((m) => [
+                m[1] as string,
+                goInt(m[2]),
+            ]),
+        );
+        expect(goFunc(boat, "HourlyCostMicros")).toContain("return s.typ.hourMicros");
+        const e2b = read("internal/provider/e2b/e2b.go");
+        const perVcpu = goInt(/vcpuHourMicros\s*=\s*([\d_]+)/.exec(e2b)?.[1]);
+        const perGiB = goInt(/gibHourMicros\s*=\s*([\d_]+)/.exec(e2b)?.[1]);
+        expect(e2b).toContain(
+            "return int64(r.VCPU)*vcpuHourMicros + (int64(r.MemoryMiB)*gibHourMicros+1023)/1024",
+        );
+        expect(goFunc(e2b, "HourlyCostMicros")).toContain("return hourlyMicros(size.Resources)");
+        const boxd = read("internal/provider/boxd/boxd.go");
+        const eurRate = new Map(
+            [
+                ...boxd.matchAll(
+                    /provider\.Size\{Name: "(\w+)", Resources: res\(\d+, \d+\)\}, ([\d_]+)\}/g,
+                ),
+            ].map((m) => [m[1] as string, goInt(m[2])]),
+        );
+        const usdPerEURCents = goInt(/usdPerEURCents\s*=\s*([\d_]+)/.exec(boxd)?.[1]);
+        expect(goFunc(boxd, "HourlyCostMicros")).toContain(
+            "return (eur*usdPerEURCents + 99) / 100",
+        );
+        const hourly: Record<string, (s: Size) => bigint | undefined> = {
+            boat: (s) => boatRate.get(s.name),
+            e2b: (s) => BigInt(s.vcpu) * perVcpu + (BigInt(s.memoryMiB) * perGiB + 1023n) / 1024n,
+            boxd: (s) => {
+                const eur = eurRate.get(s.name);
+                return eur === undefined ? undefined : (eur * usdPerEURCents + 99n) / 100n;
+            },
+        };
+
+        // Only Boat charges for a start, and nothing for one within the plan's included starts
+        const limits = read("internal/provider/boat/limits.go");
+        const brackets = /var startBrackets = \[\]struct \{[^}]*\}\{([^]*?)\n\}/.exec(limits)?.[1];
+        const fees = [...(brackets ?? "").matchAll(/\{[\d.]+, ([\d_]+)\}/g)];
+        expect(fees.length).toBeGreaterThan(0);
+        const leastFee = fees.map((m) => goInt(m[1])).reduce((a, b) => (b < a ? b : a));
+        expect(limits).toContain("func (p *Provider) StartCostMicros(");
+        for (const id of ["e2b", "boxd"]) {
+            const dir = `internal/provider/${id}`;
+            for (const file of readdirSync(join(router, dir))) {
+                if (file.endsWith(".go") && !file.endsWith("_test.go")) {
+                    expect(read(`${dir}/${file}`), file).not.toContain("StartCostMicros");
+                }
+            }
+        }
+
+        const below: string[] = [];
+        for (const provider of cloudProviders) {
+            const go = read(`internal/provider/${provider.id}/${provider.id}.go`);
+            // Billed by the second, and every package lasts whole seconds
+            expect(go).toMatch(/BillingIncrement\(\) time\.Duration \{ return time\.Second \}/);
+            const fee = provider.id === "boat" ? leastFee : 0n;
+            for (const p of catalogPackages()) {
+                const size = sizeFor(provider, p);
+                if (!size) continue;
+                const rate = hourly[provider.id]?.(size);
+                expect(rate, `${provider.id} ${size.name}`).toBeDefined();
+                const seconds = BigInt(p.minutes * 60);
+                const cost = ((rate as bigint) * seconds + 3599n) / 3600n + fee;
+                const margin = Number(BigInt(p.priceMicros) - cost) / p.priceMicros;
+                if (margin < floor) below.push(`${provider.id} ${size.name} ${p.id}`);
+            }
+        }
+        expect(refused.map((r) => `${r.provider} ${r.size} ${r.package}`)).toEqual(below);
     });
 });

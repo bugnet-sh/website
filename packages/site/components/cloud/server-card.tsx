@@ -1,6 +1,6 @@
 import { useId, type ReactNode } from "react";
 import { cx } from "../../lib/cx";
-import { cheapest, lifetimeText, type Server } from "../../lib/cloud/servers";
+import { cheapest, longestRun, runText, type Server } from "../../lib/cloud/servers";
 import { lengthText, priceText } from "../../lib/landing/price";
 import { formatBytes, sizeText } from "../../lib/stats/labels";
 import { ExternalArrow } from "../icons";
@@ -20,7 +20,7 @@ function facts(s: Server): { label: string; value: ReactNode; mono?: boolean; sp
         { label: "Disk", value: formatBytes(s.size.diskGiB * GiB), mono: true },
         { label: "GPU", value: "None" },
         { label: "Location", value: s.provider.location },
-        { label: "Longest run", value: lifetimeText(s.provider.lifetimeHours) },
+        { label: "Longest run", value: runText(longestRun(s)) },
         { label: "Runs as", value: s.provider.user, mono: true },
         {
             label: "Packages",
