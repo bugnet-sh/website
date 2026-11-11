@@ -48,7 +48,10 @@ function Choices({
                                 {c.label}
                             </span>{" "}
                             <span className="font-mono text-(length:--fine-size) leading-(--fine-line) text-text-muted">
-                                {c.count}
+                                {c.count}{" "}
+                                <span className="sr-only">
+                                    {c.count === 1 ? "server" : "servers"}
+                                </span>
                             </span>
                         </label>
                     </li>

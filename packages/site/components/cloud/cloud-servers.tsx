@@ -114,7 +114,9 @@ export function CloudServers() {
                             Filters
                             {active > 0 && (
                                 <span className="bg-accent px-(--space-1) font-mono text-(length:--fine-size) leading-(--fine-line) text-accent-ink">
+                                    <span className="sr-only">, </span>
                                     {active}
+                                    <span className="sr-only"> on</span>
                                 </span>
                             )}
                         </span>

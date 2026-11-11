@@ -1,3 +1,4 @@
+import { byRate } from "../landing/price";
 import type { PackageRow } from "../stats/types";
 
 /** One machine size a provider sells, under the provider's own name for it */
@@ -100,9 +101,6 @@ export type Server = {
     size: Size;
     packages: readonly PackageRow[];
 };
-
-const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
-const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
 
 const isRefused = (provider: CloudProvider, size: Size, p: PackageRow) =>
     refused.some((r) => r.provider === provider.id && r.size === size.name && r.package === p.id);

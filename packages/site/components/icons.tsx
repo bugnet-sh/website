@@ -34,18 +34,14 @@ export function CheckIcon() {
     return <Check aria-hidden="true" className="block size-(--copy-icon)" />;
 }
 
-/** The mark inside a ticked box. */
-export function TickIcon({ className }: { className?: string }) {
+/** The mark inside a ticked box; the box decides when it shows */
+export function TickIcon({ className }: { className: string }) {
     return (
-        <Check
-            aria-hidden="true"
-            strokeWidth={3}
-            className={`block size-(--check-mark) ${className ?? ""}`}
-        />
+        <Check aria-hidden="true" strokeWidth={3} className={`size-(--check-mark) ${className}`} />
     );
 }
 
-/** The magnifier inside a search box, set in from its left edge. */
+/** The magnifier inside a search box, set in from its left edge */
 export function SearchIcon() {
     return (
         <Search

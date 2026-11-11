@@ -83,10 +83,10 @@ describe("CloudServers", () => {
 
     it("filters by provider and package, counts what shows, and clears", () => {
         show(loading);
-        tick("Boat 4");
+        tick("Boat 4 servers");
         expect(cards()).toHaveLength(4);
         expect(showing()).toBe("Showing 4 of 9 servers");
-        tick("xlarge-10m 2");
+        tick("xlarge-10m 2 servers");
         expect(titles()).toEqual(["Boat 8 vCPU, 16 GiB large"]);
         // The second Clear all is the narrow screens' own, under the choices
         expect(screen.getAllByRole("button", { name: "Clear all" })).toHaveLength(2);
@@ -96,7 +96,7 @@ describe("CloudServers", () => {
 
     it("moves focus to the Filters button when a clear from the keyboard takes its button away", () => {
         show(loading);
-        tick("Boat 4");
+        tick("Boat 4 servers");
         // A key press clicks with no detail; jsdom draws no layout, so the Filters button shows
         fireEvent.click(screen.getAllByRole("button", { name: "Clear all" })[0] as HTMLElement, {
             detail: 0,
@@ -135,8 +135,8 @@ describe("CloudServers", () => {
         expect(button.getAttribute("aria-expanded")).toBe("false");
         const panel = document.getElementById(button.getAttribute("aria-controls") ?? "");
         expect(panel?.className.split(" ")).toContain("narrow:hidden");
-        tick("E2B 2");
-        expect(button.textContent).toBe("Filters1");
+        tick("E2B 2 servers");
+        expect(button.textContent).toBe("Filters, 1 on");
         fireEvent.click(button);
         expect(button.getAttribute("aria-expanded")).toBe("true");
         expect(panel?.className.split(" ")).not.toContain("narrow:hidden");

@@ -8,7 +8,7 @@ export function priceText(micros: number): string {
 }
 
 const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
-const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
+export const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
 
 /** Popular GPUs not on sale yet (founder, 2026-11-08): each card names the GPU and its VRAM, no price */
 export const SOON_GPUS: readonly { model: string; memoryGiB: number }[] = [
