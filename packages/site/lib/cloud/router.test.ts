@@ -5,6 +5,7 @@ import { catalogPackages } from "../landing/catalog";
 import {
     cloudProviders,
     lifetimeSlackMinutes,
+    locked,
     refused,
     sizeFor,
     type CloudProvider,
@@ -67,12 +68,17 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
     });
 
     it("leave each adapter's defaults as they are", () => {
-        // No [boat] types, no [e2b] domain or lifetime, no [boxd] region
+        // No [e2b] domain or lifetime, no [boxd] region, no other [boat] setting
         expect(toml).not.toMatch(/^\[(boat|boxd|e2b)\]/m);
-        expect(toml).not.toMatch(/^\[boat\.types\]/m);
     });
 
-    it("sell Boat's machine types in their written order, for 30 days, run as user", () => {
+    it("lock only sizes production sells", () => {
+        for (const n of locked) {
+            expect(provider(n.provider).sizes.map((s) => s.name)).toContain(n.size);
+        }
+    });
+
+    it("sell the Boat types production names, in their written order, for 30 days, run as user", () => {
         const go = read("internal/provider/boat/boat.go");
         const types: Size[] = [
             ...go.matchAll(
@@ -84,8 +90,15 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
             memoryMiB: Number(m[3]) * 1024,
             diskGiB: Number(m[4]),
         }));
+        // Production sells the types [boat.types] names, or every type when it names none
+        const table = /^\[boat\.types\][^\n]*\n((?:[^[\n].*\n|\n)*)/m.exec(toml)?.[1] ?? "";
+        const sold = [...table.matchAll(/^(\w+)\s*=\s*"(\w+)"/gm)];
+        for (const m of sold) expect(m[2], "size and type share a name").toBe(m[1]);
+        const names = sold.map((m) => m[1]);
         const boat = provider("boat");
-        expect(boat.sizes).toEqual(types);
+        expect(boat.sizes).toEqual(
+            names.length > 0 ? types.filter((t) => names.includes(t.name)) : types,
+        );
         const days = /maxTTL\s*=\s*(\d+) \* 24 \* time\.Hour/.exec(go)?.[1];
         expect(boat.lifetimeMinutes).toBe(Number(days) * 24 * 60);
         const caps = goFunc(go, "Capabilities");

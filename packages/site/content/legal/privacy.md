@@ -1,4 +1,4 @@
-Last updated: 8 November 2026
+Last updated: 11 November 2026
 
 # Privacy Notice {#privacy}
 
@@ -232,7 +232,7 @@ For each run, our router picks one of these providers. Our tools don't tell you 
 |---|---|---|
 | Koyeb | Koyeb SAS, France | Frankfurt, Germany |
 | Boat (boat.dev) | Dedale AI, Corp., United States | Germany, Finland or France. We can't choose the region. We turn snapshots off. |
-| E2B (e2b.dev) | FoundryLabs, Inc., United States | Our design uses EU-West-1. E2B's default region is US-West-1. |
+| E2B (e2b.dev) | FoundryLabs, Inc., United States | United States, in E2B's US-West-1 region |
 | boxd (boxd.sh) | Azin Tech Operating Company B.V., Netherlands | Frankfurt, Germany, on servers from Latitude.sh LLC (United States) |
 
 Providers use other companies too. Koyeb lists Equinix Metal, IBM Cloud, Scaleway and Amazon Web Services. Boat names OVH, Hetzner and Cloudflare. Each provider keeps its own logs under its own terms.
