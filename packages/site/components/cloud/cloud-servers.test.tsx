@@ -74,10 +74,32 @@ describe("CloudServers", () => {
                 .getAllByRole("listitem")
                 .map((li) => li.textContent),
         ).toEqual(["small-10m", "medium-10m"]);
-        const site = within(boat).getByRole("link", { name: "boat.dev (opens in a new tab)" });
+        // The provider's name above the size links to its site
+        const site = within(boat).getByRole("link", { name: "Boat (opens in a new tab)" });
         expect(site.getAttribute("href")).toBe("https://boat.dev");
         expect(site.getAttribute("target")).toBe("_blank");
         expect(card("E2B 2 vCPU, 2 GiB 2x2").textContent).not.toContain("EU");
+    });
+
+    it("lays every part of a card on one four-column grid, two columns on phones", () => {
+        show(loading);
+        const boat = card("Boat 2 vCPU, 4 GiB small");
+        const [head, ...grids] = [...boat.children] as HTMLElement[];
+        expect(head?.className.split(" ")).toEqual(
+            expect.arrayContaining(["grid", "grid-cols-4", "gap-x-(--hairline)"]),
+        );
+        expect(head?.children[0]?.className.split(" ")).toContain("col-span-3");
+        const dls = boat.querySelectorAll("dl");
+        expect(dls).toHaveLength(2);
+        for (const dl of dls) {
+            expect(dl.className.split(" ")).toEqual(
+                expect.arrayContaining(["grid-cols-4", "gap-(--hairline)", "phone:grid-cols-2"]),
+            );
+            expect(dl.children.length % 4).toBe(0);
+        }
+        expect(grids).toHaveLength(2);
+        // Values share one type: only package ids are code
+        expect(boat.querySelectorAll("dd.font-mono, dd .font-mono:not(li)")).toHaveLength(0);
     });
 
     it("filters by provider and package, counts what shows, and clears", () => {
@@ -173,25 +195,22 @@ describe("a card's live provider numbers", () => {
             ]),
         );
         const boat = card("Boat 2 vCPU, 4 GiB small");
-        // Every size of a provider shows the same numbers, so they follow its name
-        const foot = within(boat).getByRole("link", { name: /^boat\.dev/ }).parentElement;
-        expect(foot?.textContent).toMatch(/^BoatRunning now:3/);
-        expect(fact(boat, "Running now:")).toBe("3");
-        expect(fact(boat, "Sandboxes in 7 days:")).toBe("120");
-        expect(fact(boat, "Median start:")).toBe("2.3 s");
-        expect(fact(boat, "Failed in 7 days:")).toBe("2");
+        expect(fact(boat, "Running now")).toBe("3");
+        expect(fact(boat, "Sandboxes in 7 days")).toBe("120");
+        expect(fact(boat, "Median start")).toBe("2.3 s");
+        expect(fact(boat, "Failed in 7 days")).toBe("2");
         const e2b = card("E2B 2 vCPU, 2 GiB 2x2");
-        expect(fact(e2b, "Median start:")).toBe("Under 5 starts");
-        expect(fact(e2b, "Failed in 7 days:")).toBe("Unavailable");
+        expect(fact(e2b, "Median start")).toBe("Under 5 starts");
+        expect(fact(e2b, "Failed in 7 days")).toBe("Unavailable");
     });
 
     it("reads a provider the feed leaves out as one with nothing in 7 days", () => {
         show(live([]));
         const boxd = card("boxd 2 vCPU, 8 GiB 2x8");
-        expect(fact(boxd, "Running now:")).toBe("0");
-        expect(fact(boxd, "Sandboxes in 7 days:")).toBe("0");
-        expect(fact(boxd, "Median start:")).toBe("Under 5 starts");
-        expect(fact(boxd, "Failed in 7 days:")).toBe("0");
+        expect(fact(boxd, "Running now")).toBe("0");
+        expect(fact(boxd, "Sandboxes in 7 days")).toBe("0");
+        expect(fact(boxd, "Median start")).toBe("Under 5 starts");
+        expect(fact(boxd, "Failed in 7 days")).toBe("0");
     });
 
     it("says once that stats are unavailable when the feed is off, and nothing while it loads", () => {
@@ -199,12 +218,12 @@ describe("a card's live provider numbers", () => {
         const boat = card("Boat 2 vCPU, 4 GiB small");
         expect(within(boat).getAllByText("Stats are unavailable right now.")).toHaveLength(1);
         expect(
-            within(boat).getByText("Running now:").closest("dl")?.getAttribute("aria-hidden"),
+            within(boat).getByText("Running now").closest("dl")?.getAttribute("aria-hidden"),
         ).toBe("true");
         expect(boat.querySelector("p")?.textContent).toBe("From 0.05 USDC / 10 min");
         cleanup();
         show(loading);
-        expect(fact(card("Boat 2 vCPU, 4 GiB small"), "Running now:")).toBe("\u00a0");
+        expect(fact(card("Boat 2 vCPU, 4 GiB small"), "Running now")).toBe("\u00a0");
     });
 
     it("prices from the live feed's packages when it answers", () => {
