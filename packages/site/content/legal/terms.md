@@ -1,4 +1,4 @@
-Last updated: 8 November 2026
+Last updated: 12 November 2026
 
 # Bugnet Terms of Service and Acceptable Use {#terms}
 
@@ -46,7 +46,7 @@ Other links work like keys too: the claim used with `bugnet_redeem`, preview lin
 ## Prices and payment {#payment}
 
 - Bugnet takes only USDC (the classic SPL token) on Solana mainnet, through the x402 `exact` scheme. Bugnet pays the network fees.
-- Your agent shows you the exact price first. A quote is valid for 10 minutes. If the price changes, Bugnet refuses the start before charging you.
+- Your agent shows you the exact price first. A quote is valid for 10 minutes. If the price changes before you pay, Bugnet refuses the start. If it changes after you pay, the start is refused and your payment is refunded in full.
 - You approve every payment: with `bugnet-wallet`, the `pay` program on your computer pays after Touch ID or your system's equivalent; with `bugnet`, you sign the pay link with a browser wallet such as Phantom or Solflare, and your agent calls `bugnet_redeem`.
 - `pay.bugnet.sh` is the only place you ever pay Bugnet. Any other page asking for a Bugnet payment is not ours.
 - Bugnet never holds your wallet keys. We don't run your wallet software (`pay` from pay.sh, Phantom, Solflare) or Solana, and their own terms apply.
