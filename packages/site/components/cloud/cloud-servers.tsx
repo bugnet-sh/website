@@ -152,7 +152,8 @@ export function CloudServers() {
                         <SortSelect value={sort} onChange={setSort} />
                     </div>
                     {shown.length > 0 ? (
-                        <ul className="mt-(--space-4) grid gap-(--space-4)">
+                        // As far below the Sort row as the search field is below Filters
+                        <ul className="mt-(--space-5) grid gap-(--space-4)">
                             {shown.map((server) => (
                                 <li key={server.id}>
                                     <ServerCard
@@ -163,7 +164,7 @@ export function CloudServers() {
                             ))}
                         </ul>
                     ) : (
-                        <div className="mt-(--space-4) flex flex-col items-start gap-(--space-4) border-(length:--hairline) border-line px-(--space-5) py-(--space-6)">
+                        <div className="mt-(--space-5) flex flex-col items-start gap-(--space-4) border-(length:--hairline) border-line px-(--space-5) py-(--space-6)">
                             <p className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
                                 No server matches.
                             </p>

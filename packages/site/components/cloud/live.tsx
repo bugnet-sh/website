@@ -5,6 +5,7 @@ import { formatStartMs } from "../../lib/stats/labels";
 import type { ProviderRow } from "../../lib/stats/types";
 import { formatCount } from "../../lib/stats/view";
 import { isUnavailable } from "../stats/unavailable";
+import { Cell, cells } from "./cell";
 
 const unavailable = "Stats are unavailable right now.";
 
@@ -31,64 +32,49 @@ export function liveOf(stats: SummaryState, provider: string): Live {
     return isUnavailable(stats) ? { kind: "unavailable" } : { kind: "loading" };
 }
 
-const muted = (text: string) => <span className="font-ui text-text-muted">{text}</span>;
+const muted = (text: string) => <span className="text-text-muted">{text}</span>;
 
-const items: { label: string; value: (row: ProviderRow) => ReactNode; room: string }[] = [
-    { label: "Running now", value: (row) => formatCount(row.active), room: "min-w-(--live-count)" },
-    {
-        label: "Sandboxes in 7 days",
-        value: (row) => formatCount(row.sandboxes7d),
-        room: "min-w-(--live-count)",
-    },
+const items: { label: string; value: (row: ProviderRow) => ReactNode }[] = [
+    { label: "Running now", value: (row) => formatCount(row.active) },
+    { label: "Sandboxes in 7 days", value: (row) => formatCount(row.sandboxes7d) },
     {
         label: "Median start",
         // Under 5 samples the feed sends no percentile
         value: (row) =>
             row.startP50Ms === null ? muted("Under 5 starts") : formatStartMs(row.startP50Ms),
-        room: "min-w-(--live-words)",
     },
     {
         label: "Failed in 7 days",
         value: (row) => (row.failed7d === null ? muted("Unavailable") : formatCount(row.failed7d)),
-        room: "min-w-(--live-words)",
     },
 ];
 
 /**
- * The provider's live numbers, after its name, as no size has numbers of its own. Each keeps its
- * room while it loads, phones stack them, and a feed that is off covers them with one line, so data
+ * The provider's live numbers, a tinted row on the same columns as the specs above it. Each cell
+ * keeps its height while it loads, and a feed that is off covers the row with one line, so data
  * arriving moves nothing.
  */
-export function LiveNumbers({ name, live }: { name: string; live: Live }) {
+export function LiveNumbers({ live }: { live: Live }) {
     const off = live.kind === "unavailable";
     return (
-        <div className="flex min-w-0 flex-1 items-baseline gap-(--space-5)">
-            <p className="shrink-0 font-semibold text-text">{name}</p>
-            <div className="relative min-w-0 flex-1">
-                <dl
-                    aria-hidden={off || undefined}
-                    className={cx(
-                        "flex flex-wrap gap-x-(--space-5) gap-y-(--space-1) phone:flex-col",
-                        off && "invisible",
-                    )}
-                >
-                    {items.map((item) => (
-                        <div key={item.label} className="flex items-baseline gap-(--space-1)">
-                            <dt className="text-text-muted">{item.label}:</dt>
-                            {/* A space while there is no value keeps the line's baseline */}
-                            <dd
-                                className={cx(
-                                    "h-(--fine-line) font-mono whitespace-nowrap",
-                                    item.room,
-                                )}
-                            >
-                                {live.kind === "row" ? item.value(live.row) : "\u00a0"}
-                            </dd>
-                        </div>
-                    ))}
-                </dl>
-                {off && <p className="absolute inset-0 text-text-muted">{unavailable}</p>}
-            </div>
+        <div className="relative border-t-(length:--hairline) border-line">
+            <dl aria-hidden={off || undefined} className={cells}>
+                {items.map((item) => (
+                    <Cell
+                        key={item.label}
+                        label={item.label}
+                        className={cx("bg-surface", off && "invisible")}
+                    >
+                        {/* A space while there is no value keeps the cell's height */}
+                        {live.kind === "row" ? item.value(live.row) : " "}
+                    </Cell>
+                ))}
+            </dl>
+            {off && (
+                <p className="absolute inset-0 flex items-center bg-surface px-(--space-5) text-(length:--ui-size) leading-(--ui-line) text-text-muted phone:px-(--space-4)">
+                    {unavailable}
+                </p>
+            )}
         </div>
     );
 }
