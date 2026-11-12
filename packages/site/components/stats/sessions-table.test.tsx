@@ -89,6 +89,21 @@ it("leaves out the wallet and tx columns when no row fills them", async () => {
     expect(headers).not.toContain("Tx");
 });
 
+it("lines up the price column's decimal points, each price exact", async () => {
+    const [first, second] = page("one-day").items as [SessionRow, SessionRow];
+    const items = [
+        { ...first, priceMicros: 50_000 },
+        { ...second, priceMicros: 52_442 },
+    ];
+    const { container } = await show(async () => ({ items, next: null }));
+    const headers = screen.getAllByRole("columnheader").map((th) => th.textContent);
+    const price = headers.indexOf("Price");
+    const cells = [...desktopRows(container)].map(
+        (tr) => tr.querySelectorAll("td")[price]?.textContent,
+    );
+    expect(cells).toEqual(["0.050000USDC", "0.052442USDC"]);
+});
+
 it("folds a row on phones into a button that opens its details", async () => {
     const { container } = await show(async () => page("one-day"));
     const row = container.querySelector("ul button[aria-expanded]") as HTMLButtonElement;

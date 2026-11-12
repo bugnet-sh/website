@@ -3,13 +3,8 @@
 import { useId } from "react";
 import { cx } from "../../lib/cx";
 import { catalogPackages } from "../../lib/landing/catalog";
-import {
-    packageFacts,
-    pricingCells,
-    lengthText,
-    priceText,
-    type PricingCell,
-} from "../../lib/landing/price";
+import { packageFacts, pricingCells, lengthText, type PricingCell } from "../../lib/landing/price";
+import { formatUsdc } from "../../lib/stats/format";
 import { Band, Frame } from "../shell/frame";
 import { useStats } from "../stats/stats-provider";
 import { secondaryButton } from "../ui/button";
@@ -28,7 +23,7 @@ function Head({ cell }: { cell: PricingCell }) {
     return (
         <p className="flex items-baseline gap-(--space-2)">
             <span className="font-mono text-(length:--stat-size) leading-(--stat-line) text-accent">
-                {priceText(cell.p.priceMicros)}
+                {formatUsdc(cell.p.priceMicros)}
             </span>
             <span className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
                 USDC {lengthText(cell.p)}

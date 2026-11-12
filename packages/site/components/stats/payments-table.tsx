@@ -3,8 +3,10 @@
 import { fetchPage } from "../../lib/stats/client";
 import { formatStamp, isOutgoing, listKindLabels, methodLabel } from "../../lib/stats/labels";
 import type { PaymentRow } from "../../lib/stats/types";
-import { Cut, TxLink, Usdc, WalletCell } from "./cells";
+import { columnDecimals, Cut, TxLink, Usdc, WalletCell } from "./cells";
 import { PagedTable, type Column, type Load } from "./paged-table";
+
+const amountDecimals = columnDecimals((row: PaymentRow) => row.amountMicros);
 
 const columns: Column<PaymentRow>[] = [
     { label: "Time", cell: (row) => formatStamp(row.at), fold: true },
@@ -16,7 +18,13 @@ const columns: Column<PaymentRow>[] = [
     },
     {
         label: "Amount",
-        cell: (row) => <Usdc micros={row.amountMicros} outgoing={isOutgoing(row.kind)} />,
+        cell: (row, rows) => (
+            <Usdc
+                micros={row.amountMicros}
+                outgoing={isOutgoing(row.kind)}
+                decimals={amountDecimals(rows)}
+            />
+        ),
         numeric: true,
         fold: true,
     },

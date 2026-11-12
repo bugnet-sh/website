@@ -102,7 +102,8 @@ export function ChartTooltipContent({
     valueFormatter,
 }: Partial<Pick<TooltipContentProps, "active" | "payload" | "label">> & {
     labelFormatter?: (label: string) => ReactNode;
-    valueFormatter?: (value: number, key: string) => ReactNode;
+    /** `values` is every value the tooltip shows, for a formatter that lines them up. */
+    valueFormatter?: (value: number, key: string, values: readonly number[]) => ReactNode;
 }) {
     const config = useChartConfig();
     const order = Object.keys(config);
@@ -113,6 +114,7 @@ export function ChartTooltipContent({
         .filter((item) => item.type !== "none")
         .sort((a, b) => rank(a) - rank(b));
     if (!active || items.length === 0) return null;
+    const values = items.map((item) => Number(item.value));
     return (
         <div className="grid gap-(--space-2) border-(length:--hairline) border-line bg-surface px-(--space-3) py-(--space-2) font-ui text-(length:--fine-size) leading-(--fine-line) text-text">
             {label !== undefined && (
@@ -133,7 +135,7 @@ export function ChartTooltipContent({
                             />
                             <span className="text-text-muted">{series?.label ?? key}</span>
                             <span className="ml-auto pl-(--space-4) font-mono tabular-nums">
-                                {valueFormatter ? valueFormatter(value, key) : value}
+                                {valueFormatter ? valueFormatter(value, key, values) : value}
                             </span>
                         </div>
                     );

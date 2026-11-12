@@ -46,8 +46,8 @@ describe("labels", () => {
         expect(formatBytes(512 * 1024 * 1024)).toBe("512 MiB");
         expect(formatLimit("wallet.max_concurrent", 5)).toBe("5");
         expect(formatLimit("transfer.max_file_bytes", 1_073_741_824)).toBe("1 GiB");
-        expect(formatLimit("order.max_micros", 100_000_000)).toBe("100 USDC");
-        expect(formatLimit("x402.max_price_per_call_micros", 500_000)).toBe("0.5 USDC");
+        expect(formatLimit("order.max_micros", 100_000_000)).toBe("100.00 USDC");
+        expect(formatLimit("x402.max_price_per_call_micros", 500_000)).toBe("0.50 USDC");
     });
 
     it("keeps only the limits sent, in the table's order", () => {

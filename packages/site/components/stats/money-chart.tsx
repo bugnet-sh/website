@@ -14,7 +14,7 @@ import {
     type BarShapeProps,
     type LabelProps,
 } from "recharts";
-import { formatUsdc, profit } from "../../lib/stats/format";
+import { alignedDecimals, formatUsdc, profit } from "../../lib/stats/format";
 import type { DayRow } from "../../lib/stats/types";
 import { formatDay, rangeDays, signedUsdc } from "../../lib/stats/view";
 import { Band, Frame } from "../shell/frame";
@@ -58,6 +58,22 @@ export function toPoints(daily: readonly DayRow[]): Point[] {
             profit: p === null ? null : usdc(p),
         };
     });
+}
+
+/**
+ * A day's amount in the tooltip, to the precision of the longest of that day's amounts, so their
+ * decimal points line up. Only profit can be a loss.
+ */
+export function tooltipMoney(
+    value: number,
+    key: string,
+    values: readonly number[],
+): { text: string; negative: boolean } {
+    const amount = micros(value);
+    const decimals = alignedDecimals(values.map(micros));
+    return key === "profit"
+        ? signedUsdc(amount, decimals)
+        : { text: formatUsdc(amount, { decimals }), negative: false };
 }
 
 /** The y range widened to whole steps, and its ticks; zero is always a tick. */
@@ -237,10 +253,12 @@ export function MoneyChart() {
                                     content={
                                         <ChartTooltipContent
                                             labelFormatter={formatDay}
-                                            valueFormatter={(value, key) => {
-                                                const amount = micros(value);
-                                                if (key !== "profit") return formatUsdc(amount);
-                                                const { text, negative } = signedUsdc(amount);
+                                            valueFormatter={(value, key, values) => {
+                                                const { text, negative } = tooltipMoney(
+                                                    value,
+                                                    key,
+                                                    values,
+                                                );
                                                 return (
                                                     <span
                                                         className={

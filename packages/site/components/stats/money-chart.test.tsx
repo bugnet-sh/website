@@ -5,7 +5,7 @@ import { parseSummary } from "../../lib/stats/parse";
 import { fakeSummary, type Scenario } from "../../lib/stats/testing/fake-data";
 import type { StatsSummary } from "../../lib/stats/types";
 import { axisWidth, niceScale } from "./axis";
-import { endPlaces, MoneyChart, scaleOf } from "./money-chart";
+import { endPlaces, MoneyChart, scaleOf, tooltipMoney } from "./money-chart";
 import { StatsState } from "./stats-provider";
 
 // jsdom lays nothing out, so the chart is given a size to draw into
@@ -59,6 +59,23 @@ it("starts on 30 days and shows 7 bars once 7 d is chosen", async () => {
         fireEvent.click(screen.getByRole("radio", { name: "7 days" }));
     });
     expect(bars(container)).toBe(7);
+});
+
+it("writes a day's tooltip amounts to one precision, so their points line up", () => {
+    const day = [1.234567, 0.6, 0.634567];
+    expect(
+        day.map((v, i) => tooltipMoney(v, ["earned", "spent", "profit"][i] as string, day)),
+    ).toEqual([
+        { text: "1.234567", negative: false },
+        { text: "0.600000", negative: false },
+        { text: "0.634567", negative: false },
+    ]);
+    expect(tooltipMoney(-0.05, "profit", [0.1, 0.15, -0.05])).toEqual({
+        text: "\u22120.05",
+        negative: true,
+    });
+    // Only profit is signed: earned and spent are never negative
+    expect(tooltipMoney(0.1, "earned", [0.1, 0.15, -0.05]).negative).toBe(false);
 });
 
 it("labels each line's last point with its value", () => {

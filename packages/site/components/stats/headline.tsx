@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
-import { formatUsdc, profit } from "../../lib/stats/format";
+import { formatUsdc, profit, usdcDecimals } from "../../lib/stats/format";
 import type { StatsSummary } from "../../lib/stats/types";
 import { formatCount, formatHours, signedUsdc } from "../../lib/stats/view";
 import { Band, Frame } from "../shell/frame";
@@ -11,11 +11,19 @@ import { isUnavailable, Unavailable } from "./unavailable";
 
 type Cell = { label: string; value: (s: StatsSummary) => ReactNode };
 
+/**
+ * A total rounds to the cent from 1 USDC and to 3 decimals below, so its card never cuts it. The
+ * one place money rounds: every price and every listed amount prints exact.
+ */
+const totalDecimals = (micros: number): number =>
+    Math.abs(micros) < 1_000_000 ? Math.min(3, usdcDecimals(micros)) : 2;
+
 function Money({ micros, signed = false }: { micros: number | null; signed?: boolean }) {
     if (micros === null) return <span className="text-text-muted">Unavailable</span>;
+    const decimals = totalDecimals(micros);
     const { text, negative } = signed
-        ? signedUsdc(micros)
-        : { text: formatUsdc(micros), negative: false };
+        ? signedUsdc(micros, decimals)
+        : { text: formatUsdc(micros, { decimals }), negative: false };
     return (
         <>
             <span className={negative ? "text-bad" : "text-accent-2"}>{text}</span>

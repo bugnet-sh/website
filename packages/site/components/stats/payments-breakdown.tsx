@@ -1,6 +1,6 @@
 "use client";
 
-import { formatUsdc } from "../../lib/stats/format";
+import { alignedDecimals, formatUsdc } from "../../lib/stats/format";
 import { kindLabels, knownMethods, methodLabel, share } from "../../lib/stats/labels";
 import { formatCount } from "../../lib/stats/view";
 import { Usdc } from "./cells";
@@ -80,12 +80,10 @@ export function PaymentsBreakdown() {
     const methods = data
         ? data.payments.byMethod.map((m) => ({ ...m, label: methodLabel(m.method) }))
         : waitingMethods;
-    // One precision for every amount in both lists, so their decimal points line up: three when
-    // any is under 1 USDC, as the tables write such amounts
-    const small = [...kinds, ...methods].some(
-        (l) => l.micros !== null && Math.abs(l.micros) < 1_000_000,
+    // One precision for every amount in both lists, so their decimal points line up
+    const decimals = alignedDecimals(
+        [...kinds, ...methods].flatMap((l) => (l.micros === null ? [] : [l.micros])),
     );
-    const decimals = small ? 3 : 2;
     return (
         <Panel second>
             <SectionTitle>Payment breakdown</SectionTitle>

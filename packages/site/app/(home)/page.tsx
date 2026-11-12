@@ -36,7 +36,7 @@ export default function HomePage() {
             ),
     }));
     return (
-        // One feed for the hero's price and the pricing band
+        // One feed for the pricing band
         <StatsProvider>
             <main>
                 <Hero installLine={lines.hero} />

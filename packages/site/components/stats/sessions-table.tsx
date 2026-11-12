@@ -5,7 +5,7 @@ import { formatDuration } from "../../lib/stats/format";
 import { formatStamp, providerLabel, sizeText, statusText } from "../../lib/stats/labels";
 import type { SessionRow } from "../../lib/stats/types";
 import { formatCount } from "../../lib/stats/view";
-import { Cut, TxLink, Usdc, WalletCell } from "./cells";
+import { columnDecimals, Cut, TxLink, Usdc, WalletCell } from "./cells";
 import { PagedTable, type Column, type Load } from "./paged-table";
 
 function Ended({ row }: { row: SessionRow }) {
@@ -29,6 +29,8 @@ function Status({ row }: { row: SessionRow }) {
     return <span className={bad ? "text-bad" : "text-text"}>{text}</span>;
 }
 
+const priceDecimals = columnDecimals((row: SessionRow) => row.priceMicros);
+
 const columns: Column<SessionRow>[] = [
     { label: "Ended", cell: (row) => <Ended row={row} />, fold: true },
     {
@@ -40,7 +42,12 @@ const columns: Column<SessionRow>[] = [
     { label: "Size", cell: sizeText },
     { label: "Duration", cell: (row) => formatDuration(row.seconds), numeric: true },
     { label: "Commands", cell: (row) => formatCount(row.commands), numeric: true },
-    { label: "Price", cell: (row) => <Usdc micros={row.priceMicros} />, numeric: true, fold: true },
+    {
+        label: "Price",
+        cell: (row, rows) => <Usdc micros={row.priceMicros} decimals={priceDecimals(rows)} />,
+        numeric: true,
+        fold: true,
+    },
     {
         label: "Status",
         cell: (row) => <Status row={row} />,

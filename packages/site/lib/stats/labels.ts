@@ -85,9 +85,7 @@ export function formatBytes(bytes: number): string {
     return `${oneDecimal.format(value)} ${units[unit]}`;
 }
 
-/** A limit in USDC reads as a round figure, so 100 USDC rather than 100.00. */
-const limitUsdc = (micros: number) =>
-    `${formatUsdc(micros, { decimals: 6 }).replace(/\.?0+$/, "")} USDC`;
+const limitUsdc = (micros: number) => `${formatUsdc(micros)} USDC`;
 
 export function sizeText({
     vcpu,

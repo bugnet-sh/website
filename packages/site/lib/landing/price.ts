@@ -1,11 +1,6 @@
-import { formatDuration, formatUsdc } from "../stats/format";
+import { formatDuration } from "../stats/format";
 import { formatBytes } from "../stats/labels";
 import type { PackageRow } from "../stats/types";
-
-/** A price with as many decimals as it needs, at least two: 50 000 micros is "0.05". */
-export function priceText(micros: number): string {
-    return formatUsdc(micros, { decimals: 6 }).replace(/(\.\d\d\d*?)0+$/, "$1");
-}
 
 const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
 export const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);

@@ -1,6 +1,7 @@
 import type { ReactElement } from "react";
 import { cx } from "../../lib/cx";
 import { catalogPackages } from "../../lib/landing/catalog";
+import { formatUsdc } from "../../lib/stats/format";
 import { AllowanceArt } from "../landing/art/pay-art";
 import { OffMachineArt } from "../landing/art/safety-art";
 import { SandboxFigure } from "../landing/figure/sandbox-figure";
@@ -97,7 +98,7 @@ export const roadmap: { step: string; text: string; stage: "now" | "next" | "las
     },
 ];
 
-const usd = (micros: number) => `${(micros / 1e6).toFixed(2)}\u00a0USDC`;
+const usd = (micros: number) => `${formatUsdc(micros)}\u00a0USDC`;
 
 /** The rendered mark, on the last slide */
 function Mark() {

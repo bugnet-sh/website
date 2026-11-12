@@ -69,9 +69,9 @@ const hours = new Intl.NumberFormat("en-US", {
 export const formatCount = (n: number): string => count.format(n);
 export const formatHours = (seconds: number): string => hours.format(seconds / 3600);
 
-/** A typographic minus, and only when the amount still reads as non-zero once rounded. */
-export function signedUsdc(micros: number): { text: string; negative: boolean } {
-    const text = formatUsdc(micros);
+/** A typographic minus, and only when the amount still reads as non-zero in its decimals. */
+export function signedUsdc(micros: number, decimals?: number): { text: string; negative: boolean } {
+    const text = formatUsdc(micros, { decimals });
     return text.startsWith("-")
         ? { text: `−${text.slice(1)}`, negative: true }
         : { text, negative: false };

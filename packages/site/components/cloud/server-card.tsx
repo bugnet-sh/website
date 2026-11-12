@@ -1,7 +1,8 @@
 import { useId, type ReactNode } from "react";
 import { cx } from "../../lib/cx";
 import { cheapest, longestRun, runText, type Server } from "../../lib/cloud/servers";
-import { lengthText, priceText } from "../../lib/landing/price";
+import { lengthText } from "../../lib/landing/price";
+import { formatUsdc } from "../../lib/stats/format";
 import { formatBytes, sizeText } from "../../lib/stats/labels";
 import { ExternalArrow } from "../icons";
 import { LiveNumbers, type Live } from "./live";
@@ -74,7 +75,7 @@ export function ServerCard({ server, live }: { server: Server; live: Live }) {
                         From
                     </span>{" "}
                     <span className="font-mono text-(length:--cell-title-size) leading-(--cell-title-line) text-accent">
-                        {priceText(from.priceMicros)}
+                        {formatUsdc(from.priceMicros)}
                     </span>{" "}
                     <span className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
                         USDC {lengthText(from)}
