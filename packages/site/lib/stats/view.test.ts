@@ -70,9 +70,10 @@ describe("formats", () => {
         expect(formatHours(3_600 * 12_345)).toBe("12,345.0");
     });
 
-    it("signs a negative amount with a minus sign, and never a zero", () => {
+    it("signs a negative amount with a minus sign, down to one micro, and never a zero", () => {
         expect(signedUsdc(-2_500_000)).toEqual({ text: "−2.50", negative: true });
         expect(signedUsdc(2_500_000)).toEqual({ text: "2.50", negative: false });
-        expect(signedUsdc(-1)).toEqual({ text: "0.000", negative: false });
+        expect(signedUsdc(-1)).toEqual({ text: "−0.000001", negative: true });
+        expect(signedUsdc(-0)).toEqual({ text: "0.00", negative: false });
     });
 });

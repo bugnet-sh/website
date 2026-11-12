@@ -11,14 +11,15 @@ export type Load<T> = (before?: string) => Promise<Page<T> | null>;
 
 export type Column<T> = {
     label: string;
-    cell: (row: T) => ReactNode;
+    /** `rows` is every loaded row, for a column that lines its amounts up. */
+    cell: (row: T, rows: readonly T[]) => ReactNode;
     numeric?: boolean;
     /** Shown on the one line a phone folds the row to. */
     fold?: boolean;
     /** The folded line's cell that gives way, cut with an ellipsis, when the line is full. */
     grow?: boolean;
     /** The cell on the folded line, when it differs from the table's. */
-    foldCell?: (row: T) => ReactNode;
+    foldCell?: (row: T, rows: readonly T[]) => ReactNode;
     /** A column no loaded row fills is left out (founder decision 25). */
     filled?: (row: T) => boolean;
 };
@@ -63,7 +64,17 @@ function usePaged<T>(load: Load<T>) {
  * One folded row. The rows share the list's columns, as a table's rows do, so a short provider
  * or status never moves the price beside it.
  */
-function FoldRow<T>({ row, fold, rest }: { row: T; fold: Column<T>[]; rest: Column<T>[] }) {
+function FoldRow<T>({
+    row,
+    rows,
+    fold,
+    rest,
+}: {
+    row: T;
+    rows: readonly T[];
+    fold: Column<T>[];
+    rest: Column<T>[];
+}) {
     const [open, setOpen] = useState(false);
     return (
         <li className="col-span-full grid grid-cols-subgrid border-b-(length:--hairline) border-line">
@@ -82,7 +93,7 @@ function FoldRow<T>({ row, fold, rest }: { row: T; fold: Column<T>[]; rest: Colu
                             column.numeric && "justify-self-end",
                         )}
                     >
-                        {(column.foldCell ?? column.cell)(row)}
+                        {(column.foldCell ?? column.cell)(row, rows)}
                     </span>
                 ))}
             </button>
@@ -94,7 +105,7 @@ function FoldRow<T>({ row, fold, rest }: { row: T; fold: Column<T>[]; rest: Colu
                             className="flex min-w-0 items-center gap-(--space-2)"
                         >
                             <dt className="shrink-0 text-text-muted">{column.label}:</dt>
-                            <dd className="min-w-0 truncate">{column.cell(row)}</dd>
+                            <dd className="min-w-0 truncate">{column.cell(row, rows)}</dd>
                         </div>
                     ))}
                 </dl>
@@ -162,7 +173,7 @@ export function PagedTable<T>({
                                                         key={column.label}
                                                         className={bodyCell(column.numeric)}
                                                     >
-                                                        {column.cell(row)}
+                                                        {column.cell(row, rows)}
                                                     </td>
                                                 ))}
                                             </tr>
@@ -175,7 +186,13 @@ export function PagedTable<T>({
                                 style={{ gridTemplateColumns: foldColumns }}
                             >
                                 {rows.map((row, i) => (
-                                    <FoldRow key={i} row={row} fold={fold} rest={rest} />
+                                    <FoldRow
+                                        key={i}
+                                        row={row}
+                                        rows={rows}
+                                        fold={fold}
+                                        rest={rest}
+                                    />
                                 ))}
                             </ul>
                         </>

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
-import { formatShortWallet, formatUsdc } from "../../lib/stats/format";
+import { alignedDecimals, formatShortWallet, formatUsdc } from "../../lib/stats/format";
 import { ExternalArrow } from "../icons";
 import { CopyButton } from "./copy-button";
 
@@ -33,19 +33,40 @@ export function Cut({ children }: { children: ReactNode }) {
     return <span className="block max-w-(--cell-max) truncate">{children}</span>;
 }
 
+/**
+ * A column's shared precision over its rows, so its decimal points line up (founder decision 26),
+ * worked out once for each set of rows.
+ */
+export function columnDecimals<T>(micros: (row: T) => number): (rows: readonly T[]) => number {
+    const seen = new WeakMap<readonly T[], number>();
+    return (rows) => {
+        let decimals = seen.get(rows);
+        if (decimals === undefined) {
+            decimals = alignedDecimals(rows.map(micros));
+            seen.set(rows, decimals);
+        }
+        return decimals;
+    };
+}
+
 /** An amount in USDC: the figure in mono, then the unit, as the headline numbers show it. */
 export function Usdc({
     micros,
     outgoing = false,
+    decimals,
 }: {
     micros: number;
     /** Money going back to a user: a minus sign, and muted rather than the money colour. */
     outgoing?: boolean;
+    /** A column's shared precision, from `alignedDecimals`. */
+    decimals?: number;
 }) {
     return (
         <span className="whitespace-nowrap">
             <span className={cx("font-mono", outgoing ? "text-text-muted" : "text-accent-2")}>
-                {outgoing ? `−${formatUsdc(micros)}` : formatUsdc(micros)}
+                {outgoing
+                    ? `−${formatUsdc(micros, { decimals })}`
+                    : formatUsdc(micros, { decimals })}
             </span>
             <span className="ml-(--space-1) font-ui text-(length:--fine-size) text-text-muted">
                 USDC

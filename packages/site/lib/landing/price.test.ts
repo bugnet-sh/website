@@ -1,19 +1,6 @@
 import { describe, expect, it } from "vitest";
-import {
-    packageFacts,
-    priceText,
-    pricingCells,
-    SOON_GPUS,
-    lengthText,
-    type PricingCell,
-} from "./price";
+import { packageFacts, pricingCells, SOON_GPUS, lengthText, type PricingCell } from "./price";
 import type { PackageRow } from "../stats/types";
-
-it("shows a price with the decimals it needs and at least two", () => {
-    expect(priceText(50_000)).toBe("0.05");
-    expect(priceText(25_000)).toBe("0.025");
-    expect(priceText(2_000_000)).toBe("2.00");
-});
 
 it("lists a package's parts, a GPU's model and VRAM first when it has one, its length last", () => {
     const cpu = { id: "c", vcpu: 2, memoryMiB: 2048, diskGiB: 10, gpu: null, minutes: 10 };

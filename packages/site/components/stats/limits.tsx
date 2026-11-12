@@ -2,7 +2,7 @@
 
 import { useId } from "react";
 import { cx } from "../../lib/cx";
-import { formatDuration } from "../../lib/stats/format";
+import { alignedDecimals, formatDuration } from "../../lib/stats/format";
 import { formatBytes, limitRows, sizeText } from "../../lib/stats/labels";
 import { Band } from "../shell/frame";
 import { Tip } from "../ui/tip";
@@ -20,6 +20,7 @@ export function Limits() {
     const buyId = useId();
     const limits = stats.data ? limitRows(stats.data.limits) : [];
     const packages = stats.data?.packages ?? [];
+    const priceDecimals = alignedDecimals(packages.map((p) => p.priceMicros));
     return (
         <Band id="limits">
             <div className="relative min-h-(--box) py-(--space-6)">
@@ -113,7 +114,10 @@ export function Limits() {
                                                 {formatDuration(p.minutes * 60)}
                                             </td>
                                             <td className={bodyCell(true)}>
-                                                <Usdc micros={p.priceMicros} />
+                                                <Usdc
+                                                    micros={p.priceMicros}
+                                                    decimals={priceDecimals}
+                                                />
                                             </td>
                                         </tr>
                                     ))}

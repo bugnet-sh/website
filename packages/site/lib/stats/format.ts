@@ -11,16 +11,27 @@ export const profit = (day: DayMoney): number | null =>
 
 const group = (n: number) => String(n).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
+/** The decimals an amount needs to print exact to the micro, two at least: 25 000 micros needs 3. */
+export function usdcDecimals(micros: number): number {
+    if (!Number.isFinite(micros)) return 2;
+    const fraction = Math.round(Math.abs(micros)) % 1_000_000;
+    if (fraction === 0) return 2;
+    return Math.max(2, String(fraction).padStart(6, "0").replace(/0+$/, "").length);
+}
+
+/** One precision for a column of amounts, so their points line up and each stays exact. */
+export const alignedDecimals = (amounts: readonly number[]): number =>
+    Math.max(2, ...amounts.map(usdcDecimals));
+
 /**
- * Plain number with thousands separators and no currency sign. Integer maths, so an amount never
- * prints float noise. Under one dollar it shows 3 decimals, as small prices would read as 0.05.
+ * Bugnet's one money format: a plain number with thousands separators and no currency sign, exact
+ * to the micro in the decimals it needs and at least two, so 50 000 micros is "0.05" and 52 442 is
+ * "0.052442". `decimals` fixes the count instead, rounding, for a chart's ticks. Integer maths, so
+ * an amount never prints float noise.
  */
 export function formatUsdc(micros: number, opts: { decimals?: number } = {}): string {
     if (!Number.isFinite(micros)) return "0.00";
-    const decimals = Math.min(
-        6,
-        Math.max(0, opts.decimals ?? (Math.abs(micros) < 1_000_000 ? 3 : 2)),
-    );
+    const decimals = Math.min(6, Math.max(0, opts.decimals ?? usdcDecimals(micros)));
     const step = 10 ** (6 - decimals);
     const units = Math.round(Math.abs(micros) / step);
     const whole = Math.floor(units / 10 ** decimals);
