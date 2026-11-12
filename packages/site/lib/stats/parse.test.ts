@@ -44,6 +44,11 @@ describe("parseSummary", () => {
         ["unknown payment kind", (j: any) => (j.payments.byKind[0].kind = "gift")],
         ["bad day", (j: any) => (j.daily[0].day = "yesterday")],
         ["bad limit value", (j: any) => (j.limits["wallet.max_concurrent"] = "5")],
+        ["servers that are not a list", (j: any) => (j.servers = null)],
+        ["a server's availability as a string", (j: any) => (j.servers[0].available = "true")],
+        ["a server missing its user", (j: any) => delete j.servers[0].user],
+        ["a fractional server price", (j: any) => (j.servers[0].packages[0].priceMicros = 1.5)],
+        ["a negative longest run", (j: any) => (j.servers[0].longestRunMinutes = -5)],
     ])("returns null for %s", (_, corrupt) => {
         const json = summary();
         corrupt(json);
@@ -56,6 +61,52 @@ describe("parseSummary", () => {
 
     it("keeps null percentiles", () => {
         expect(parseSummary(summary())?.providers.at(-1)?.startP50Ms).toBeNull();
+    });
+
+    it("reads each server with the packages that land on it, at its own price", () => {
+        const servers = parseSummary(summary())?.servers ?? [];
+        expect(servers.map((s) => `${s.provider} ${s.size}`)).toEqual([
+            "boat small",
+            "e2b 2x2",
+            "koyeb l4",
+        ]);
+        expect(servers[1]).toEqual({
+            provider: "e2b",
+            size: "2x2",
+            vcpu: 2,
+            memoryMiB: 2048,
+            diskGiB: 10,
+            gpu: null,
+            longestRunMinutes: 50,
+            user: "root",
+            available: true,
+            packages: [{ id: "cpu-small-10m", minutes: 10, priceMicros: 52_442 }],
+        });
+        expect(servers[2]).toMatchObject({
+            gpu: { count: 1, memoryGiB: 24, model: "NVIDIA L4" },
+            longestRunMinutes: null,
+            available: false,
+        });
+    });
+
+    it("reads a feed from before servers as one with none", () => {
+        const json = summary();
+        delete json.servers;
+        expect(parseSummary(json)?.servers).toEqual([]);
+        expect(parseSummary(fakeSummary(1, "empty"))?.servers).toEqual([]);
+    });
+
+    it("drops a server package's unknown fields and a GPU's blank model", () => {
+        const json = summary();
+        json.servers[0].packages[0].costMicros = 1;
+        json.servers[2].gpu.model = " ";
+        const servers = parseSummary(json)?.servers ?? [];
+        expect(servers[0]?.packages[0]).toEqual({
+            id: "cpu-small-10m",
+            minutes: 10,
+            priceMicros: 50_000,
+        });
+        expect(servers[2]?.gpu?.model).toBeNull();
     });
 });
 

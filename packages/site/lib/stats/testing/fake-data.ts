@@ -232,6 +232,49 @@ export function fakeSummary(seed: number, scenario: Scenario, now: Date = FIXED_
                 priceMicros: 2_500_000,
             },
         ],
+        servers: zero
+            ? []
+            : [
+                  {
+                      provider: names[0],
+                      size: "small",
+                      vcpu: 2,
+                      memoryMiB: 4096,
+                      diskGiB: 51,
+                      gpu: null,
+                      longestRunMinutes: 43_190,
+                      user: "user",
+                      available: true,
+                      packages: [
+                          { id: "cpu-small-10m", minutes: 10, priceMicros: 50_000 },
+                          { id: "cpu-medium-30m", minutes: 30, priceMicros: 180_000 },
+                      ],
+                  },
+                  {
+                      provider: names[1],
+                      size: "2x2",
+                      vcpu: 2,
+                      memoryMiB: 2048,
+                      diskGiB: 10,
+                      gpu: null,
+                      longestRunMinutes: 50,
+                      user: "root",
+                      available: true,
+                      packages: [{ id: "cpu-small-10m", minutes: 10, priceMicros: 52_442 }],
+                  },
+                  {
+                      provider: names[2],
+                      size: "l4",
+                      vcpu: 8,
+                      memoryMiB: 32_768,
+                      diskGiB: 100,
+                      gpu: { count: 1, memoryGiB: 24, model: "NVIDIA L4" },
+                      longestRunMinutes: null,
+                      user: "root",
+                      available: false,
+                      packages: [{ id: "gpu-l4-10m", minutes: 10, priceMicros: 800_000 }],
+                  },
+              ],
         limits: { "wallet.max_concurrent": 5, "wallet.starts_per_hour": 30, "other.key": 1 },
     };
 }

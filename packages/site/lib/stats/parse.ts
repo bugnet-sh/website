@@ -14,6 +14,7 @@ import {
     type PaymentKind,
     type PaymentRow,
     type ProviderRow,
+    type ServerRow,
     type SessionRow,
     type StatsSummary,
 } from "./types";
@@ -41,6 +42,11 @@ function int(v: unknown): number {
 
 function str(v: unknown): string {
     if (typeof v !== "string") throw new Bad();
+    return v;
+}
+
+function bool(v: unknown): boolean {
+    if (typeof v !== "boolean") throw new Bad();
     return v;
 }
 
@@ -109,6 +115,25 @@ function pack(v: unknown): PackageRow {
     };
 }
 
+function server(v: unknown): ServerRow {
+    const o = obj(v);
+    return {
+        provider: str(o.provider),
+        size: str(o.size),
+        vcpu: int(o.vcpu),
+        memoryMiB: int(o.memoryMiB),
+        diskGiB: int(o.diskGiB),
+        gpu: gpu(o.gpu),
+        longestRunMinutes: orNull(o.longestRunMinutes, int),
+        user: str(o.user),
+        available: bool(o.available),
+        packages: arr(o.packages).map((p) => {
+            const r = obj(p);
+            return { id: str(r.id), minutes: int(r.minutes), priceMicros: int(r.priceMicros) };
+        }),
+    };
+}
+
 function limits(v: unknown): StatsSummary["limits"] {
     const o = obj(v);
     const known: Partial<Record<LimitKey, number>> = {};
@@ -160,6 +185,8 @@ function summary(json: unknown): StatsSummary {
             refunds: { count: int(refunds.count), micros: int(refunds.micros) },
         },
         packages: arr(o.packages).map(pack),
+        // A router from before servers sends none
+        servers: o.servers === undefined ? [] : arr(o.servers).map(server),
         limits: limits(o.limits),
     };
 }

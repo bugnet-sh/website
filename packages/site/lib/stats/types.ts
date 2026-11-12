@@ -34,6 +34,27 @@ export type PackageRow = {
     priceMicros: number;
 };
 
+/** A start package as it lands on one server, at what a run of it costs there */
+export type ServerPackage = { id: string; minutes: number; priceMicros: number };
+
+/** A provider size that at least one start package lands on now, as the router places it */
+export type ServerRow = {
+    provider: string;
+    size: string;
+    vcpu: number;
+    memoryMiB: number;
+    diskGiB: number;
+    gpu: Gpu | null;
+    /** Null when the provider sets no lifetime. */
+    longestRunMinutes: number | null;
+    /** The user commands run as. */
+    user: string;
+    /** False while the provider is blocked or down, or would refuse a start now. */
+    available: boolean;
+    /** In the router's catalog order. */
+    packages: ServerPackage[];
+};
+
 export const paymentKinds = ["sandbox", "extend", "x402_allowance", "x402_fee"] as const;
 export const listKinds = [
     "sandbox",
@@ -96,6 +117,8 @@ export type StatsSummary = {
         refunds: { count: number; micros: number };
     };
     packages: PackageRow[];
+    /** Empty from a feed that predates them. */
+    servers: ServerRow[];
     limits: Partial<Record<LimitKey, number>>;
 };
 
