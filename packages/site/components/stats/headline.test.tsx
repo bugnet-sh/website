@@ -1,7 +1,6 @@
 import { cleanup, render, screen } from "@testing-library/react";
 import { afterEach, expect, it } from "vitest";
 import type { SummaryState } from "../../lib/stats/client";
-import { formatUsdc } from "../../lib/stats/format";
 import { parseSummary } from "../../lib/stats/parse";
 import { fakeSummary } from "../../lib/stats/testing/fake-data";
 import type { StatsSummary } from "../../lib/stats/types";
@@ -33,10 +32,27 @@ it("shows the six totals in order, money in USDC and a loss in the bad colour", 
         "Profit",
     ]);
     const values = screen.getAllByRole("definition");
-    expect(values[3]?.textContent).toBe(`${formatUsdc(data.totals.earnedMicros)}USDC`);
+    expect(values[3]?.textContent).toMatch(/^\d[\d,]*\.\d\dUSDC$/);
     const profit = values[5]?.firstElementChild;
     expect(profit?.textContent).toMatch(/^\u2212/);
     expect(profit?.className).toContain("text-bad");
+});
+
+it("rounds a total to the cent from 1 USDC and to 3 decimals below, so its card never cuts it", () => {
+    const totals = (earnedMicros: number, spentMicros: number) => ({
+        ...data,
+        totals: { ...data.totals, earnedMicros, refundedMicros: 0, spentMicros },
+    });
+    const money = () =>
+        screen
+            .getAllByRole("definition")
+            .slice(3)
+            .map((d) => d.textContent);
+    show({ data: totals(142_595_772, 52_442), updatedAt: new Date(), failedAt: null });
+    expect(money()).toEqual(["142.60USDC", "0.052USDC", "142.54USDC"]);
+    cleanup();
+    show({ data: totals(50_000, 50_400), updatedAt: new Date(), failedAt: null });
+    expect(money()).toEqual(["0.05USDC", "0.050USDC", "0.000USDC"]);
 });
 
 it("stays empty while the first fetch is in flight, and says so once it fails", () => {
