@@ -5,7 +5,6 @@ import { catalogPackages } from "../landing/catalog";
 import {
     cloudProviders,
     lifetimeSlackMinutes,
-    locked,
     refused,
     sizeFor,
     type CloudProvider,
@@ -70,12 +69,6 @@ describe.runIf(existsSync(router))("the router's production providers", () => {
     it("leave each adapter's defaults as they are", () => {
         // No [e2b] domain or lifetime, no [boxd] region, no other [boat] setting
         expect(toml).not.toMatch(/^\[(boat|boxd|e2b)\]/m);
-    });
-
-    it("lock only sizes production sells", () => {
-        for (const n of locked) {
-            expect(provider(n.provider).sizes.map((s) => s.name)).toContain(n.size);
-        }
     });
 
     it("sell the Boat types production names, in their written order, for 30 days, run as user", () => {

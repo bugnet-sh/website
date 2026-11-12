@@ -79,34 +79,18 @@ export const refused: readonly { provider: string; size: string; package: string
     { provider: "boxd", size: "2x8", package: "small-10m" },
 ];
 
-/**
- * Sizes production sells that the provider won't start for Bugnet's account yet, which the router
- * skips: Boat's free trial holds large back until Bugnet's first payment to Boat (2026-11-11)
- */
-export const locked: readonly { provider: string; size: string }[] = [
-    { provider: "boat", size: "large" },
-];
-
-const usable = (provider: CloudProvider, size: Size) =>
-    !locked.some((n) => n.provider === provider.id && n.size === size.name);
-
 /** The router refuses an extension that would take a sandbox this close to its provider's limit */
 export const lifetimeSlackMinutes = 5;
 
 /**
  * The size the router's SizeFor picks for a package: the first in the provider's order with
- * enough vCPU, memory and disk, among the sizes Bugnet can start. None of these providers has a
- * GPU.
+ * enough vCPU, memory and disk. None of these providers has a GPU.
  */
 export function sizeFor(provider: CloudProvider, p: PackageRow): Size | null {
     if (p.gpu) return null;
     return (
         provider.sizes.find(
-            (s) =>
-                usable(provider, s) &&
-                s.vcpu >= p.vcpu &&
-                s.memoryMiB >= p.memoryMiB &&
-                s.diskGiB >= p.diskGiB,
+            (s) => s.vcpu >= p.vcpu && s.memoryMiB >= p.memoryMiB && s.diskGiB >= p.diskGiB,
         ) ?? null
     );
 }
