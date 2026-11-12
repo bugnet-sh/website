@@ -1,4 +1,4 @@
-Last updated: 11 November 2026
+Last updated: 12 November 2026
 
 # Privacy Notice {#privacy}
 
@@ -152,7 +152,6 @@ Our providers also run their own checks:
 
 - Boat checks its machines for abuse, even though we turn its monitoring off.
 - boxd watches network patterns, not what is inside machines. It may report illegal content to the authorities, along with the account details, and those details are Bugnet's.
-- Koyeb says it does not monitor content.
 
 ### Logs {#logs}
 
@@ -230,12 +229,11 @@ For each run, our router picks one of these providers. Our tools don't tell you 
 
 | Provider | Company | Where sandboxes run |
 |---|---|---|
-| Koyeb | Koyeb SAS, France | Frankfurt, Germany |
 | Boat (boat.dev) | Dedale AI, Corp., United States | Germany, Finland or France. We can't choose the region. We turn snapshots off. |
 | E2B (e2b.dev) | FoundryLabs, Inc., United States | United States, in E2B's US-West-1 region |
 | boxd (boxd.sh) | Azin Tech Operating Company B.V., Netherlands | Frankfurt, Germany, on servers from Latitude.sh LLC (United States) |
 
-Providers use other companies too. Koyeb lists Equinix Metal, IBM Cloud, Scaleway and Amazon Web Services. Boat names OVH, Hetzner and Cloudflare. Each provider keeps its own logs under its own terms.
+Providers use other companies too. Boat names OVH, Hetzner and Cloudflare. Each provider keeps its own logs under its own terms.
 
 ### Others {#processors}
 
