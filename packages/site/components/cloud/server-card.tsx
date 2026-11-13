@@ -5,8 +5,10 @@ import { lengthText } from "../../lib/landing/price";
 import { formatUsdc } from "../../lib/stats/format";
 import { formatBytes, sizeText } from "../../lib/stats/labels";
 import { ExternalArrow } from "../icons";
-import { Cell, cells, inset } from "./cell";
-import { LiveNumbers, type Live } from "./live";
+import { Skeleton } from "../ui/skeleton";
+import { Cell, cells, inset, WaitingCell } from "./cell";
+import type { ProviderRow } from "../../lib/stats/types";
+import { LiveNumbers } from "./live";
 
 const GiB = 1024 ** 3;
 
@@ -45,7 +47,7 @@ const big = "text-(length:--cell-title-size) leading-(--cell-title-line) font-se
  * One provider's machine size. Every part sits on the same four columns: the name over three of
  * them and the price in the fourth, then the specs, then the provider's live numbers.
  */
-export function ServerCard({ server, live }: { server: Server; live: Live }) {
+export function ServerCard({ server, row }: { server: Server; row: ProviderRow }) {
     const titleId = useId();
     const from = cheapest(server);
     const { provider } = server;
@@ -95,7 +97,38 @@ export function ServerCard({ server, live }: { server: Server; live: Live }) {
                     </Cell>
                 ))}
             </dl>
-            <LiveNumbers live={live} />
+            <LiveNumbers row={row} />
         </article>
+    );
+}
+
+/**
+ * A card still waiting for the feed, drawn on the same grid and at the same heights as a server's
+ * card, with bars where its words will be.
+ */
+export function WaitingCard({ still }: { still: boolean }) {
+    return (
+        <div aria-hidden="true" className="border-(length:--hairline) border-line">
+            <div className="grid grid-cols-4 gap-x-(--hairline) phone:grid-cols-1">
+                <div className={cx("col-span-3 min-w-0 py-(--space-4) phone:col-span-1", inset)}>
+                    <Skeleton line="fine" className="w-1/6" still={still} />
+                    <Skeleton line="title" className="mt-(--space-1) w-1/3" still={still} />
+                </div>
+                <div className={cx("min-w-0 py-(--space-4) phone:pt-0", inset)}>
+                    <Skeleton line="fine" className="w-1/4" still={still} />
+                    <Skeleton line="title" className="mt-(--space-1) w-3/4" still={still} />
+                </div>
+            </div>
+            <div className={cx(cells, "border-t-(length:--hairline) border-line")}>
+                {Array.from({ length: 8 }, (_, i) => (
+                    <WaitingCell key={i} still={still} />
+                ))}
+            </div>
+            <div className={cx(cells, "border-t-(length:--hairline) border-line")}>
+                {Array.from({ length: 4 }, (_, i) => (
+                    <WaitingCell key={i} className="bg-surface" still={still} />
+                ))}
+            </div>
+        </div>
     );
 }

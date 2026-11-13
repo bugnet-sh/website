@@ -42,8 +42,8 @@ const showing = () => screen.getByText(/^Showing/).textContent;
 const tick = (name: string) => fireEvent.click(screen.getByRole("checkbox", { name }));
 
 describe("CloudServers", () => {
-    it("shows the eight servers from the catalog while the feed loads, cheapest first", () => {
-        show(loading);
+    it("shows the eight servers the feed's packages land on, cheapest first", () => {
+        show(live([]));
         expect(titles()).toEqual([
             "E2B 2 vCPU, 2 GiB 2x2",
             "Boat 2 vCPU, 4 GiB small",
@@ -58,7 +58,7 @@ describe("CloudServers", () => {
     });
 
     it("shows a server's specs, its packages and its cheapest package's price", () => {
-        show(loading);
+        show(live([]));
         const boat = card("Boat 2 vCPU, 4 GiB small");
         expect(boat.querySelector("p")?.textContent).toBe("From 0.05 USDC / 10 min");
         expect(fact(boat, "CPU")).toBe("2 vCPU");
@@ -82,7 +82,7 @@ describe("CloudServers", () => {
     });
 
     it("lays every part of a card on one four-column grid, two columns on phones", () => {
-        show(loading);
+        show(live([]));
         const boat = card("Boat 2 vCPU, 4 GiB small");
         const [head, ...grids] = [...boat.children] as HTMLElement[];
         expect(head?.className.split(" ")).toEqual(
@@ -103,7 +103,7 @@ describe("CloudServers", () => {
     });
 
     it("filters by provider and package, counts what shows, and clears", () => {
-        show(loading);
+        show(live([]));
         tick("Boat 3 servers");
         expect(cards()).toHaveLength(3);
         expect(showing()).toBe("Showing 3 of 8 servers");
@@ -116,7 +116,7 @@ describe("CloudServers", () => {
     });
 
     it("moves focus to the Filters button when a clear from the keyboard takes its button away", () => {
-        show(loading);
+        show(live([]));
         tick("Boat 3 servers");
         // A key press clicks with no detail; jsdom draws no layout, so the Filters button shows
         fireEvent.click(screen.getAllByRole("button", { name: "Clear all" })[0] as HTMLElement, {
@@ -126,7 +126,7 @@ describe("CloudServers", () => {
     });
 
     it("searches, and offers to clear the filters when nothing matches", () => {
-        show(loading);
+        show(live([]));
         const search = screen.getByRole("textbox", { name: "Search servers" });
         fireEvent.change(search, { target: { value: "4x16" } });
         expect(titles()).toEqual(["boxd 4 vCPU, 16 GiB 4x16"]);
@@ -139,7 +139,7 @@ describe("CloudServers", () => {
     });
 
     it("sorts by the chosen key", () => {
-        show(loading);
+        show(live([]));
         const sort = screen.getByRole("combobox", { name: "Sort" });
         expect((sort as HTMLSelectElement).value).toBe("price");
         fireEvent.change(sort, { target: { value: "memory" } });
@@ -148,7 +148,7 @@ describe("CloudServers", () => {
     });
 
     it("folds the filters behind a button that counts them, for narrow screens", () => {
-        show(loading);
+        show(live([]));
         const button = screen.getByRole("button", { name: /^Filters/ });
         expect(button.className.split(" ")).toEqual(
             expect.arrayContaining(["hidden", "narrow:flex"]),
@@ -164,7 +164,7 @@ describe("CloudServers", () => {
     });
 
     it("hides the filter rail's scrollbar while it scrolls on its own", () => {
-        show(loading);
+        show(live([]));
         const rail = screen.getByRole("complementary", { name: "Filters" });
         expect(rail.className.split(" ")).toEqual(
             expect.arrayContaining(["sticky", "overflow-y-auto", "scrollbar-hidden"]),
@@ -213,17 +213,26 @@ describe("a card's live provider numbers", () => {
         expect(fact(boxd, "Failed in 7 days")).toBe("0");
     });
 
-    it("says once that stats are unavailable when the feed is off, and nothing while it loads", () => {
-        show(off);
-        const boat = card("Boat 2 vCPU, 4 GiB small");
-        expect(within(boat).getAllByText("Stats are unavailable right now.")).toHaveLength(1);
-        expect(
-            within(boat).getByText("Running now").closest("dl")?.getAttribute("aria-hidden"),
-        ).toBe("true");
-        expect(boat.querySelector("p")?.textContent).toBe("From 0.05 USDC / 10 min");
-        cleanup();
+    it("pulses three skeleton cards and the choices while the feed loads, with no price", () => {
         show(loading);
-        expect(fact(card("Boat 2 vCPU, 4 GiB small"), "Running now")).toBe("\u00a0");
+        expect(screen.queryAllByRole("article")).toHaveLength(0);
+        expect(screen.queryByText(/USDC/)).toBeNull();
+        expect(screen.getByText("Loading servers").className).toContain("sr-only");
+        expect(document.querySelectorAll(".animate-pulse").length).toBeGreaterThan(0);
+        const list = document.querySelector('ul[aria-hidden="true"].grid');
+        expect(list?.children).toHaveLength(3);
+        expect(screen.queryAllByRole("checkbox")).toHaveLength(0);
+    });
+
+    it("says once that stats are unavailable when the feed is off, over one still card", () => {
+        show(off);
+        expect(screen.getAllByText("Stats are unavailable right now.")).toHaveLength(1);
+        expect(screen.queryByText("Loading servers")).toBeNull();
+        expect(screen.queryAllByRole("article")).toHaveLength(0);
+        expect(screen.queryByText(/USDC/)).toBeNull();
+        expect(document.querySelectorAll(".animate-pulse")).toHaveLength(0);
+        const list = document.querySelector('ul[aria-hidden="true"].grid');
+        expect(list?.children).toHaveLength(1);
     });
 
     it("prices from the live feed's packages when it answers", () => {

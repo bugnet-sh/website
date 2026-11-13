@@ -14,14 +14,15 @@ import {
     type SortKey,
 } from "../../lib/cloud/servers";
 import { cx } from "../../lib/cx";
-import { catalogPackages } from "../../lib/landing/catalog";
 import { ChevronIcon } from "../icons";
 import { Band, Frame } from "../shell/frame";
 import { useStats } from "../stats/stats-provider";
+import { isUnavailable, Unavailable } from "../stats/unavailable";
 import { secondaryButton } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 import { FilterPanel } from "./filter-panel";
-import { liveOf } from "./live";
-import { ServerCard } from "./server-card";
+import { rowOf } from "./live";
+import { ServerCard, WaitingCard } from "./server-card";
 
 /** The Sort control: a native select, drawn square from tokens, with the Docs menu's chevron */
 function SortSelect({ value, onChange }: { value: SortKey; onChange: (key: SortKey) => void }) {
@@ -60,10 +61,10 @@ const rail =
     "sticky top-[calc(var(--nav)+var(--space-6))] max-h-[calc(100svh-var(--nav)-2*var(--space-6))] self-start";
 
 /**
- * Every server a package can land on, with a filter panel beside the list. The prices come from
- * the live feed's packages when it answers and from the router's catalog copy until then, so the
- * exported page already lists every server. Narrow screens fold the panel behind a button above
- * the list.
+ * Every server a package can land on, with a filter panel beside the list. The prices come only
+ * from the live feed (founder D13, 2026-11-13): until it answers, three cards and the choices pulse
+ * as skeletons; once it is off, one still card sits under the line saying so. Narrow screens fold
+ * the panel behind a button above the list.
  */
 export function CloudServers() {
     const stats = useStats();
@@ -74,9 +75,9 @@ export function CloudServers() {
     const toggle = useRef<HTMLButtonElement>(null);
     const search = useRef<HTMLInputElement>(null);
 
-    const live = stats.data?.packages ?? [];
-    const packages = live.length > 0 ? live : catalogPackages();
-    const servers = cloudServers(packages);
+    const off = isUnavailable(stats);
+    const waiting = stats.data ? undefined : { still: off };
+    const servers = cloudServers(stats.data?.packages ?? []);
     const shown = sortServers(filterServers(servers, filters), sort);
     const active = activeFilters(filters);
 
@@ -137,6 +138,7 @@ export function CloudServers() {
                             providers={providerCounts(servers)}
                             packages={packageCounts(servers)}
                             active={active}
+                            waiting={waiting}
                         />
                     </div>
                 </aside>
@@ -147,18 +149,44 @@ export function CloudServers() {
                             aria-atomic="true"
                             className="text-(length:--ui-size) leading-(--ui-line) text-text-muted"
                         >
-                            {`Showing ${shown.length} of ${servers.length} servers`}
+                            {waiting ? (
+                                <>
+                                    {/* Off, the line over the card says so */}
+                                    {!off && <span className="sr-only">Loading servers</span>}
+                                    <Skeleton
+                                        line="ui"
+                                        className={cx(
+                                            "w-[calc(3*var(--space-7))]",
+                                            off && "invisible",
+                                        )}
+                                        still={off}
+                                    />
+                                </>
+                            ) : (
+                                `Showing ${shown.length} of ${servers.length} servers`
+                            )}
                         </p>
                         <SortSelect value={sort} onChange={setSort} />
                     </div>
-                    {shown.length > 0 ? (
+                    {waiting ? (
+                        <div className="relative mt-(--space-5)">
+                            {off && <Unavailable />}
+                            <ul aria-hidden="true" className="grid gap-(--space-4)">
+                                {Array.from({ length: off ? 1 : 3 }, (_, i) => (
+                                    <li key={i}>
+                                        <WaitingCard still={off} />
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    ) : shown.length > 0 ? (
                         // As far below the Sort row as the search field is below Filters
                         <ul className="mt-(--space-5) grid gap-(--space-4)">
                             {shown.map((server) => (
                                 <li key={server.id}>
                                     <ServerCard
                                         server={server}
-                                        live={liveOf(stats, server.provider.id)}
+                                        row={rowOf(stats.data?.providers ?? [], server.provider.id)}
                                     />
                                 </li>
                             ))}

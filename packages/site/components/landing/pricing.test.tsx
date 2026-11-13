@@ -60,15 +60,20 @@ it("names each GPU coming soon in its head, with its VRAM and one small Coming s
     }
 });
 
-it("shows the router's catalog when the feed fails, never an empty band", () => {
-    show({ data: null, updatedAt: null, failedAt: new Date() });
+it("pulses a skeleton for each package place while the feed loads, then the GPUs, no price", () => {
+    show({ data: null, updatedAt: null, failedAt: null });
+    const cells = screen.getAllByRole("listitem");
+    expect(cells).toHaveLength(8);
+    expect(screen.queryByText(/USDC/)).toBeNull();
+    expect(cells.slice(0, 4).every((c) => c.querySelector(".animate-pulse"))).toBe(true);
+    expect(cells[4]?.textContent).toContain("NVIDIA H100");
     expect(screen.queryByText(/unavailable/i)).toBeNull();
-    const first = screen.getAllByRole("listitem")[0] as HTMLElement;
-    expect(first.querySelector("p")?.textContent).toBe("0.05USDC / 10 min");
-    expect(screen.getAllByRole("listitem")).toHaveLength(8);
 });
 
-it("shows the catalog while the feed is still loading", () => {
-    show({ data: null, updatedAt: null, failedAt: null });
-    expect(screen.getAllByRole("listitem").length).toBeGreaterThan(0);
+it("says once that stats are unavailable when the feed fails, over still skeletons", () => {
+    show({ data: null, updatedAt: null, failedAt: new Date() });
+    expect(screen.getAllByText("Stats are unavailable right now.")).toHaveLength(1);
+    expect(screen.queryByText(/USDC/)).toBeNull();
+    expect(document.querySelectorAll(".animate-pulse")).toHaveLength(0);
+    expect(screen.getAllByRole("listitem")).toHaveLength(8);
 });

@@ -2,6 +2,7 @@ import type { MouseEvent, Ref } from "react";
 import { cx } from "../../lib/cx";
 import type { Count, Filters } from "../../lib/cloud/servers";
 import { SearchIcon, TickIcon } from "../icons";
+import { Skeleton } from "../ui/skeleton";
 
 const caps =
     "text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) text-text-muted uppercase";
@@ -21,17 +22,32 @@ function Choices({
     chosen,
     onChange,
     mono = false,
+    waiting,
 }: {
     legend: string;
     counts: readonly Count[];
     chosen: readonly string[];
     onChange: (next: string[]) => void;
     mono?: boolean;
+    waiting?: { rows: number; still: boolean };
 }) {
     return (
         <fieldset>
             <legend className={caps}>{legend}</legend>
-            <ul className="mt-(--space-2)">
+            {waiting && (
+                <ul
+                    aria-hidden="true"
+                    className={cx("mt-(--space-2)", waiting.still && "invisible")}
+                >
+                    {Array.from({ length: waiting.rows }, (_, i) => (
+                        <li key={i} className="flex min-h-(--nav-row) items-center gap-(--space-3)">
+                            <Skeleton className="size-(--check) shrink-0" still={waiting.still} />
+                            <Skeleton line="ui" className="w-1/3" still={waiting.still} />
+                        </li>
+                    ))}
+                </ul>
+            )}
+            <ul className={cx("mt-(--space-2)", waiting && "hidden")}>
                 {counts.map((c) => (
                     <li key={c.id}>
                         <label className="-mx-(--space-2) flex min-h-(--nav-row) cursor-pointer items-center gap-(--space-3) px-(--space-2) text-(length:--ui-size) leading-(--ui-line) text-text-muted hover:text-text has-checked:text-text has-focus-visible:outline-(length:--ring) has-focus-visible:-outline-offset-(--ring) has-focus-visible:outline-accent has-focus-visible:outline-solid">
@@ -91,6 +107,7 @@ export function FilterPanel({
     providers,
     packages,
     active,
+    waiting,
 }: {
     filters: Filters;
     onChange: (next: Filters) => void;
@@ -99,6 +116,8 @@ export function FilterPanel({
     providers: readonly Count[];
     packages: readonly Count[];
     active: number;
+    /** Set until the feed answers: the choices pulse as bars, and keep their room once it is off */
+    waiting?: { still: boolean };
 }) {
     return (
         <div className="flex flex-col gap-(--space-5)">
@@ -131,6 +150,7 @@ export function FilterPanel({
                     counts={providers}
                     chosen={filters.providers}
                     onChange={(next) => onChange({ ...filters, providers: next })}
+                    waiting={waiting && { rows: 3, still: waiting.still }}
                 />
                 <Choices
                     legend="Package"
@@ -138,6 +158,7 @@ export function FilterPanel({
                     chosen={filters.packages}
                     onChange={(next) => onChange({ ...filters, packages: next })}
                     mono
+                    waiting={waiting && { rows: 4, still: waiting.still }}
                 />
             </div>
             {/* Under the choices on narrow screens, in reading order, only while one is set */}
