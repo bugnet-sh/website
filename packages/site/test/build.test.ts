@@ -247,12 +247,14 @@ describe("next build", () => {
         expect(stats.querySelectorAll("[aria-current]")).toHaveLength(0);
     });
 
-    it("exports the cloud page with every server listed and Cloud marked current", async () => {
+    it("exports the cloud page waiting for the feed, with no price, and Cloud marked current", async () => {
         const doc = await page("cloud/index.html");
         const current = [...doc.querySelectorAll('header [aria-current="page"]')];
         expect(current.map((a) => a.getAttribute("href"))).toEqual(["/cloud/", "/cloud/"]);
-        expect(doc.querySelectorAll("main article")).toHaveLength(8);
-        expect(doc.querySelector("main")?.textContent).toContain("Showing 8 of 8 servers");
+        // Prices come only from the live feed (founder D13, 2026-11-13)
+        expect(doc.querySelectorAll("main article")).toHaveLength(0);
+        expect(doc.querySelectorAll("main .animate-pulse").length).toBeGreaterThan(0);
+        expect(doc.querySelector("main")?.textContent).not.toMatch(/USDC/);
     });
 
     it("hides the bar of each On this page rail, which still scrolls", async () => {

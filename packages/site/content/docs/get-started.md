@@ -122,7 +122,7 @@ Refunds go back automatically to the USDC token account that paid, so keep it op
 
 ## 3. Ask your agent {#ask-your-agent}
 
-![Ask for a sandbox](/docs/clips/ask.mp4)
+![Ask for a sandbox](/docs/clips/ask.mp4 "Example run, prices of 2026-11-10")
 
 ```mermaid
 sequenceDiagram
@@ -204,7 +204,7 @@ charged.
 
 1. Approve the payment with Touch ID when `pay` asks.
 
-![Approve and pay with Touch ID](/docs/clips/pay.mp4)
+![Approve and pay with Touch ID](/docs/clips/pay.mp4 "Example run, prices of 2026-11-10")
 
 ### From a wallet file {#pay-from-a-wallet-file}
 
@@ -234,7 +234,7 @@ the time left.
 
 1. Ask for the work, such as "install it and run the tests".
 
-![Run in the sandbox](/docs/clips/run.mp4)
+![Run in the sandbox](/docs/clips/run.mp4 "Example run, prices of 2026-11-10")
 
 The agent runs each shell command with `bugnet_exec`, which returns the exit code and the last 8 KiB
 of the output and of the errors. The agent reads the results and tells you what happened.
@@ -266,7 +266,7 @@ you name another file, and never overwrite a file you have.
 
 1. Open the session page link the agent showed you.
 
-![Session summary](/docs/clips/summary.mp4)
+![Session summary](/docs/clips/summary.mp4 "Example run, prices of 2026-11-10")
 
 While the sandbox runs, the page shows its output live. After it ends, the page shows:
 
@@ -293,7 +293,7 @@ Extend before the deadline: an ended sandbox cannot get more time.
 1. Download what you need.
 2. Tell the agent you are done.
 
-![Stop the sandbox](/docs/clips/stop.mp4)
+![Stop the sandbox](/docs/clips/stop.mp4 "Example run, prices of 2026-11-10")
 
 The agent calls `bugnet_stop`, which deletes the sandbox and everything in it at once. Its answer
 carries the session link again, with the time the page is deleted: "Summary and logs: `<url>`

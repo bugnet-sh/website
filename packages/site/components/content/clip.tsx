@@ -17,9 +17,9 @@ function playOrPause(el: HTMLVideoElement, seen: boolean, chosen: boolean | unde
  * A short silent clip in a titled frame: `<name>.mp4` with its `<name>.webm` and `<name>.jpg`
  * poster beside it. It loops while at least half of it is on screen and pauses when it leaves.
  * Under reduced motion it stays on its poster until clicked; once the reader plays or pauses it,
- * that choice holds.
+ * that choice holds. A note, such as when its prices were current, sits at the title bar's right.
  */
-export function Clip({ src, title }: { src: string; title: string }) {
+export function Clip({ src, title, note }: { src: string; title: string; note?: string }) {
     const base = src.replace(/\.mp4$/, "");
     const video = useRef<HTMLVideoElement>(null);
     const chosen = useRef<boolean | undefined>(undefined);
@@ -51,8 +51,9 @@ export function Clip({ src, title }: { src: string; title: string }) {
 
     return (
         <figure className="mt-(--prose-gap) border-(length:--hairline) border-line bg-surface first:mt-0">
-            <figcaption className="border-b-(length:--hairline) border-line px-(--space-4) py-(--space-2) text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) text-text-muted uppercase">
-                {title}
+            <figcaption className="flex flex-wrap justify-between gap-x-(--space-4) gap-y-(--space-1) border-b-(length:--hairline) border-line px-(--space-4) py-(--space-2) text-(length:--fine-size) leading-(--fine-line) tracking-(--caps-tracking) text-text-muted uppercase">
+                <span>{title}</span>
+                {note && <span>{note}</span>}
             </figcaption>
             <div className="relative">
                 <video

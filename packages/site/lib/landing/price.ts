@@ -2,8 +2,9 @@ import { formatDuration } from "../stats/format";
 import { formatBytes } from "../stats/labels";
 import type { PackageRow } from "../stats/types";
 
-const perMinute = (p: PackageRow) => p.priceMicros / Math.max(1, p.minutes);
-export const byRate = (a: PackageRow, b: PackageRow) => perMinute(a) - perMinute(b);
+type Priced = Pick<PackageRow, "minutes" | "priceMicros">;
+const perMinute = (p: Priced) => p.priceMicros / Math.max(1, p.minutes);
+export const byRate = (a: Priced, b: Priced) => perMinute(a) - perMinute(b);
 
 /** Popular GPUs not on sale yet (founder, 2026-11-08): each card names the GPU and its VRAM, no price */
 export const SOON_GPUS: readonly { model: string; memoryGiB: number }[] = [

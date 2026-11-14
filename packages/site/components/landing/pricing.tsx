@@ -2,12 +2,19 @@
 
 import { useId } from "react";
 import { cx } from "../../lib/cx";
-import { catalogPackages } from "../../lib/landing/catalog";
-import { packageFacts, pricingCells, lengthText, type PricingCell } from "../../lib/landing/price";
+import {
+    packageFacts,
+    pricingCells,
+    lengthText,
+    SOON_GPUS,
+    type PricingCell,
+} from "../../lib/landing/price";
 import { formatUsdc } from "../../lib/stats/format";
 import { Band, Frame } from "../shell/frame";
 import { useStats } from "../stats/stats-provider";
+import { isUnavailable, Unavailable } from "../stats/unavailable";
 import { secondaryButton } from "../ui/button";
+import { Skeleton } from "../ui/skeleton";
 import { cellInset } from "./inset";
 import { LandingTitle } from "./title";
 
@@ -21,11 +28,12 @@ function Head({ cell }: { cell: PricingCell }) {
         );
     }
     return (
-        <p className="flex items-baseline gap-(--space-2)">
+        // A six-decimal price can leave no room for its unit, which then drops under it whole
+        <p className="flex flex-wrap items-baseline gap-x-(--space-2)">
             <span className="font-mono text-(length:--stat-size) leading-(--stat-line) text-accent">
                 {formatUsdc(cell.p.priceMicros)}
             </span>
-            <span className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
+            <span className="text-(length:--ui-size) leading-(--ui-line) whitespace-nowrap text-text-muted">
                 USDC {lengthText(cell.p)}
             </span>
         </p>
@@ -35,24 +43,50 @@ function Head({ cell }: { cell: PricingCell }) {
 const row =
     "flex h-(--row) items-center justify-between gap-(--space-3) border-t-(length:--hairline) border-line";
 
+/** A package cell still waiting for the feed: its price line and its three rows, as bars */
+function Waiting({ still }: { still: boolean }) {
+    return (
+        <>
+            <Skeleton line="stat" className="w-1/2" still={still} />
+            <div className="mt-(--space-4)">
+                {[0, 1, 2].map((i) => (
+                    <div key={i} className={row}>
+                        <Skeleton line="ui" className="w-1/4" still={still} />
+                        <Skeleton line="ui" className="w-1/5" still={still} />
+                    </div>
+                ))}
+            </div>
+        </>
+    );
+}
+
+/** Before the feed answers, the places left beside the GPUs coming soon wait for packages */
+const waitingCells = 8 - SOON_GPUS.length;
+
+type Place = PricingCell | { kind: "waiting"; i: number };
+
 const facts = (cell: PricingCell) =>
     cell.kind === "package"
         ? packageFacts(cell.p)
         : [{ label: "VRAM", value: `${cell.memoryGiB} GiB` }];
 
 /**
- * The packages on sale, from the live feed, so no price here is ever invented, then popular GPUs
+ * The packages on sale, only from the live feed (founder D13, 2026-11-13), then popular GPUs
  * coming soon to fill eight cells (founder, 2026-11-08): four to a row, two on tablets, one on
- * phones. Each cell draws its own hairlines, so a last row that is not full shows no line where no
- * cell is.
+ * phones. Until the feed answers the package places pulse as skeletons; once it is off they stand
+ * still under one line saying so. Each cell draws its own hairlines, so a last row that is not
+ * full shows no line where no cell is.
  */
 export function Pricing() {
     const stats = useStats();
     const id = useId();
-    // The live feed's packages when it answers, the router's catalog copy otherwise, so a price
-    // shows even while the feed is off and is never one the router does not sell
-    const live = stats.data?.packages ?? [];
-    const cells = pricingCells(live.length > 0 ? live : catalogPackages());
+    const off = isUnavailable(stats);
+    const cells: Place[] = stats.data
+        ? pricingCells(stats.data.packages)
+        : [
+              ...Array.from({ length: waitingCells }, (_, i) => ({ kind: "waiting" as const, i })),
+              ...pricingCells([]),
+          ];
     return (
         <Band as="div" id="pricing" rail={false}>
             <Frame padded={false}>
@@ -63,28 +97,43 @@ export function Pricing() {
                             Live limits
                         </a>
                     </div>
-                    <div className="relative min-h-(--box)">
+                    <div className="relative min-h-(--box)" aria-busy={!stats.data || undefined}>
+                        {off && <Unavailable />}
                         {cells.length > 0 && (
                             <ul className="grid grid-cols-4 gap-(--hairline) narrow:grid-cols-2 phone:grid-cols-1">
                                 {cells.map((cell, i) => (
                                     <li
-                                        key={cell.kind === "package" ? cell.p.id : cell.model}
+                                        key={
+                                            cell.kind === "package"
+                                                ? cell.p.id
+                                                : cell.kind === "soon"
+                                                  ? cell.model
+                                                  : `waiting-${cell.i}`
+                                        }
                                         className={cx(
                                             "py-(--space-6) shadow-[0_0_0_var(--hairline)_var(--line)]",
                                             cellInset(i, 4, 2),
                                         )}
                                     >
-                                        <Head cell={cell} />
-                                        <dl className="mt-(--space-4) text-(length:--ui-size) leading-(--ui-line)">
-                                            {facts(cell).map((fact) => (
-                                                <div key={fact.label} className={row}>
-                                                    <dt className="text-text-muted">
-                                                        {fact.label}
-                                                    </dt>
-                                                    <dd className="font-mono">{fact.value}</dd>
-                                                </div>
-                                            ))}
-                                        </dl>
+                                        {cell.kind === "waiting" ? (
+                                            <Waiting still={off} />
+                                        ) : (
+                                            <>
+                                                <Head cell={cell} />
+                                                <dl className="mt-(--space-4) text-(length:--ui-size) leading-(--ui-line)">
+                                                    {facts(cell).map((fact) => (
+                                                        <div key={fact.label} className={row}>
+                                                            <dt className="text-text-muted">
+                                                                {fact.label}
+                                                            </dt>
+                                                            <dd className="font-mono">
+                                                                {fact.value}
+                                                            </dd>
+                                                        </div>
+                                                    ))}
+                                                </dl>
+                                            </>
+                                        )}
                                         {cell.kind === "soon" && (
                                             <p
                                                 className={cx(

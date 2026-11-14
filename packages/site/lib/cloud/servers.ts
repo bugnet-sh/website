@@ -1,140 +1,76 @@
 import { byRate } from "../landing/price";
-import type { PackageRow } from "../stats/types";
+import type { Gpu, ServerPackage, ServerRow } from "../stats/types";
 
-/** One machine size a provider sells, under the provider's own name for it */
-export type Size = { name: string; vcpu: number; memoryMiB: number; diskGiB: number };
-
+/**
+ * What the site keeps about a provider: its brand, its site and where its machines run. Every
+ * other figure on /cloud comes from the router's live feed (founder D13, 2026-11-13).
+ */
 export type CloudProvider = {
     /** The router's name, as the stats feed sends it */
     id: string;
     /** As the brand writes it: boxd stays lower case even at the start of a sentence */
     name: string;
-    url: string;
-    /** The longest the provider lets a sandbox live, in minutes, or null when it sets no limit */
-    lifetimeMinutes: number | null;
-    /** The user commands run as */
-    user: string;
+    url: string | null;
     location: string;
-    /** In the router's order: a package lands on the first size that covers it */
-    sizes: readonly Size[];
 };
 
-/**
- * The providers production runs, in the router's order, with the sizes its adapters sell. A test
- * keeps every figure equal to the router's source when that repository sits beside this one. What
- * each size costs Bugnet stays out of this public repository.
- */
 export const cloudProviders: readonly CloudProvider[] = [
     {
         id: "boat",
         name: "Boat",
         url: "https://boat.dev",
-        lifetimeMinutes: 30 * 24 * 60,
-        user: "user",
         // Boat picks the country; we can't choose it
         location: "Germany, Finland or France",
-        // Production's [boat.types] leaves out xlarge, which Boat sells only on a plan Bugnet
-        // doesn't hold
-        sizes: [
-            { name: "small", vcpu: 2, memoryMiB: 4096, diskGiB: 51 },
-            { name: "default", vcpu: 4, memoryMiB: 8192, diskGiB: 51 },
-            { name: "large", vcpu: 8, memoryMiB: 16_384, diskGiB: 111 },
-        ],
     },
     {
         id: "e2b",
         name: "E2B",
         url: "https://e2b.dev",
-        lifetimeMinutes: 60,
-        user: "root",
         // Production uses E2B's default domain, e2b.app, which is its US-West-1 region
         location: "United States",
-        sizes: [
-            { name: "2x2", vcpu: 2, memoryMiB: 2048, diskGiB: 10 },
-            { name: "4x8", vcpu: 4, memoryMiB: 8192, diskGiB: 10 },
-        ],
     },
-    {
-        id: "boxd",
-        name: "boxd",
-        url: "https://boxd.sh",
-        lifetimeMinutes: null,
-        user: "boxd",
-        location: "Frankfurt, Germany",
-        sizes: [
-            { name: "1x4", vcpu: 1, memoryMiB: 4096, diskGiB: 100 },
-            { name: "2x8", vcpu: 2, memoryMiB: 8192, diskGiB: 100 },
-            { name: "4x16", vcpu: 4, memoryMiB: 16_384, diskGiB: 100 },
-            { name: "8x32", vcpu: 8, memoryMiB: 32_768, diskGiB: 100 },
-        ],
-    },
+    { id: "boxd", name: "boxd", url: "https://boxd.sh", location: "Frankfurt, Germany" },
 ];
 
-/**
- * Packages a size fits but the router never starts on it, as what the size costs Bugnet leaves
- * too little of the package's price. A test works the list out from the router's source, so no
- * cost is written here.
- */
-export const refused: readonly { provider: string; size: string; package: string }[] = [
-    { provider: "boxd", size: "2x8", package: "small-10m" },
-];
+/** A provider the site has no entry for yet still shows, under the router's name for it */
+const unknownProvider = (id: string): CloudProvider => ({
+    id,
+    name: id,
+    url: null,
+    location: "Not published",
+});
 
-/** The router refuses an extension that would take a sandbox this close to its provider's limit */
-export const lifetimeSlackMinutes = 5;
-
-/**
- * The size the router's SizeFor picks for a package: the first in the provider's order with
- * enough vCPU, memory and disk. None of these providers has a GPU.
- */
-export function sizeFor(provider: CloudProvider, p: PackageRow): Size | null {
-    if (p.gpu) return null;
-    return (
-        provider.sizes.find(
-            (s) => s.vcpu >= p.vcpu && s.memoryMiB >= p.memoryMiB && s.diskGiB >= p.diskGiB,
-        ) ?? null
-    );
-}
-
-/** One provider's size, with the packages that land on it, cheapest first */
+/** One provider's machine size as the router places packages on it now, cheapest package first */
 export type Server = {
     id: string;
     provider: CloudProvider;
-    size: Size;
-    packages: readonly PackageRow[];
+    size: { name: string; vcpu: number; memoryMiB: number; diskGiB: number };
+    gpu: Gpu | null;
+    /** The most minutes a sandbox runs here, extended a package at a time, or null for no limit */
+    longestRunMinutes: number | null;
+    user: string;
+    /** False while the provider is blocked or down, or would refuse a start now */
+    available: boolean;
+    packages: readonly ServerPackage[];
 };
 
-const isRefused = (provider: CloudProvider, size: Size, p: PackageRow) =>
-    refused.some((r) => r.provider === provider.id && r.size === size.name && r.package === p.id);
-
-/** Every size at least one package lands on, provider by provider in the router's order */
+/** The feed's servers, in the router's order, each with its packages at their price there */
 export function cloudServers(
-    packages: readonly PackageRow[],
+    rows: readonly ServerRow[],
     providers: readonly CloudProvider[] = cloudProviders,
 ): Server[] {
-    return providers.flatMap((provider) =>
-        provider.sizes.flatMap((size) => {
-            const fits = packages
-                .filter((p) => sizeFor(provider, p) === size && !isRefused(provider, size, p))
-                .sort(byRate);
-            return fits.length > 0
-                ? [{ id: `${provider.id}-${size.name}`, provider, size, packages: fits }]
-                : [];
-        }),
-    );
-}
-
-/**
- * The longest a server's sandbox runs, extended a package at a time, in minutes, or null when its
- * provider sets no limit
- */
-export function longestRun(s: Server): number | null {
-    const limit = s.provider.lifetimeMinutes;
-    if (limit === null) return null;
-    return Math.max(
-        ...s.packages.map(
-            (p) => Math.floor((limit - lifetimeSlackMinutes) / p.minutes) * p.minutes,
-        ),
-    );
+    return rows
+        .filter((r) => r.packages.length > 0)
+        .map((r) => ({
+            id: `${r.provider}-${r.size}`,
+            provider: providers.find((p) => p.id === r.provider) ?? unknownProvider(r.provider),
+            size: { name: r.size, vcpu: r.vcpu, memoryMiB: r.memoryMiB, diskGiB: r.diskGiB },
+            gpu: r.gpu,
+            longestRunMinutes: r.longestRunMinutes,
+            user: r.user,
+            available: r.available,
+            packages: [...r.packages].sort(byRate),
+        }));
 }
 
 /** "50 minutes", "30 days", or "No limit"; a run some minutes short of whole days reads as days */
@@ -186,7 +122,7 @@ export function providerCounts(servers: readonly Server[]): Count[] {
 
 /** Each package by how many servers it lands on, cheapest package first */
 export function packageCounts(servers: readonly Server[]): Count[] {
-    const counts = new Map<string, Count & { p: PackageRow }>();
+    const counts = new Map<string, Count & { p: ServerPackage }>();
     for (const s of servers) {
         for (const p of s.packages) {
             const c = counts.get(p.id);
@@ -209,8 +145,8 @@ export const sortKeys = [
 
 export type SortKey = (typeof sortKeys)[number]["value"];
 
-/** The price a server's card shows: its cheapest package's */
-export const cheapest = (s: Server): PackageRow => s.packages[0] as PackageRow;
+/** A server's cheapest package by the minute, which the Price sort goes by */
+export const cheapest = (s: Server): ServerPackage => s.packages[0] as ServerPackage;
 
 type Compare = (a: Server, b: Server) => number;
 const byPrice: Compare = (a, b) => byRate(cheapest(a), cheapest(b));

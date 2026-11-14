@@ -154,9 +154,9 @@ function componentsOf(look: Look): Components {
             ) : (
                 <CodeTabs names={tabNames(node)}>{children}</CodeTabs>
             ),
-        img: ({ src, alt }) =>
+        img: ({ src, alt, title }) =>
             typeof src === "string" && CLIP.test(src) ? (
-                <Clip src={src} title={alt ?? ""} />
+                <Clip src={src} title={alt ?? ""} note={title ?? undefined} />
             ) : (
                 <img src={src} alt={alt ?? ""} />
             ),

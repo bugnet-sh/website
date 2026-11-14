@@ -148,6 +148,29 @@ it("draws the list under Next steps as linked cards, and leaves other lists alon
     expect(cards[2]?.closest("li")?.textContent).toBe("Install: Every client's setup.");
 });
 
+it("puts a clip's note, such as the date of its prices, at its title bar's right", () => {
+    vi.stubGlobal(
+        "IntersectionObserver",
+        class {
+            observe() {}
+            disconnect() {}
+        },
+    );
+    render(
+        <Markdown
+            source={
+                '![Ask for a sandbox](/docs/clips/ask.mp4 "Example run, prices of 2026-11-10")\n'
+            }
+            look="article"
+        />,
+    );
+    const parts = [...(screen.getByRole("figure").querySelector("figcaption")?.children ?? [])];
+    expect(parts.map((p) => p.textContent)).toEqual([
+        "Ask for a sandbox",
+        "Example run, prices of 2026-11-10",
+    ]);
+});
+
 it("plays a clip in a titled frame only while half of it is on screen", async () => {
     let report: (ratio: number) => void = () => undefined;
     vi.stubGlobal(
@@ -168,6 +191,7 @@ it("plays a clip in a titled frame only while half of it is on screen", async ()
     const figure = screen.getByRole("figure");
     expect(figure.parentElement?.tagName).not.toBe("P");
     expect(figure.querySelector("figcaption")?.textContent).toBe("Pay with Touch ID");
+    expect(figure.querySelector("figcaption")?.children).toHaveLength(1);
     const video = figure.querySelector("video") as HTMLVideoElement;
     expect(video.muted).toBe(true);
     expect(video.loop).toBe(true);

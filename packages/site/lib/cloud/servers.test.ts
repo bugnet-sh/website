@@ -1,33 +1,35 @@
 import { describe, expect, it } from "vitest";
-import { catalogPackages } from "../landing/catalog";
 import { providerLabel } from "../stats/labels";
-import type { PackageRow } from "../stats/types";
+import type { ServerRow } from "../stats/types";
 import {
     activeFilters,
     cloudProviders,
     cloudServers,
     filterServers,
-    longestRun,
     noFilters,
     packageCounts,
     providerCounts,
     runText,
-    sizeFor,
     sortServers,
     type Server,
 } from "./servers";
+import { productionServers } from "./testing/servers";
 
-const servers = cloudServers(catalogPackages());
+const servers = cloudServers(productionServers);
 const names = (list: readonly Server[]) => list.map((s) => `${s.provider.id} ${s.size.name}`);
 
-const pack = (id: string, vcpu: number, memoryMiB: number, diskGiB: number): PackageRow => ({
-    id,
-    vcpu,
-    memoryMiB,
-    diskGiB,
+const row = (over: Partial<ServerRow>): ServerRow => ({
+    provider: "boat",
+    size: "small",
+    vcpu: 2,
+    memoryMiB: 4096,
+    diskGiB: 51,
     gpu: null,
-    minutes: 10,
-    priceMicros: 50_000,
+    longestRunMinutes: 43_190,
+    user: "user",
+    available: true,
+    packages: [{ id: "small-10m", minutes: 10, priceMicros: 50_000 }],
+    ...over,
 });
 
 describe("the providers", () => {
@@ -36,32 +38,25 @@ describe("the providers", () => {
         for (const p of cloudProviders) expect(providerLabel(p.id)).toBe(p.name);
     });
 
-    it("run as long as whole packages fit, 5 minutes short of the provider's limit", () => {
-        const run = (id: string) => runText(longestRun(servers.find((s) => s.id === id) as Server));
+    it("keep only brand, site and location; no size, lifetime, user or cost", () => {
+        for (const p of cloudProviders) {
+            expect(Object.keys(p).sort()).toEqual(["id", "location", "name", "url"]);
+        }
+    });
+});
+
+describe("runText", () => {
+    it("reads the feed's longest run in days, hours or minutes, or as no limit", () => {
+        const run = (id: string) =>
+            runText((servers.find((s) => s.id === id) as Server).longestRunMinutes);
         expect(run("boat-small")).toBe("30 days");
         expect(run("e2b-2x2")).toBe("50 minutes");
         expect(run("boxd-2x8")).toBe("No limit");
     });
 });
 
-describe("sizeFor", () => {
-    it("picks the first size in the provider's order that covers vCPU, memory and disk", () => {
-        const [boat, e2b, boxd] = cloudProviders;
-        const medium = pack("medium", 2, 4096, 40);
-        expect(boat && sizeFor(boat, medium)?.name).toBe("small");
-        // E2B's templates hold 10 GiB of disk
-        expect(e2b && sizeFor(e2b, medium)).toBeNull();
-        expect(boxd && sizeFor(boxd, medium)?.name).toBe("2x8");
-    });
-
-    it("never picks a size for a GPU package", () => {
-        const gpu = { ...pack("gpu", 2, 2048, 10), gpu: { count: 1, memoryGiB: 20 } };
-        for (const p of cloudProviders) expect(sizeFor(p, gpu)).toBeNull();
-    });
-});
-
 describe("cloudServers", () => {
-    it("lists the eight sizes the catalog's packages land on, each with its packages", () => {
+    it("lists the feed's servers in the router's order, each with its packages", () => {
         expect(
             servers.map((s) => [`${s.provider.id} ${s.size.name}`, s.packages.map((p) => p.id)]),
         ).toEqual([
@@ -76,23 +71,52 @@ describe("cloudServers", () => {
         ]);
     });
 
-    it("leaves out a size no package picks, such as boxd's 1 vCPU", () => {
-        expect(names(servers)).not.toContain("boxd 1x4");
+    it("prices each package as the feed prices it on that server", () => {
+        const two = cloudServers([
+            row({ packages: [{ id: "small-10m", minutes: 10, priceMicros: 55_000 }] }),
+            row({
+                provider: "e2b",
+                size: "2x2",
+                packages: [{ id: "small-10m", minutes: 10, priceMicros: 52_442 }],
+            }),
+        ]);
+        expect(two.map((s) => s.packages[0]?.priceMicros)).toEqual([55_000, 52_442]);
     });
 
-    it("leaves out a package no size fits, such as 16 vCPU", () => {
-        expect(cloudServers([pack("big", 16, 32_768, 250)])).toEqual([]);
+    it("brings over the server's resources, run, user and availability", () => {
+        const [s] = cloudServers([
+            row({ available: false, longestRunMinutes: null, user: "root", diskGiB: 111 }),
+        ]);
+        expect(s?.available).toBe(false);
+        expect(s?.longestRunMinutes).toBeNull();
+        expect(s?.user).toBe("root");
+        expect(s?.size).toEqual({ name: "small", vcpu: 2, memoryMiB: 4096, diskGiB: 111 });
+        expect(s?.provider.location).toBe("Germany, Finland or France");
     });
 
-    it("leaves a package off a size the router refuses it on", () => {
-        const boxd = servers.find((s) => s.id === "boxd-2x8");
-        expect(boxd?.packages.map((p) => p.id)).not.toContain("small-10m");
+    it("shows a provider the site has no entry for under the router's name, with no link", () => {
+        const [s] = cloudServers([row({ provider: "lium", size: "h100" })]);
+        expect(s?.provider).toEqual({
+            id: "lium",
+            name: "lium",
+            url: null,
+            location: "Not published",
+        });
+    });
+
+    it("leaves out a server the feed sends with no package", () => {
+        expect(cloudServers([row({ packages: [] })])).toEqual([]);
     });
 
     it("lists a server's packages cheapest first, by price per minute", () => {
-        const long = { ...pack("long", 2, 2048, 10), minutes: 60, priceMicros: 120_000 };
-        const short = { ...pack("short", 2, 2048, 10), priceMicros: 50_000 };
-        const [first] = cloudServers([short, long]);
+        const [first] = cloudServers([
+            row({
+                packages: [
+                    { id: "short", minutes: 10, priceMicros: 50_000 },
+                    { id: "long", minutes: 60, priceMicros: 120_000 },
+                ],
+            }),
+        ]);
         expect(first?.packages.map((p) => p.id)).toEqual(["long", "short"]);
     });
 });
