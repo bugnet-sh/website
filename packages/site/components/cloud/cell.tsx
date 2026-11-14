@@ -17,7 +17,7 @@ export function Cell({
     children,
     className,
 }: {
-    label: string;
+    label: ReactNode;
     children: ReactNode;
     className?: string;
 }) {

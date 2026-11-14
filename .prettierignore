@@ -17,5 +17,3 @@ packages/site/public/search-index.json
 packages/site/public/llms.txt
 packages/site/public/llms-full.txt
 packages/site/public/docs/
-# A byte-for-byte copy of bugnet-router/config/packages.json, which a test compares
-packages/site/content/catalog.json

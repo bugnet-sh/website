@@ -7,7 +7,7 @@ title: Watching a run
 You follow a run in two places: in the chat, where your agent reports each result, and on the
 session page, which shows the whole run in a browser.
 
-![Session summary](/docs/clips/summary.mp4)
+![Session summary](/docs/clips/summary.mp4 "Example run, prices of 2026-11-10")
 
 ## In the chat {#in-the-chat}
 

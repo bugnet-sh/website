@@ -1,10 +1,10 @@
 import type { ReactElement } from "react";
 import { cx } from "../../lib/cx";
-import { catalogPackages } from "../../lib/landing/catalog";
-import { formatUsdc } from "../../lib/stats/format";
 import { AllowanceArt } from "../landing/art/pay-art";
 import { OffMachineArt } from "../landing/art/safety-art";
 import { SandboxFigure } from "../landing/figure/sandbox-figure";
+import { StatsProvider } from "../stats/stats-provider";
+import { Prices } from "./prices";
 import { ArchitectureDiagram, ArchitectureStack, PaymentDiagram, PaymentStack } from "./diagrams";
 import { Slide, Split, solana, type } from "./slide";
 import {
@@ -97,8 +97,6 @@ export const roadmap: { step: string; text: string; stage: "now" | "next" | "las
         stage: "last",
     },
 ];
-
-const usd = (micros: number) => `${formatUsdc(micros)}\u00a0USDC`;
 
 /** The rendered mark, on the last slide */
 function Mark() {
@@ -218,36 +216,6 @@ function Steps() {
                 </li>
             ))}
         </ol>
-    );
-}
-
-function Prices() {
-    return (
-        <table className="w-full border-collapse text-left">
-            <thead>
-                <tr className="border-b-(length:--hairline) border-line text-[max(12px,1.15cqi)] text-text-muted">
-                    {["vCPU", "Memory", "Disk", "Time", "Price"].map((h) => (
-                        <th key={h} scope="col" className="pb-[1.2cqi] font-normal">
-                            {h}
-                        </th>
-                    ))}
-                </tr>
-            </thead>
-            <tbody>
-                {catalogPackages().map((p) => (
-                    <tr
-                        key={p.id}
-                        className="border-b-(length:--hairline) border-line text-[max(14px,1.45cqi)] tabular-nums"
-                    >
-                        <td className="py-[1.15cqi]">{p.vcpu}</td>
-                        <td className="py-[1.15cqi]">{p.memoryMiB / 1024}&nbsp;GiB</td>
-                        <td className="py-[1.15cqi]">{p.diskGiB}&nbsp;GiB</td>
-                        <td className="py-[1.15cqi]">{p.minutes}&nbsp;min</td>
-                        <td className="py-[1.15cqi] text-accent">{usd(p.priceMicros)}</td>
-                    </tr>
-                ))}
-            </tbody>
-        </table>
     );
 }
 
@@ -579,7 +547,9 @@ export function pitchSlides(): ReactElement[] {
                     "USDC payments are final, with no card fees or chargebacks",
                 ]}
             >
-                <Prices />
+                <StatsProvider>
+                    <Prices />
+                </StatsProvider>
             </Split>
         </Slide>,
 

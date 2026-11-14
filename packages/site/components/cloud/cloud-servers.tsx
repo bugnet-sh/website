@@ -77,7 +77,7 @@ export function CloudServers() {
 
     const off = isUnavailable(stats);
     const waiting = stats.data ? undefined : { still: off };
-    const servers = cloudServers(stats.data?.packages ?? []);
+    const servers = cloudServers(stats.data?.servers ?? []);
     const shown = sortServers(filterServers(servers, filters), sort);
     const active = activeFilters(filters);
 
