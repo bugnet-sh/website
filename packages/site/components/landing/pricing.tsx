@@ -28,11 +28,12 @@ function Head({ cell }: { cell: PricingCell }) {
         );
     }
     return (
-        <p className="flex items-baseline gap-(--space-2)">
+        // A six-decimal price can leave no room for its unit, which then drops under it whole
+        <p className="flex flex-wrap items-baseline gap-x-(--space-2)">
             <span className="font-mono text-(length:--stat-size) leading-(--stat-line) text-accent">
                 {formatUsdc(cell.p.priceMicros)}
             </span>
-            <span className="text-(length:--ui-size) leading-(--ui-line) text-text-muted">
+            <span className="text-(length:--ui-size) leading-(--ui-line) whitespace-nowrap text-text-muted">
                 USDC {lengthText(cell.p)}
             </span>
         </p>

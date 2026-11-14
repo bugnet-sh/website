@@ -92,11 +92,15 @@ export function ServerCard({ server, row }: { server: Server; row: ProviderRow }
                         label={<span className="font-mono">{p.id}</span>}
                         className={lastSpan(i, server.packages.length)}
                     >
-                        <span className="flex items-baseline gap-(--space-2) whitespace-nowrap">
+                        {/* A six-decimal price leaves no room for its unit in a phone's half cell, so the
+                            unit drops under it */}
+                        <span className="flex flex-wrap items-baseline gap-x-(--space-2)">
                             <span className="font-semibold text-accent">
                                 {formatUsdc(p.priceMicros)}
                             </span>{" "}
-                            <span className="text-text-muted">USDC {lengthText(p)}</span>
+                            <span className="whitespace-nowrap text-text-muted">
+                                USDC {lengthText(p)}
+                            </span>
                         </span>
                     </Cell>
                 ))}
