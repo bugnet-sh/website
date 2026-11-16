@@ -47,7 +47,16 @@ const row =
 function Waiting({ still }: { still: boolean }) {
     return (
         <>
-            <Skeleton line="stat" className="w-1/2" still={still} />
+            {/* The price line as the real one sets it, a six-decimal price and its unit, so it
+                wraps where a loaded cell's does and the cell keeps its height */}
+            <div className="flex flex-wrap items-baseline gap-x-(--space-2)">
+                <Skeleton
+                    line="stat"
+                    className="w-[8ch] font-mono text-(length:--stat-size)"
+                    still={still}
+                />
+                <Skeleton line="ui" className="w-[11ch] text-(length:--ui-size)" still={still} />
+            </div>
             <div className="mt-(--space-4)">
                 {[0, 1, 2].map((i) => (
                     <div key={i} className={row}>
