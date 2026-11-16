@@ -1,7 +1,13 @@
+"use client";
+
 import { useId } from "react";
+import { formatUsdc } from "../../lib/stats/format";
 import { Band, Frame } from "../shell/frame";
+import { useStats } from "../stats/stats-provider";
+import { isUnavailable } from "../stats/unavailable";
 import { HowPlayer } from "./how-player";
 import type { Kind, Line as Measured } from "./how-timeline";
+import { cx } from "../../lib/cx";
 import { cellInset } from "./inset";
 import { LandingTitle } from "./title";
 
@@ -16,7 +22,7 @@ const tones = {
 
 type Tone = keyof typeof tones;
 // The mono face has no ⎿ or ❯, so a fallback face draws them in a cell one character wide
-type Run = { tone: Tone; text: string; cell?: boolean };
+type Run = { tone: Tone; text: string; cell?: boolean; price?: boolean };
 type Line = { kind: Kind; runs: Run[] };
 
 const run =
@@ -24,6 +30,8 @@ const run =
     (text: string): Run => ({ tone, text });
 const t = run("text");
 const m = run("muted");
+/** The live price, which the terminals draw as a bar until the feed answers */
+const price = (amount: string): Run => ({ tone: "money", text: amount, price: true });
 const money = run("money");
 const ok = run("ok");
 
@@ -42,8 +50,13 @@ const result = (...runs: Run[]) =>
     out(m("  "), { tone: "muted", text: "⎿", cell: true }, m("  "), ...runs);
 const more = (...runs: Run[]) => out(m("     "), ...runs);
 
-/** Claude Code's transcript of each step, true to the tools and to paying.md */
-const steps: { title: string; text: string; lines: Line[] }[] = [
+type Step = { title: string; text: string; lines: Line[] };
+
+/**
+ * Claude Code's transcript of each step, true to the tools and to paying.md, at small-10m's live
+ * price (founder D13 and D14, 2026-11-13 and 2026-11-14)
+ */
+const howSteps = (amount: string): Step[] => [
     {
         title: "Ask",
         text: "Ask your agent to run something in a sandbox.",
@@ -53,7 +66,7 @@ const steps: { title: string; text: string; lines: Line[] }[] = [
             blank,
             call("ok", "bugnet_assess", "(repo)"),
             result(m("fits   "), t("small-10m")),
-            more(m("price  "), money("0.05 USDC")),
+            more(m("price  "), price(amount), money(" USDC")),
             more(m("check  "), ok("free")),
         ],
     },
@@ -63,7 +76,7 @@ const steps: { title: string; text: string; lines: Line[] }[] = [
         lines: [
             call("muted", "bugnet_start", "("),
             on(m('  packageId: "'), t("small-10m"), m('",')),
-            on(m('  confirmPriceUsd: "'), money("0.05"), m('")')),
+            on(m('  confirmPriceUsd: "'), price(amount), m('")')),
             blank,
             out(t("Do you want to proceed?")),
             out({ tone: "tool", text: "❯", cell: true }, { tone: "tool", text: " 1. Yes" }),
@@ -74,7 +87,7 @@ const steps: { title: string; text: string; lines: Line[] }[] = [
         title: "Pay",
         text: "Pay in USDC on Solana, by link or from your wallet.",
         lines: [
-            entry(t("● "), t("Pay "), money("0.05 USDC"), t(" on Solana")),
+            entry(t("● "), t("Pay "), price(amount), money(" USDC"), t(" on Solana")),
             on(t("  pay.bugnet.sh/o/ord_7Kq2")),
             blank,
             prompt("Paid"),
@@ -105,11 +118,24 @@ function measure({ kind, runs }: Line): Measured {
     return { kind, chars: text.length, lead };
 }
 
-/** Each step's terminal as the player types it */
-export const terminals = steps.map((step) => step.lines.map(measure));
+/** Each step's terminal as the player types it, at this price */
+export const howTerminals = (amount: string) =>
+    howSteps(amount).map((step) => step.lines.map(measure));
+
+/** The package whose price the transcript shows, the smallest on sale */
+const PACKAGE = "small-10m";
 
 /** A terminal joined to the foot of its step, its lines starting where the step's text does */
-function Terminal({ lines, inset }: { lines: Line[]; inset: string }) {
+function Terminal({
+    lines,
+    inset,
+    waiting,
+}: {
+    lines: Line[];
+    inset: string;
+    /** Set until the feed answers: the price shows as a bar, still once the feed is off */
+    waiting?: { still: boolean };
+}) {
     return (
         // A picture of the step, which its title and sentence say in words
         <div
@@ -132,18 +158,30 @@ function Terminal({ lines, inset }: { lines: Line[]; inset: string }) {
                         data-how-line
                         className="h-(--how-code-line) data-off:invisible data-caret:after:inline-block data-caret:after:h-(--how-code-line) data-caret:after:w-[1ch] data-caret:after:bg-text-muted data-caret:after:align-top data-caret:after:content-['']"
                     >
-                        {line.runs.map((r, k) => (
-                            <span
-                                key={k}
-                                className={
-                                    r.cell
-                                        ? `inline-block w-[1ch] text-center ${tones[r.tone]}`
-                                        : tones[r.tone] || undefined
-                                }
-                            >
-                                {r.text}
-                            </span>
-                        ))}
+                        {line.runs.map((r, k) =>
+                            r.price && waiting ? (
+                                // As wide as a price such as 0.003355, at the line's text height
+                                <span
+                                    key={k}
+                                    className={cx(
+                                        "inline-block h-[1em] w-[8ch] bg-line align-[-0.15em]",
+                                        !waiting.still &&
+                                            "animate-pulse motion-reduce:animate-none",
+                                    )}
+                                />
+                            ) : (
+                                <span
+                                    key={k}
+                                    className={
+                                        r.cell
+                                            ? `inline-block w-[1ch] text-center ${tones[r.tone]}`
+                                            : tones[r.tone] || undefined
+                                    }
+                                >
+                                    {r.text}
+                                </span>
+                            ),
+                        )}
                     </p>
                 ))}
             </div>
@@ -151,9 +189,18 @@ function Terminal({ lines, inset }: { lines: Line[]; inset: string }) {
     );
 }
 
-/** Four steps in a hairline grid, each a number, a title and a sentence over its terminal */
+/**
+ * Four steps in a hairline grid, each a number, a title and a sentence over its terminal. The
+ * terminals quote small-10m's live price: until the feed answers they stand drawn with a bar in
+ * its place and don't type; with the price they draw again and the player starts.
+ */
 export function How() {
     const id = useId();
+    const stats = useStats();
+    const live = stats.data?.packages.find((p) => p.id === PACKAGE);
+    const amount = live ? formatUsdc(live.priceMicros) : null;
+    const steps = howSteps(amount ?? "");
+    const waiting = amount === null ? { still: isUnavailable(stats) } : undefined;
     return (
         <Band as="div" id="how" rail={false}>
             <Frame padded={false}>
@@ -162,7 +209,10 @@ export function How() {
                         <LandingTitle id={id}>How it works</LandingTitle>
                     </div>
                     <HowPlayer
-                        lines={terminals}
+                        // A new price is new text to type, so the list starts over with it
+                        key={amount ?? "waiting"}
+                        lines={howTerminals(amount ?? "")}
+                        paused={amount === null}
                         className="grid grid-cols-4 gap-(--hairline) border-t-(length:--hairline) border-line bg-line narrow:grid-cols-2 phone:grid-cols-1"
                     >
                         {steps.map((step, i) => {
@@ -187,7 +237,7 @@ export function How() {
                                             {step.text}
                                         </p>
                                     </div>
-                                    <Terminal lines={step.lines} inset={inset} />
+                                    <Terminal lines={step.lines} inset={inset} waiting={waiting} />
                                 </li>
                             );
                         })}

@@ -1,3 +1,4 @@
+import type { ReactNode } from "react";
 import { cx } from "../../lib/cx";
 
 const tones = {
@@ -12,12 +13,12 @@ const tones = {
 
 type Tone = keyof typeof tones;
 // The mono face has no ⎿ or ❯, so a fallback face draws them in a cell one character wide
-type Run = { tone: Tone; text: string; cell?: boolean };
+type Run = { tone: Tone; text: ReactNode; cell?: boolean };
 export type Line = Run[];
 
 const run =
     (tone: Tone) =>
-    (text: string): Run => ({ tone, text });
+    (text: ReactNode): Run => ({ tone, text });
 export const t = run("text");
 export const m = run("muted");
 export const money = run("money");
@@ -29,7 +30,7 @@ export const blank: Line = [];
 export const shell = (): Line => [m("$ "), { tone: "claude", text: "claude" }];
 export const prompt = (text: string): Line => [m("> "), t(text)];
 export const say = (...runs: Run[]): Line => [t("● "), ...runs];
-export const call = (name: string, args: string, dot: Tone = "ok"): Line => [
+export const call = (name: string, args: ReactNode, dot: Tone = "ok"): Line => [
     { tone: dot, text: "● " },
     tool(name),
     m(args),

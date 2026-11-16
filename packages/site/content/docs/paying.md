@@ -110,17 +110,19 @@ itself until it calls `bugnet_redeem`.
 
 ## Prices {#prices}
 
-A sandbox comes in fixed sizes: CPU, memory, disk and minutes. Each has a fixed price in USDC.
+A sandbox comes in fixed sizes: CPU, memory, disk and minutes. Each size's price in USDC is quoted
+live, for the server Bugnet would start it on, so it can differ between servers and through the
+day.
 
 - `bugnet_assess` and `bugnet_quote` show the prices for free, before anything is paid. A quote is
-  valid for 10 minutes.
+  valid for 10 minutes, and its price holds for the quote and for the order you pay.
 - `bugnet_status` shows what more time costs.
 - You pay exactly the price you approved: Bugnet charges that amount or refuses.
 - Paid time starts when the sandbox is ready, not when you pay.
 - Stopping early does not refund the unused time.
 
-A small sandbox for ten minutes costs a few cents. The current sizes and prices are on the
-[stats page](/stats/#limits).
+A small sandbox for ten minutes costs from under a cent to a few cents, depending on the server.
+Each server's current prices are on [Cloud](/cloud/).
 
 ## Order times {#order-times}
 

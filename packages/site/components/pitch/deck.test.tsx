@@ -1,7 +1,15 @@
 import { cleanup, render } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { stepFor, wheelPager } from "./deck";
+import { StatsState } from "../stats/stats-provider";
 import { pitchSlides } from "./slides";
+
+/** The deck as the page draws it, inside the feed, here still loading */
+const deck = () => (
+    <StatsState summary={{ data: null, updatedAt: null, failedAt: null }}>
+        {pitchSlides()}
+    </StatsState>
+);
 
 // The cover's drawing watches matchMedia and IntersectionObserver, which jsdom does not have
 beforeEach(() => {
@@ -103,7 +111,7 @@ describe("wheelPager", () => {
 
 describe("pitchSlides", () => {
     it("numbers 16 slides, with one H1 on the first and a title on every middle one", () => {
-        const { container } = render(<>{pitchSlides()}</>);
+        const { container } = render(deck());
         const slides = [...container.querySelectorAll("[data-slide]")];
         expect(slides).toHaveLength(16);
         expect(container.querySelectorAll("h1")).toHaveLength(1);
@@ -111,7 +119,7 @@ describe("pitchSlides", () => {
     });
 
     it("has no middle dot and links only to the founder's site and the support address", () => {
-        const { container } = render(<>{pitchSlides()}</>);
+        const { container } = render(deck());
         expect(container.textContent).not.toContain("·");
         const links = [...container.querySelectorAll("a")].map((a) => a.getAttribute("href"));
         expect(links).toEqual(["https://oynozan.com", "mailto:support@bugnet.org"]);
