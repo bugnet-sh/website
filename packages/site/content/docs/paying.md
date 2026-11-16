@@ -58,14 +58,15 @@ Bugnet refuses the call, before any order exists, if that price is not the exact
 your agent picked. So approving means "yes, pay this exact amount for this sandbox".
 
 > [!TIP]
-> Other clients ask according to their own tool approval settings, so keep approval on for these two
-> tools.
+> Other clients ask according to their own tool approval settings, so keep approval on for the
+> tools marked "Always" on [Tools](/docs/tools/).
 
 ## Paying by link {#paying-by-link}
 
 1. Open the pay link your agent shows you, `https://pay.bugnet.sh/o/<order>`.
-2. Pay with a browser wallet such as Phantom or Solflare, or scan the page's QR code to open it
-   in Phantom on your phone.
+2. Send the amount the page shows to the address it shows, from any Solana wallet holding USDC.
+   On a computer, scan the address's QR code with a wallet on your phone. You can also pay on the
+   page with a browser wallet such as Phantom or Solflare.
 3. Tell your agent you paid.
 
 Your agent then calls `bugnet_redeem`. This works in every client, claude.ai included.

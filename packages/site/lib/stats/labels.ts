@@ -40,7 +40,12 @@ export const listKindLabels: Record<ListKind, string> = {
 export const isOutgoing = (kind: ListKind): boolean =>
     kind === "refund" || kind === "allowance_return";
 
-const methods: Record<string, string> = { checkout: "Checkout page", pay_cli: "pay CLI" };
+const methods: Record<string, string> = {
+    checkout: "Checkout page",
+    pay_cli: "pay CLI",
+    // USDC sent straight to the order's own address (Payments' paid_via "transfer")
+    transfer: "Sent to address",
+};
 
 export const methodLabel = (method: string): string => methods[method] ?? method;
 

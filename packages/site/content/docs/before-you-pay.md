@@ -5,24 +5,25 @@ title: Before you pay
 # Before you pay
 
 Bugnet takes USDC on Solana mainnet only, and pays the SOL fees itself. You pay each order in one
-of three ways: by link in a browser wallet, from the pay.sh wallet on your computer, or from a
-wallet file. Set one up before your first run.
+of three ways: by link, from the pay.sh wallet on your computer, or from a wallet file. By link,
+you send USDC from any Solana wallet to the order's address. Set one up before your first run.
 
 ## Three ways to pay {#three-ways-to-pay}
 
-|                | By link                                                   | From the pay.sh wallet                                 | From a wallet file                           |
-| -------------- | --------------------------------------------------------- | ------------------------------------------------------ | -------------------------------------------- |
-| You need       | A browser wallet such as Phantom or Solflare holding USDC | [`pay`](https://pay.sh) set up on this computer        | A wallet file holding USDC                   |
-| You approve in | Your wallet, or Phantom or Solflare on your phone         | Touch ID, Windows Hello or polkit                      | No extra confirmation, within limits you set |
-| Clients        | Every client, claude.ai included                          | The `bugnet-wallet` plugin, the bridge, Claude Desktop | The bridge, on macOS and Linux               |
-| Setup          | None                                                      | About 5 to 10 minutes, once                            | A key, a little USDC and `mcp.toml`, once    |
+|                | By link                          | From the pay.sh wallet                                 | From a wallet file                           |
+| -------------- | -------------------------------- | ------------------------------------------------------ | -------------------------------------------- |
+| You need       | Any Solana wallet holding USDC   | [`pay`](https://pay.sh) set up on this computer        | A wallet file holding USDC                   |
+| You approve in | The wallet you send from         | Touch ID, Windows Hello or polkit                      | No extra confirmation, within limits you set |
+| Clients        | Every client, claude.ai included | The `bugnet-wallet` plugin, the bridge, Claude Desktop | The bridge, on macOS and Linux               |
+| Setup          | None                             | About 5 to 10 minutes, once                            | A key, a little USDC and `mcp.toml`, once    |
 
 ## Paying by link {#paying-by-link}
 
-You need a browser wallet, such as Phantom or Solflare, holding USDC on Solana mainnet. You can also
-pay from your phone: scan the page's QR code to open it in Phantom, or open the link on your phone
-in Phantom or Solflare. Nothing needs installing on your computer, so this works in every client,
-claude.ai included.
+The pay link opens the order's page. Send the amount it shows, in USDC on Solana mainnet, to the
+address it shows, from any Solana wallet. The page has a copy button for each, and a QR code of the
+address to scan with a wallet on your phone. You can also pay on the page with a browser wallet
+such as Phantom or Solflare, or open the link on your phone in Phantom or Solflare. Nothing needs
+installing on your computer, so this works in every client, claude.ai included.
 
 ## Paying from the pay.sh wallet {#paying-from-the-pay-wallet}
 

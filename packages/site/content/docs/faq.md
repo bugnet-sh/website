@@ -32,8 +32,9 @@ You see the price before you pay, and you pay exactly that price. See
 
 ## Which wallets can pay?
 
-Any Solana wallet holding USDC can pay a pay link in a browser, such as Phantom or Solflare. On your
-phone, scan the page's QR code to open it in Phantom, or open the link in Phantom or Solflare. The
+Any Solana wallet holding USDC: send the amount to the address on the order's page. A browser
+wallet such as Phantom or Solflare can also pay on the page, and on your phone you can open the
+link in Phantom or Solflare. The
 pay.sh wallet pays from your computer with Touch ID, and the bridge can pay from a wallet file with
 no extra confirmation, within limits you set. See [Before you pay](/docs/before-you-pay/).
 
