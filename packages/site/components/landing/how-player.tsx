@@ -196,11 +196,14 @@ function playEach(root: HTMLElement, lines: readonly (readonly Line[])[]): () =>
 export function HowPlayer({
     className,
     lines,
+    paused = false,
     children,
 }: {
     className: string;
     /** Each step's terminal lines, in the order the list draws them */
     lines: readonly (readonly Line[])[];
+    /** Every terminal stays drawn and nothing types, as while the price is still on its way */
+    paused?: boolean;
     children: ReactNode;
 }) {
     const list = useRef<HTMLOListElement>(null);
@@ -209,6 +212,7 @@ export function HowPlayer({
         const root = list.current;
         if (
             !root ||
+            paused ||
             typeof IntersectionObserver === "undefined" ||
             (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches ?? false)
         ) {
@@ -226,7 +230,7 @@ export function HowPlayer({
             stacked?.removeEventListener?.("change", swap);
             stop();
         };
-    }, [lines]);
+    }, [lines, paused]);
 
     return (
         <ol ref={list} className={className}>

@@ -3,7 +3,7 @@ import { cx } from "../../lib/cx";
 import { AllowanceArt } from "../landing/art/pay-art";
 import { OffMachineArt } from "../landing/art/safety-art";
 import { SandboxFigure } from "../landing/figure/sandbox-figure";
-import { StatsProvider } from "../stats/stats-provider";
+import { LivePrice } from "../stats/live-price";
 import { Prices } from "./prices";
 import { ArchitectureDiagram, ArchitectureStack, PaymentDiagram, PaymentStack } from "./diagrams";
 import { Slide, Split, solana, type } from "./slide";
@@ -97,6 +97,9 @@ export const roadmap: { step: string; text: string; stage: "now" | "next" | "las
         stage: "last",
     },
 ];
+
+/** small-10m's live price, which the solution slide quotes */
+const small = <LivePrice id="small-10m" />;
 
 /** The rendered mark, on the last slide */
 function Mark() {
@@ -398,7 +401,10 @@ export function pitchSlides(): ReactElement[] {
                 title="A sandbox, one call away."
                 lead="Bugnet gives your agent a throwaway cloud sandbox, paid per run in USDC on Solana. When time is up, the sandbox and everything in it are deleted."
                 points={[
-                    "0.05\u00a0USDC for 10\u00a0minutes on 2\u00a0vCPU and 2\u00a0GiB",
+                    <>
+                        <LivePrice id="small-10m" />
+                        {"\u00a0USDC for 10\u00a0minutes on 2\u00a0vCPU and 2\u00a0GiB"}
+                    </>,
                     "Ready 14 to 29\u00a0seconds after payment",
                     "Works in any MCP client, tested with Claude Code",
                 ]}
@@ -410,15 +416,16 @@ export function pitchSlides(): ReactElement[] {
                         blank,
                         call("bugnet_assess", "(repo)"),
                         result(m("fits   "), t("small-10m")),
-                        more(m("price  "), money("0.05 USDC")),
+                        more(m("price  "), money(small), money(" USDC")),
                         say(
                             t("I can run it in a throwaway sandbox for "),
-                            money("0.05 USDC"),
+                            money(small),
+                            money(" USDC"),
                             t("."),
                         ),
                         prompt("Yes"),
-                        call("bugnet_start", "(small-10m, 0.05)"),
-                        result(t("paid "), money("0.05 USDC"), t(" on Solana, ready")),
+                        call("bugnet_start", <>(small-10m, {small})</>),
+                        result(t("paid "), money(small), money(" USDC"), t(" on Solana, ready")),
                         call("bugnet_preview", "(5173)"),
                         result(ok("https://...preview.bugnet.sh")),
                     ]}
@@ -541,15 +548,13 @@ export function pitchSlides(): ReactElement[] {
         <Slide key="business" n={12} label="Business model">
             <Split
                 title="Margin on every run."
-                lead="Bugnet buys sandbox time from cloud providers and sells it per run. The router only places a run where compute costs at most half its price."
+                lead="Bugnet buys sandbox time from cloud providers and sells it per run, at the provider's list price plus 10%, quoted live for the server the run lands on."
                 points={[
                     "API calls at cost, plus 0.003\u00a0USDC once per sandbox that buys an allowance",
                     "USDC payments are final, with no card fees or chargebacks",
                 ]}
             >
-                <StatsProvider>
-                    <Prices />
-                </StatsProvider>
+                <Prices />
             </Split>
         </Slide>,
 

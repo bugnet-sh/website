@@ -1,6 +1,12 @@
 import { act, cleanup, render } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { How, terminals } from "./how";
+import type { ReactElement } from "react";
+import type { SummaryState } from "../../lib/stats/client";
+import { parseSummary } from "../../lib/stats/parse";
+import { fakeSummary } from "../../lib/stats/testing/fake-data";
+import type { StatsSummary } from "../../lib/stats/types";
+import { StatsState } from "../stats/stats-provider";
+import { How, howTerminals } from "./how";
 import {
     CHAR_MS,
     DONE_MS,
@@ -11,6 +17,29 @@ import {
     typed,
     typing,
 } from "./how-timeline";
+
+const fake = parseSummary(fakeSummary(1, "normal")) as StatsSummary;
+const small = (priceMicros: number) => ({
+    id: "small-10m",
+    vcpu: 2,
+    memoryMiB: 2048,
+    diskGiB: 10,
+    gpu: null,
+    minutes: 10,
+    priceMicros,
+});
+/** The feed, with small-10m at this price */
+const priced = (priceMicros: number): SummaryState => ({
+    data: { ...fake, packages: [small(priceMicros)] },
+    updatedAt: new Date(),
+    failedAt: null,
+});
+const inFeed = (summary: SummaryState, ui: ReactElement) => (
+    <StatsState summary={summary}>{ui}</StatsState>
+);
+
+/** The terminals the tests below type, at the 0.05 their timings were measured with */
+const terminals = howTerminals("0.05");
 
 afterEach(() => {
     cleanup();
@@ -48,7 +77,7 @@ function setup({ reduced = false, stacked = false } = {}) {
         removeEventListener() {},
     }));
     vi.useFakeTimers();
-    const { container, unmount } = render(<How />);
+    const { container, unmount } = render(inFeed(priced(50_000), <How />));
     const steps = [...container.querySelectorAll<HTMLElement>("[data-how-step]")];
     return { observers, steps, unmount };
 }
@@ -289,4 +318,48 @@ it("draws every terminal and moves nothing under reduced motion", () => {
     expect(steps.map(view)).toEqual(drawn);
     expect(drawn[0]).toEqual(ask);
     expect(playing(steps)).toEqual([false, false, false, false]);
+});
+
+describe("How's price", () => {
+    it("quotes small-10m's live price in all three places", () => {
+        const { container } = render(inFeed(priced(3_355), <How />));
+        const text = container.textContent ?? "";
+        expect(text).toContain("price  0.003355 USDC");
+        expect(text).toContain('confirmPriceUsd: "0.003355")');
+        expect(text).toContain("● Pay 0.003355 USDC on Solana");
+        expect(text).not.toContain("0.05");
+    });
+
+    it("draws a pulsing bar for the price while the feed loads, and types nothing", () => {
+        const observers: unknown[] = [];
+        vi.stubGlobal(
+            "IntersectionObserver",
+            class {
+                constructor() {
+                    observers.push(this);
+                }
+                observe() {}
+                disconnect() {}
+            },
+        );
+        vi.stubGlobal("matchMedia", () => ({
+            matches: false,
+            addEventListener() {},
+            removeEventListener() {},
+        }));
+        const { container } = render(
+            inFeed({ data: null, updatedAt: null, failedAt: null }, <How />),
+        );
+        expect(container.textContent).not.toMatch(/\d\.\d+ USDC/);
+        expect(container.querySelectorAll("[data-how-line] .animate-pulse")).toHaveLength(3);
+        expect(observers).toHaveLength(0);
+    });
+
+    it("keeps the bars still once the feed is off", () => {
+        const { container } = render(
+            inFeed({ data: null, updatedAt: null, failedAt: new Date() }, <How />),
+        );
+        expect(container.querySelectorAll("[data-how-line] .animate-pulse")).toHaveLength(0);
+        expect(container.querySelectorAll("[data-how-line] .w-\\[8ch\\]")).toHaveLength(3);
+    });
 });

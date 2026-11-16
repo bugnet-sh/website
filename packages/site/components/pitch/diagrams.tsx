@@ -194,8 +194,8 @@ const lanes = [
 
 /** One paid start, message by message */
 const payment: { from: number; to: number; y: number; label: string; ink: Ink; lx?: number }[] = [
-    { from: 0, to: 1, y: 120, label: "bugnet_start, 0.05 USDC", ink: "tool" },
-    { from: 1, to: 0, y: 186, label: "402: pay 0.05 USDC", ink: "money" },
+    { from: 0, to: 1, y: 120, label: "bugnet_start at the quoted price", ink: "tool" },
+    { from: 1, to: 0, y: 186, label: "402: pay that price", ink: "money" },
     { from: 0, to: 2, y: 252, label: "you pay by link or Touch ID", ink: "money", lx: 505 },
     { from: 2, to: 1, y: 318, label: "settled on mainnet", ink: "money" },
     { from: 1, to: 0, y: 384, label: "sandbox ready", ink: "ok" },

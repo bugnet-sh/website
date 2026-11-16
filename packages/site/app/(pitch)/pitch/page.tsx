@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Deck } from "../../../components/pitch/deck";
 import { pitchSlides } from "../../../components/pitch/slides";
+import { StatsProvider } from "../../../components/stats/stats-provider";
 import { pageMetadata } from "../../../lib/content/meta";
 
 export const metadata: Metadata = {
@@ -13,5 +14,10 @@ export const metadata: Metadata = {
 };
 
 export default function PitchPage() {
-    return <Deck>{pitchSlides()}</Deck>;
+    // One feed for every live price in the deck
+    return (
+        <StatsProvider>
+            <Deck>{pitchSlides()}</Deck>
+        </StatsProvider>
+    );
 }
