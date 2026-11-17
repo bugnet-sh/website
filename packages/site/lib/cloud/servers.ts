@@ -30,6 +30,13 @@ export const cloudProviders: readonly CloudProvider[] = [
         location: "United States",
     },
     { id: "boxd", name: "boxd", url: "https://boxd.sh", location: "Frankfurt, Germany" },
+    {
+        id: "lium",
+        name: "Lium",
+        url: "https://lium.io",
+        // GPU machines of independent hosts; the router tries EU countries first
+        location: "EU first, other countries when none is free",
+    },
 ];
 
 /** A provider the site has no entry for yet still shows, under the router's name for it */

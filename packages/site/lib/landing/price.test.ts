@@ -82,6 +82,12 @@ describe("pricingCells", () => {
         ]);
     });
 
+    it("leaves out a package priced 0, which no machine can take now", () => {
+        const rows = [pack("c1", 100), pack("g0", 0, "NVIDIA T4"), pack("g1", 900, "RTX 3090")];
+        expect(names(pricingCells(rows)).slice(0, 2)).toEqual(["c1", "g1"]);
+        expect(names(pricingCells(rows))).not.toContain("g0");
+    });
+
     it("shows no prices for GPUs coming soon", () => {
         const soon = pricingCells([]).filter((c) => c.kind === "soon");
         expect(soon).toHaveLength(4);

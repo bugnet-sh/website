@@ -34,7 +34,7 @@ const row = (over: Partial<ServerRow>): ServerRow => ({
 
 describe("the providers", () => {
     it("are named as each brand writes itself, as the stats page names them", () => {
-        expect(cloudProviders.map((p) => p.name)).toEqual(["Boat", "E2B", "boxd"]);
+        expect(cloudProviders.map((p) => p.name)).toEqual(["Boat", "E2B", "boxd", "Lium"]);
         for (const p of cloudProviders) expect(providerLabel(p.id)).toBe(p.name);
     });
 
@@ -95,10 +95,10 @@ describe("cloudServers", () => {
     });
 
     it("shows a provider the site has no entry for under the router's name, with no link", () => {
-        const [s] = cloudServers([row({ provider: "lium", size: "h100" })]);
+        const [s] = cloudServers([row({ provider: "acmegpu", size: "h100" })]);
         expect(s?.provider).toEqual({
-            id: "lium",
-            name: "lium",
+            id: "acmegpu",
+            name: "acmegpu",
             url: null,
             location: "Not published",
         });

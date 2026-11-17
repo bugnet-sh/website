@@ -16,6 +16,7 @@ const providers: Record<string, string> = {
     e2b: "E2B",
     koyeb: "Koyeb",
     boxd: "boxd",
+    lium: "Lium",
 };
 
 /** A provider the page does not know yet is shown as the feed sent it, always as text. */

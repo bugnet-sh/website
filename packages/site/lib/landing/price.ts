@@ -20,14 +20,16 @@ export type PricingCell =
 /**
  * The landing's pricing cells, `max` in all: up to `maxCpu` CPU packages, then the GPU packages on
  * sale, then popular GPUs marked coming soon to fill the rest, each kind from the lowest rate up.
- * At least two places are GPUs, and a GPU on sale is never also shown as coming soon.
+ * At least two places are GPUs, and a GPU on sale is never also shown as coming soon. A package
+ * the feed prices at 0 has no machine that can take it now, so it is left out.
  */
 export function pricingCells(rows: readonly PackageRow[], max = 8, maxCpu = 6): PricingCell[] {
-    const cpu = rows
+    const priced = rows.filter((p) => p.priceMicros > 0);
+    const cpu = priced
         .filter((p) => !p.gpu)
         .sort(byRate)
         .slice(0, Math.min(maxCpu, max - 2));
-    const gpu = rows.filter((p) => p.gpu).sort(byRate);
+    const gpu = priced.filter((p) => p.gpu).sort(byRate);
     const sold = new Set(gpu.map((p) => p.gpu?.model?.toLowerCase()));
     const soon = SOON_GPUS.filter((g) => !sold.has(g.model.toLowerCase()));
     return [

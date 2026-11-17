@@ -1,4 +1,4 @@
-Last updated: 12 November 2026
+Last updated: 17 November 2026
 
 # Privacy Notice {#privacy}
 
@@ -232,6 +232,9 @@ For each run, our router picks one of these providers. Our tools don't tell you 
 | Boat (boat.dev) | Dedale AI, Corp., United States | Germany, Finland or France. We can't choose the region. We turn snapshots off. |
 | E2B (e2b.dev) | FoundryLabs, Inc., United States | United States, in E2B's US-West-1 region |
 | boxd (boxd.sh) | Azin Tech Operating Company B.V., Netherlands | Frankfurt, Germany, on servers from Latitude.sh LLC (United States) |
+| Lium (lium.io), GPU sandboxes only | Datura AI Corp, Saint Kitts and Nevis | GPU machines owned by independent hosts on Lium's network. We try EU countries first, then others, never sanctioned ones. |
+
+A Lium host owns the machine your GPU sandbox runs on and can read what is in it. That is why a GPU sandbox never receives your secrets, previews or SSH.
 
 Providers use other companies too. Boat names OVH, Hetzner and Cloudflare. Each provider keeps its own logs under its own terms.
 
@@ -246,7 +249,7 @@ Providers use other companies too. Boat names OVH, Hetzner and Cloudflare. Each 
 - **The owner of a preview you open** (see [If you open a preview](#preview-visitors)).
 - **Authorities**, when the law requires it.
 
-Some of these are US companies or may keep data in the US. That includes the companies behind Boat and E2B, boxd's server host, some of the providers' own suppliers, GitHub and Hugging Face.
+Some of these are US companies or may keep data in the US. That includes the companies behind Boat and E2B, boxd's server host, some of the providers' own suppliers, GitHub and Hugging Face. A GPU sandbox may run on a Lium host outside the EU.
 
 ## What we keep and for how long {#retention}
 
